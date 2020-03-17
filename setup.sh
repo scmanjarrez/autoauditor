@@ -7,12 +7,16 @@ req="requirements.txt"
 dc="docker-compose"
 dcyml="docker-compose.yml"
 d="docker"
-
+vpnf="client.ovpn"
+red="\033[0;91m[-] "
+green="\033[0;92m[+] "
+blue="\033[94m[*] "
+nc="\033[0m"
 
 check_privileges()
 {
     if [ "$EUID" -ne 0 ]; then
-	echo "Please run as root in order to communicate with docker."
+	echo -e "${red}Run as root in order to communicate with docker.$nc"
 	exit
     fi
 }
@@ -80,14 +84,23 @@ networks:
                                 - subnet: 10.10.0.0/24
 EOF
 
-    $dc up -d
+    echo -e "${blue}Starting docker containers.$nc"
+
+    $dc up -d > /dev/null
     wd=$(pwd)
     wd=$(echo ${wd##*/} | tr '[:upper:]' '[:lower:]')
-    $d network connect bridge ${wd}_vpn_server_1 2>/dev/null
+    vpns=${wd}_vpn_server_1
+    $d network connect bridge $vpns > /dev/null 2>&1
+    ip=$($d inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $vpns)
+
+    if [ -f $vpnf ]; then
+	sed -i "s/\([a-z]\+\s\)[0-9\.]\+\(\s[0-9]\+\s[a-z]\+\)/\1$ip\2/" $vpnf
+    fi
 }
 
 chk_venv_pkg()
 {
+    echo -e "${blue}Checking virtualenv package.$nc"
     which virtualenv > /dev/null
 
     if [ $? -ne 0 ]; then
@@ -95,7 +108,7 @@ chk_venv_pkg()
 	if [ $? -eq 0 ]; then
 	    apt install virtualenv -qq
 	else
-	    echo "Please install virtualenv package manually."
+	    echo -e "${red}Install virtualenv package manually.$nc"
 	    exit
 	fi
     fi
@@ -108,8 +121,9 @@ gen_venv_sh()
 
 check_venv()
 {
-    if [[ ! -d $aa_env ]]; then
-	virtualenv $aa_env -p python3
+    echo -e "${blue}Generating virtual environment.$nc"
+    if [ ! -d $aa_env ]; then
+	virtualenv $aa_env -p python3 > /dev/null
     fi
 }
 
@@ -117,11 +131,12 @@ install_req_pip()
 {
     source ${aa_env}/bin/activate
     cat <<REQ > $req
+msgpack==0.6.2
 pymetasploit3
 docker
 REQ
 
-    pip install -r $req
+    pip install -r $req > /dev/null
 }
 
 check_venv
@@ -130,17 +145,22 @@ if [ ! -f "$req" ]; then
     install_req_pip
 fi
 
+echo -e "${green}Run autoauditor.py using ${aa_env}/bin/python as root in order to start autoauditor.$nc"
+
 EOF
 
     chmod +x $env_sh
 
-    echo -e "\n\033[0;32mPlease run $env_sh as user in order to set up virtual environment.\033[0m"
+    echo -e "${green}Run $env_sh as user in order to set up virtual environment.$nc"
 }
 
 stop()
 {
-    $dc stop
-    $dc down -v
+    echo -e "${blue}Stopping docker containers.$nc"
+    $dc stop > /dev/null
+    $dc down -v > /dev/null
+
+    echo -e "${blue}Removing temporary files.$nc"
     rm $dcyml
     rm $req
     rm $env_sh

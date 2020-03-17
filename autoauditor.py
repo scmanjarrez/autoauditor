@@ -20,6 +20,11 @@ P = OKG+'[+] '+END
 S = '[*] '
 M = '[-] '
 
+def check_privileges():
+    if os.geteuid() != 0:
+        print(FAIL+M+"Run as root in order to communicate with docker."+END)
+        sys.exit(1)
+
 def correct_type(value):
     if value.isdigit():
         return int(value)
@@ -250,6 +255,8 @@ def launch_metasploit(client, rc_file, log_file):
                     exp += 1
 
 if __name__ == '__main__':
+    check_privileges()
+
     parser = argparse.ArgumentParser(
             description="Tool to run metasploit automatically given a resource script.")
 
@@ -285,4 +292,4 @@ if __name__ == '__main__':
         assert os.path.isfile(args.rcfile), "{} does not exist, generate it using -g.".format(args.rcfile)
         launch_metasploit(msfclient, args.rcfile, args.outfile)
 
-    shutdown(vpncont, msfcont)
+    # shutdown(vpncont, msfcont)
