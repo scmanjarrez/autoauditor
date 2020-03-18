@@ -268,13 +268,16 @@ if __name__ == '__main__':
                         help="If present, log all output to log_file, otherwise log to msf.log")
 
     group = parser.add_mutually_exclusive_group()
+    group.add_argument('-s', '--stop', action='store_true',
+                       help="Stop any orphan container.")
+
     group.add_argument('-g', '--genrc', metavar='rc_out',
                        nargs='?', const='rc.json',
                        help="Start wizard helper to generate automated resource script file.")
 
     group.add_argument('-r', '--rcfile', metavar='rc_file',
                        default='rc.json',
-                       help="Launch metasploit using rc_file")
+                       help="Run metasploit using rc_file")
 
     args = parser.parse_args()
     vpncont = None
@@ -286,10 +289,14 @@ if __name__ == '__main__':
 
     msfclient, msfcont = start_msfrpcd(args.ovpn is not None)
 
+    if args.stop:
+        shutdown(vpncont, msfcont)
+        sys.exit()
+
     if args.genrc is not None:
         gen_resource_file(msfclient, args.genrc)
     else:
         assert os.path.isfile(args.rcfile), "{} does not exist, generate it using -g.".format(args.rcfile)
         launch_metasploit(msfclient, args.rcfile, args.outfile)
 
-    # shutdown(vpncont, msfcont)
+    shutdown(vpncont, msfcont)
