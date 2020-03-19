@@ -140,10 +140,7 @@ REQ
 }
 
 check_venv
-
-if [ ! -f "$req" ]; then
-    install_req_pip
-fi
+install_req_pip
 
 echo -e "${green}Run autoauditor.py using ${aa_env}/bin/python as root in order to start autoauditor.$nc"
 

@@ -1,0 +1,10 @@
+{
+    "auxiliary": {
+	"scanner/mysql/mysql_authbypass_hashdump": [
+	    [["RHOSTS", "10.10.0.3"]]
+	],
+	"scanner/ssh/ssh_enumusers": [
+	    [["RHOSTS", "10.10.0.6"], ["USERNAME", "root"]]
+	]
+    }
+}

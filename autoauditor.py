@@ -71,7 +71,7 @@ def gen_resource_file(client, rc_out):
 
             print(P+"Current options (required options are marked)")
             print_options(mod, adv)
-
+            # TODO, implementar action en el wizard
             eof = False
             correct = str.lower(input(P+"Correct?[y/n] ")) == 'y'
             opt_l = []
@@ -237,13 +237,18 @@ def launch_metasploit(client, rc_file, log_file):
                     mod = client.modules.use(mtype, mname)
                 except MsfRpcError:
                     print(FAIL+M+"Invalid module type: {}. Check {}.".format(mtype, rc_file)+END)
+                    continue
                 except TypeError:
                     print(FAIL+M+"Invalid module: {}. Check {}.".format(mname, rc_file)+END)
+                    continue
 
                 for expl in rc[mtype][mname]:
                     for opt in expl:
                         try:
-                            mod[opt[0]] = opt[1]
+                            if opt[0] == "ACTION":
+                                mod.action = opt[1]
+                            else:
+                                mod[opt[0]] = opt[1]
                         except KeyError:
                             print(FAIL+M+"Invalid option: {}. Check {}.".format(opt[0], rc_file)+END)
                     cid = client.consoles.console().cid
@@ -266,6 +271,9 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--outfile', metavar='log_file',
                         default='msf.log',
                         help="If present, log all output to log_file, otherwise log to msf.log")
+    parser.add_argument('-b', '--background', action='store_true',
+                        help="Keep containers running in background.")
+
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-s', '--stop', action='store_true',
@@ -299,4 +307,5 @@ if __name__ == '__main__':
         assert os.path.isfile(args.rcfile), "{} does not exist, generate it using -g.".format(args.rcfile)
         launch_metasploit(msfclient, args.rcfile, args.outfile)
 
-    shutdown(vpncont, msfcont)
+    if not args.background:
+        shutdown(vpncont, msfcont)
