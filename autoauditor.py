@@ -278,13 +278,11 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--background', action='store_true',
                         help="Keep containers running in background.")
 
-
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-s', '--stop', action='store_true',
                        help="Stop any orphan container.")
 
     group.add_argument('-g', '--genrc', metavar='rc_out',
-                       nargs='?', const='rc.json',
                        help="Start wizard helper to generate automated resource script file.")
 
     group.add_argument('-r', '--rcfile', metavar='rc_file',
