@@ -1,36 +1,37 @@
-Descripción
+# Descripción
+Auto auditor de vulnerabilidades en un entorno dockerizado. 
+- Los módulos a probar están en **rc.json**
+- Los ficheros de configuración de los contenedores se encuentran en **VulMach**.
+- A la espera de una nueva versión del wrapper de msfrpc (**pymetasploit3**)
 
-	Auto auditor de vulnerabilidades en un entorno dockerizado
-	- Los módulos a probar están en rc.json
-	- Los CVEs ya están bajados 
-	- Se espera una nueva versión del wrapper de msfrpc
+# Requisitos
+Permisos de superusuario.
 
+# Preparación del entorno
+- sudo ./setup.sh
+> Prepara los contenedores con vulnerabilidades y el servidor VPN.
+- ./gen\_venv.sh
+> Crea un entorno virtual de python3 y descarga los módulos necesarios para la ejecución.
 
-Requisitos
-	Necesita una versión de python 3.6 o superior, donde estén soportados los f-strings.
-	Además necesita 
-		- pymetasploit3
-		- docker
+> Mientras se actualiza la versión de pymetasploit3, usar el entorno virtual ya preparado en _venv\_bk_
+> para ello haz una copia
+> - **cp -R venv\_bk autoauditor\_venv**
+> - **NO** ejecutes gen_venv.sh
 
-	Instalar con pip3 install -r requirements.txt
+# Ejecución
+- sudo ./autoauditor_venv/bin/python ./autoauditor.py -v client.ovpn -r rc.json -o msf.log
+> Ejecuta autoauditor usando los módulos listados en **rc.json**, a través de la VPN especificada
+> en el fichero de configuración **client.ovpn** y escribe toda la información de ejecución en el 
+> fichero **msf.log**.
 
-Preparar el entorno con
-	bash ./setup.sh
+# Salida
+La salida de metasploit framework (community) separada por módulos se encuentra en el fichero **msf.log**. 
+La carpeta **loot** contiene la información obtenida durante la ejecución.
 
-Ejecutar con
-	python3 ./auditor.py -v client.ovpn
+# Limpieza del entorno
+- sudo ./setup.sh -s
 
-Salida
-	La salida de metasploit framework (community) separada por exploits se encuentra en el fichero msf.log. 
-	La carpeta loot contiene la información obtenida de la ejecución de los exploits.
-
-Limpiar el entorno con 
-	./setup.sh -s
-
-Entornos virtuales
-	En principio se diseñó para ejecutar en un entorno virtual, pero son necesario privilegios 
-	para acceder al API de docker.
-
-
-	
+# Entornos virtuales
+En principio se diseñó para ejecutar en un entorno virtual, pero son necesario privilegios
+para acceder al API de docker.
 

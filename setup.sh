@@ -16,8 +16,8 @@ nc="\033[0m"
 check_privileges()
 {
     if [ "$EUID" -ne 0 ]; then
-	echo -e "${red}Run as root in order to communicate with docker.$nc"
-	exit
+        echo -e "${red}Run as root in order to communicate with docker.$nc"
+        exit
     fi
 }
 
@@ -45,14 +45,6 @@ services:
                         vulnerable_network:
                                 ipv4_address: 10.10.0.4
 
-        smb_17_7494:
-                image: vulhub/samba:4.6.3
-                volumes:
-                        - ./VulMach/CVE-2017-7494/smb.conf:/usr/local/samba/etc/smb.conf
-                networks:
-                        vulnerable_network:
-                                ipv4_address: 10.10.0.5
-
         ssh_18_15473:
                 build:
                         context: .
@@ -61,7 +53,21 @@ services:
                         - ROOT_PASSWORD=vulhub
                 networks:
                         vulnerable_network:
+                                ipv4_address: 10.10.0.5
+
+        http_14_6271:
+                image: vulhub/bash:4.3.0-with-httpd
+                volumes:
+                        - ./VulMach/CVE-2014-6271/victim.cgi:/var/www/html/victim.cgi
+                networks:
+                        vulnerable_network:
                                 ipv4_address: 10.10.0.6
+
+        ssh_18_10933:
+                image: vulhub/libssh:0.8.1
+                networks:
+                        vulnerable_network:
+                                ipv4_address: 10.10.0.7
 
         vpn_server:
                 image: kylemanna/openvpn
@@ -74,7 +80,10 @@ services:
                         - ./Vpn/server-data/conf:/etc/openvpn
                 depends_on:
                         - mysql_12_2122
+                        - ssl_14_0160
                         - ssh_18_15473
+                        - http_14_6271
+                        - ssh_18_10933
 
 networks:
         vulnerable_network:
@@ -94,7 +103,7 @@ EOF
     ip=$($d inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $vpns)
 
     if [ -f $vpnf ]; then
-	sed -i "s/\([a-z]\+\s\)[^\s]\+\(\s[0-9]\+\s[a-z]\+\)/\1$ip\2/" $vpnf
+        sed -i "s/\([a-z]\+\s\)[^\s]\+\(\s[0-9]\+\s[a-z]\+\)/\1$ip\2/" $vpnf
     fi
 }
 
@@ -104,13 +113,13 @@ chk_venv_pkg()
     which virtualenv > /dev/null
 
     if [ $? -ne 0 ]; then
-	which apt > /dev/null
-	if [ $? -eq 0 ]; then
-	    apt install virtualenv -qq
-	else
-	    echo -e "${red}Install virtualenv package manually.$nc"
-	    exit
-	fi
+        which apt > /dev/null
+        if [ $? -eq 0 ]; then
+            apt install virtualenv -qq
+        else
+            echo -e "${red}Install virtualenv package manually.$nc"
+            exit
+        fi
     fi
 }
 
@@ -123,7 +132,7 @@ check_venv()
 {
     echo -e "${blue}Generating virtual environment.$nc"
     if [ ! -d $aa_env ]; then
-	virtualenv $aa_env -p python3 > /dev/null
+        virtualenv $aa_env -p python3 > /dev/null
     fi
 }
 

@@ -69,9 +69,8 @@ def gen_resource_file(client, rc_out):
 
             adv = str.lower(input(P+"Show advanced options?[y/n] ")) == 'y'
 
-            print(P+"Current options (required options are marked)")
+            print(P+"Current options (required in yellow, missing in red)")
             print_options(mod, adv)
-            # TODO, implementar action en el wizard
             eof = False
             correct = str.lower(input(P+"Correct?[y/n] ")) == 'y'
             opt_l = []
@@ -162,7 +161,7 @@ def setup_vpn(ovpn_file):
 
     return vpncont
 
-def start_msfrpcd(ovpn):
+def start_msfrpcd(ovpn, loot_dir):
     client = docker.from_env()
 
     print(OKB+S+"Verifying if docker images exist..."+END)
@@ -186,7 +185,8 @@ def start_msfrpcd(ovpn):
     cont_l = client.containers.list(filters={'name':'msfrpc'})
     if not cont_l:
         print(P+"Metasploit container is not running, starting...")
-        loot = os.path.join(os.getcwd(), 'loot')
+
+        loot = os.path.join(os.getcwd(), loot_dir)
         if ovpn:
             msfcont = client.containers.run(image,
                                             'sh -c "ip route replace default via 10.10.20.2 && ./msfrpcd -P dummypass && tail -f /dev/null"',
@@ -230,7 +230,6 @@ def launch_metasploit(client, rc_file, log_file):
 
     with open(log_file, 'w') as f:
         print(OKB+S+"Logging metasploit output to {}...".format(log_file)+END)
-        exp = 1
         for mtype in rc:
             for mname in rc[mtype]:
                 try:
@@ -252,12 +251,12 @@ def launch_metasploit(client, rc_file, log_file):
                         except KeyError:
                             print(FAIL+M+"Invalid option: {}. Check {}.".format(opt[0], rc_file)+END)
                     cid = client.consoles.console().cid
+                    exp = "{}/{}".format(mtype, mname)
                     print(P+"Logging output: {}".format(exp))
-                    f.write('***** Exploit: {} *****\n'.format(exp))
+                    f.write('##### {} #####\n\n'.format(exp))
                     f.write(client.consoles.console(cid).run_module_with_output(mod))
-                    f.write('***** End exploit: {} *****\n\n'.format(exp))
+                    f.write('\n######{}######\n\n'.format("#"*len(exp)))
                     client.consoles.destroy(cid)
-                    exp += 1
 
 if __name__ == '__main__':
     check_privileges()
@@ -270,7 +269,12 @@ if __name__ == '__main__':
 
     parser.add_argument('-o', '--outfile', metavar='log_file',
                         default='msf.log',
-                        help="If present, log all output to log_file, otherwise log to msf.log")
+                        help="If present, log all output to log_file, otherwise log to msf.log file.")
+
+    parser.add_argument('-d', '--outdir', metavar='gather_dir',
+                        default='loot',
+                        help="If present, store gathered data in gather_dir, otherwise store in loot directory.")
+
     parser.add_argument('-b', '--background', action='store_true',
                         help="Keep containers running in background.")
 
@@ -295,7 +299,7 @@ if __name__ == '__main__':
         assert os.path.isfile(args.ovpn), "{} does not exist.".format(args.ovpn)
         vpncont = setup_vpn(args.ovpn)
 
-    msfclient, msfcont = start_msfrpcd(args.ovpn is not None)
+    msfclient, msfcont = start_msfrpcd(args.ovpn is not None, args.outdir)
 
     if args.stop:
         shutdown(vpncont, msfcont)
