@@ -13,19 +13,19 @@ Permisos de superusuario.
 - ./gen\_venv.sh
 > Crea un entorno virtual de python3 y descarga los módulos necesarios para la ejecución.
 
-> Mientras se actualiza la versión de pymetasploit3, usar el entorno virtual ya preparado en _venv\_bk_
+> Mientras se actualiza la versión de pymetasploit3, usar el entorno virtual ya preparado en _venv\_bk_,
 > para ello haz una copia
 > - **cp -R venv\_bk autoauditor\_venv**
 > - **NO** ejecutes gen_venv.sh
 
 # Ejecución
 - sudo ./autoauditor_venv/bin/python ./autoauditor.py -v client.ovpn -r rc.json -o msf.log
-> Ejecuta autoauditor usando los módulos listados en **rc.json**, a través de la VPN especificada
-> en el fichero de configuración **client.ovpn** y escribe toda la información de ejecución en el 
-> fichero **msf.log**.
+> Ejecuta autoauditor usando los módulos listados en **rc.json**.
+> Crea un túnel VPN con la configuración presente en **client.ovpn**.
+> Escribe toda la información de ejecución en el fichero **msf.log**.
 
 # Salida
-La salida de metasploit framework (community) separada por módulos se encuentra en el fichero **msf.log**. 
+La salida de metasploit framework (community) separada por módulos se encuentra en el fichero **msf.log**.  
 La carpeta **loot** contiene la información obtenida durante la ejecución.
 
 # Limpieza del entorno
