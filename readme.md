@@ -18,10 +18,11 @@ Permisos de superusuario.
 > - **NO** ejecutes gen_venv.sh
 
 # Ejecución
-- sudo ./autoauditor_venv/bin/python ./autoauditor.py -v client.ovpn -r rc.json -o msf.log
+- sudo ./autoauditor_venv/bin/python ./autoauditor.py -v client.ovpn -r rc.json -o msf.log -d loot
 > Ejecuta autoauditor usando los módulos listados en **rc.json**.  
 > Crea un túnel VPN con la configuración presente en **client.ovpn**.  
 > Escribe toda la información de ejecución en el fichero **msf.log**.  
+> La información recolectada se guardará en el directorio **loot**.  
 
 # Salida
 La salida de metasploit framework (community) separada por módulos se encuentra en el fichero **msf.log**.  
