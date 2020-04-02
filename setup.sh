@@ -103,7 +103,7 @@ EOF
     ip=$($d inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $vpns)
 
     if [ -f $vpnf ]; then
-        sed -i "s/\([a-z]\+\)[^\s]\+\s\+\([0-9]\+\s[a-z]\+\)/\1 $ip \2/" $vpnf
+        sed -i "s/remote.*1194 udp/remote "$ip" 1194 udp/" $vpnf
     fi
 }
 
