@@ -5,7 +5,8 @@ Auto auditor de vulnerabilidades en un entorno dockerizado.
 - A la espera de una nueva versión del wrapper de msfrpc (**pymetasploit3**)
 
 # Requisitos
-Permisos de superusuario.
+La cuenta desde la cual se ejecuta el script debe pertenecer al grupo **docker** de manera
+que pueda acceder a la API sin permisos de superusuario.
 
 # Preparación del entorno
 - sudo ./setup.sh

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-aa="autoauditor"
+aa="autoauditor.py"
 aa_env="autoauditor_venv"
 env_sh="gen_venv.sh"
 req="requirements.txt"
@@ -15,8 +15,9 @@ nc="\033[0m"
 
 check_privileges()
 {
-    if [ "$EUID" -ne 0 ]; then
-        echo -e "${red}Run as root in order to communicate with docker.$nc"
+    id -Gn `whoami` | grep '\bdocker\b' > /dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "${red}User '`whoami`' must belong to 'docker' group to communicate with docker API, or execute as root.$nc"
         exit
     fi
 }
@@ -151,13 +152,13 @@ REQ
 check_venv
 install_req_pip
 
-echo -e "${green}Run autoauditor.py using ${aa_env}/bin/python as root in order to start autoauditor.$nc"
+echo -e "${green}Virtual environment ready. Enable $aa_env and execute $aa.$nc"
 
 EOF
 
     chmod +x $env_sh
 
-    echo -e "${green}Run $env_sh as user in order to set up virtual environment.$nc"
+    echo -e "${green}Execute $env_sh to set up virtual environment.$nc"
 }
 
 stop()
