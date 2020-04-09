@@ -9,17 +9,18 @@ La cuenta desde la cual se ejecuta el script debe pertenecer al grupo **docker**
 que pueda acceder a la API sin permisos de superusuario.
 
 # Preparación del entorno
-- sudo ./setup.sh
+- ./setup.sh
 > Prepara los contenedores con vulnerabilidades y el servidor VPN.
 - ./gen\_venv.sh
 > Crea un entorno virtual de python3 y descarga los módulos necesarios para la ejecución.
 
-> Mientras se actualiza la versión de pymetasploit3, usar el entorno virtual ya preparado en _venv\_bk_.
-> - **cp -R venv\_bk autoauditor\_venv**
-> - **NO** ejecutes gen_venv.sh
+
+**Nota:** Mientras se actualiza la versión de pymetasploit3 en PyPi, usar el fichero **msfrpc.py**.
+> cp msfrpc.py autoauditor\_venv/lib/python3.*/site-packages/pymetasploit3/
 
 # Ejecución
-- sudo ./autoauditor_venv/bin/python ./autoauditor.py -v client.ovpn -r rc.json -o msf.log -d loot
+- source autoauditor\_venv/bin/activate
+- python autoauditor.py -v client.ovpn -r rc.json -o msf.log -d loot
 > Ejecuta autoauditor usando los módulos listados en **rc.json**.  
 > Crea un túnel VPN con la configuración presente en **client.ovpn**.  
 > Escribe toda la información de ejecución en el fichero **msf.log**.  
@@ -27,12 +28,13 @@ que pueda acceder a la API sin permisos de superusuario.
 
 # Salida
 La salida de metasploit framework (community) separada por módulos se encuentra en el fichero **msf.log**.  
-La carpeta **loot** contiene la información obtenida durante la ejecución.
+El directorio **loot** contiene la información obtenida durante la ejecución.
 
 # Limpieza del entorno
-- sudo ./setup.sh -s
+- deactivate
+- ./setup.sh -s
 
 # Entornos virtuales
-En principio se diseñó para ejecutar en un entorno virtual, pero son necesario privilegios
-para acceder al API de docker.
-
+La ejecución se realiza en un entorno virtual, sin embargo, es necesario que la cuenta de usuario desde 
+la que se ejecuta la herramienta pertenezca al grupo **docker** para que se pueda comunicar
+con la API.
