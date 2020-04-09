@@ -26,8 +26,8 @@ def check_privileges():
     user = pwd.getpwuid(os.geteuid()).pw_name
     groups = [group.gr_name for group in grp.getgrall() if user in group.gr_mem]
 
-    if 'docker' not in groups:
-        print(FAIL+M+"User '{}' must belong to 'docker' group to communicate with docker API, or execute as root.".format(user)+END)
+    if 'docker' not in groups or os.getuid() != 0:
+        print(FAIL+M+"User '{}' must belong to 'docker' group to communicate with docker API.".format(user)+END)
         sys.exit(1)
 
 def correct_type(value):

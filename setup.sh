@@ -17,7 +17,7 @@ check_privileges()
 {
     id -Gn `whoami` | grep '\bdocker\b' > /dev/null
     if [ $? -ne 0 ]; then
-        echo -e "${red}User '`whoami`' must belong to 'docker' group to communicate with docker API, or execute as root.$nc"
+        echo -e "${red}User '`whoami`' must belong to 'docker' group to communicate with docker API.$nc"
         exit
     fi
 }
