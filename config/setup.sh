@@ -1,7 +1,8 @@
 #!/bin/bash
 
-aa="autoauditor.py"
-aa_env="autoauditor_venv"
+aa="../autoauditor/autoauditor.py"
+aa_venv="autoauditor_venv"
+tmp_msfrpc="backup/msfrpc.py"
 env_sh="gen_venv.sh"
 req="requirements.txt"
 dc="docker-compose"
@@ -132,14 +133,14 @@ gen_venv_sh()
 check_venv()
 {
     echo -e "${blue}Generating virtual environment.$nc"
-    if [ ! -d $aa_env ]; then
-        virtualenv $aa_env -p python3 > /dev/null
+    if [ ! -d $aa_venv ]; then
+        virtualenv $aa_venv -p python3 > /dev/null
     fi
 }
 
 install_req_pip()
 {
-    source ${aa_env}/bin/activate
+    source ${aa_venv}/bin/activate
     cat <<REQ > $req
 msgpack==0.6.2
 pymetasploit3
@@ -151,8 +152,9 @@ REQ
 
 check_venv
 install_req_pip
-
-echo -e "${green}Virtual environment ready. Enable $aa_env and execute $aa.$nc"
+echo -e "${blue}Using msrpc.py backup until pymetasploit3 package gets updated.$nc"
+cp $tmp_msfrpc $aa_venv/lib/python3.*/site-packages/pymetasploit3/
+echo -e "${green}Virtual environment ready. Enable $aa_venv and execute $aa.$nc"
 
 EOF
 
@@ -166,19 +168,20 @@ stop()
     echo -e "${blue}Stopping docker containers.$nc"
     $dc stop > /dev/null
     $dc down -v > /dev/null
+    $d stop vpncl msfrpc > /dev/null
 
     echo -e "${blue}Removing temporary files.$nc"
     rm $dcyml
     rm $req
     rm $env_sh
-    rm -rf $aa_env
+    rm -rf $aa_venv
 }
 
 usage()
 {
     echo "Usage:"
     echo "    $0          Set up test environment."
-    echo "    $0 -s       Clean test environment."
+    echo "    $0 -s       Clean up environment."
     echo "    $0 -h       Show this help."
 }
 

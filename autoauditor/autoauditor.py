@@ -26,7 +26,7 @@ def check_privileges():
     user = pwd.getpwuid(os.geteuid()).pw_name
     groups = [group.gr_name for group in grp.getgrall() if user in group.gr_mem]
 
-    if 'docker' not in groups or os.getuid() != 0:
+    if 'docker' not in groups:
         print(FAIL+M+"User '{}' must belong to 'docker' group to communicate with docker API.".format(user)+END)
         sys.exit(1)
 
@@ -273,26 +273,28 @@ if __name__ == '__main__':
                         help="Run a vpn container in order to connect external subnet.")
 
     parser.add_argument('-o', '--outfile', metavar='log_file',
-                        default='msf.log',
-                        help="If present, log all output to log_file, otherwise log to msf.log file.")
+                        default='output/msf.log',
+                        help="If present, log all output to log_file, otherwise log to output/msf.log file.")
 
     parser.add_argument('-d', '--outdir', metavar='gather_dir',
-                        default='loot',
-                        help="If present, store gathered data in gather_dir, otherwise store in loot directory.")
+                        default='output/loot',
+                        help="If present, store gathered data in gather_dir, otherwise store in output/loot directory.")
 
     parser.add_argument('-b', '--background', action='store_true',
                         help="Keep containers running in background.")
 
-    group = parser.add_mutually_exclusive_group()
+    group = parser.add_mutually_exclusive_group(required=True)
+    
+    group.add_argument('-r', '--rcfile', metavar='rc_file',
+                       help="Run metasploit using rc_file")
+    
+    group.add_argument('-g', '--genrc', metavar='rc_out',
+                       help="Start wizard helper to generate automated resource script file.")
+    
     group.add_argument('-s', '--stop', action='store_true',
                        help="Stop any orphan container.")
 
-    group.add_argument('-g', '--genrc', metavar='rc_out',
-                       help="Start wizard helper to generate automated resource script file.")
 
-    group.add_argument('-r', '--rcfile', metavar='rc_file',
-                       default='rc.json',
-                       help="Run metasploit using rc_file")
 
     args = parser.parse_args()
     vpncont = None
@@ -301,6 +303,13 @@ if __name__ == '__main__':
     if args.ovpn is not None:
         assert os.path.isfile(args.ovpn), "{} does not exist.".format(args.ovpn)
         vpncont = setup_vpn(args.ovpn)
+
+    try:
+        os.makedirs(os.path.dirname(args.outfile), exist_ok=True)
+        os.makedirs(args.outdir, exist_ok=True)
+    except FileExistsError:
+        print(FAIL+M+"Error creating {} or {}.".format(args.outfile, args.outdir)+END)
+        sys.exit(1)
 
     msfclient, msfcont = start_msfrpcd(args.ovpn is not None, args.outdir)
 
