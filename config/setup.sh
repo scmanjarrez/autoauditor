@@ -116,10 +116,8 @@ chk_venv_pkg()
 
     if [ $? -ne 0 ]; then
         which apt > /dev/null
-        if [ $? -eq 0 ]; then
-            apt install virtualenv -qq
-        else
-            echo -e "${red}Install virtualenv package manually.$nc"
+        if [ $? -ne 0 ]; then
+            echo -e "${red}Install virtualenv package.$nc"
             exit
         fi
     fi
@@ -127,20 +125,15 @@ chk_venv_pkg()
 
 gen_venv_sh()
 {
-    cat <<EOF > $env_sh
-#!/bin/bash
 
-check_venv()
-{
     echo -e "${blue}Generating virtual environment.$nc"
+
     if [ ! -d $aa_venv ]; then
         virtualenv $aa_venv -p python3 > /dev/null
     fi
-}
 
-install_req_pip()
-{
     source ${aa_venv}/bin/activate
+
     cat <<REQ > $req
 msgpack==0.6.2
 pymetasploit3
@@ -148,19 +141,11 @@ docker
 REQ
 
     pip install -r $req > /dev/null
-}
 
-check_venv
-install_req_pip
-echo -e "${blue}Using msrpc.py backup until pymetasploit3 package gets updated.$nc"
-cp $tmp_msfrpc $aa_venv/lib/python3.*/site-packages/pymetasploit3/
-echo -e "${green}Virtual environment ready. Enable $aa_venv and execute $aa.$nc"
+    echo -e "${blue}Using msrpc.py backup until pymetasploit3 package gets updated.$nc"
+    cp $tmp_msfrpc $aa_venv/lib/python3.*/site-packages/pymetasploit3/
+    echo -e "${green}Virtual environment ready. Enable $aa_venv and execute $aa.$nc"
 
-EOF
-
-    chmod +x $env_sh
-
-    echo -e "${green}Execute $env_sh to set up virtual environment.$nc"
 }
 
 stop()
@@ -173,7 +158,6 @@ stop()
     echo -e "${blue}Removing temporary files.$nc"
     rm $dcyml
     rm $req
-    rm $env_sh
     rm -rf $aa_venv
 }
 

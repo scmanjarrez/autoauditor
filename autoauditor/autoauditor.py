@@ -152,7 +152,8 @@ def setup_vpn(ovpn_file):
                                         network='attacker_network',
                                         volumes={'/dev/net': {'bind': '/dev/net', 'mode': 'z'},
                                                  of: {'bind': '/vpn/vpn.ovpn'}},
-                                        environment={'ROUTE': '10.10.20.0/24'})
+                                        environment={'DEFAULT_GATEWAY': 'false',
+                                                     'ROUTE': '10.10.20.0/24'})
         try:
             net = client.networks.get('bridge')
         except docker.errors.NotFound:
@@ -284,13 +285,13 @@ if __name__ == '__main__':
                         help="Keep containers running in background.")
 
     group = parser.add_mutually_exclusive_group(required=True)
-    
+
     group.add_argument('-r', '--rcfile', metavar='rc_file',
                        help="Run metasploit using rc_file")
-    
+
     group.add_argument('-g', '--genrc', metavar='rc_out',
                        help="Start wizard helper to generate automated resource script file.")
-    
+
     group.add_argument('-s', '--stop', action='store_true',
                        help="Stop any orphan container.")
 

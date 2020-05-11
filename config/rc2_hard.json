@@ -1,0 +1,10 @@
+{
+    "auxiliary": {
+        "scanner/mysql/mysql_authbypass_hashdump": [
+            [["RHOSTS", "10.10.0.3"]]
+        ],
+        "scanner/ssl/openssl_heartbleed": [
+            [["RHOSTS", "10.10.0.4"], ["ACTION", "KEYS"]]
+        ]
+    }
+}
