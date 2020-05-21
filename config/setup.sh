@@ -102,6 +102,10 @@ EOF
     wd=$(echo ${wd##*/} | tr '[:upper:]' '[:lower:]')
     vpns=${wd}_vpn_server_1
     $d network connect bridge $vpns > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo -e "${red}Error during $d network connect bridge $vpns.$nc"
+        exit 1
+    fi
     ip=$($d inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $vpns)
 
     if [ -f $vpnf ]; then
