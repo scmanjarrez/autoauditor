@@ -1,42 +1,45 @@
 #!/usr/bin/env python3
 from requests.exceptions import ConnectionError
 from pymetasploit3.msfrpc import MsfRpcClient, MsfRpcError, MsfAuthError
-import utils, json, argparse
+import utils, json, argparse, metasploit, readline
 
 def gen_resource_file(client, rc_out):
     more_mod = True
     rc_file = {}
+    yes_ans = ['y', 'yes']
+
     while more_mod:
         try:
             mod = None
             while mod is None:
-                mtype = input("Module type to use [exploit/auxiliary/payload/encoder/post/nop]: ")
-                mname = input("Module to use: ")
+                mtype = input("[*] Module type (exploit|auxiliary|payload|encoder|post|nop): ")
+                mname = input("[*] Module: ")
                 try:
                     mod = client.modules.use(mtype, mname)
                 except MsfRpcError:
-                    utils.log('error', "Invalid module type: {}. Check rc file.".format(mtype))
+                    utils.log('error', "Invalid module type: {}.".format(mtype))
                 except TypeError:
-                    utils.log('error', "Invalid module: {}. Check rc file.".format(mname))
+                    utils.log('error', "Invalid module: {}.".format(mname))
                 else:
                     if mtype not in rc_file:
                         rc_file[mtype] = {}
                     if mname not in rc_file[mtype]:
                         rc_file[mtype][mname] = []
 
-            adv = str.lower(input(P+"Advanced options?[y/n] ")) == 'y'
+            adv = str.lower(input("[*] Advanced options [y/N]: ")) in yes_ans
 
-            utils.log('succg', "Current options (required in yellow, missing in red):")
-            print_options(mod, adv)
+            utils.log('succg', "Current options: required=yellow mark, missing=red mark")
+            utils.print_options(mod, adv)
+
             eof = False
-            correct = str.lower(input("Correct?[y/n] ")) == 'y'
+            modify = str.lower(input("[*] Modify [y/N]: ")) in yes_ans
             opt_l = []
-            while not correct:
+            while modify:
                 try:
-                    utils.log('succb', "Send EOF on finish (Ctrl+D)")
+                    utils.log('succb', "Finish with EOF (Ctrl+D)")
                     while True:
-                        opt = input("Option (case sensitive): ")
-                        val = correct_type(input("Value for {}: ".format(opt)))
+                        opt = input("[*] Option (case sensitive): ")
+                        val = utils.correct_type(input("[*] {} value: ".format(opt)))
                         try:
                             mod[opt] = val
                         except KeyError:
@@ -46,19 +49,18 @@ def gen_resource_file(client, rc_out):
                         eof = False
                 except EOFError:
                     print()
-                    # avoid infinite loop if consecutives Ctrl+D
-                    if eof:
+                    if eof:  # avoid infinite loop if consecutives Ctrl+D
                         break
-                    print("Final options")
-                    print_options(mod, adv)
+                    utils.log('succb', "Final options:")
+                    utils.print_options(mod, adv)
                     eof = True
 
-                correct = str.lower(input("Correct?[y/n] ")) == 'y'
+                modify = str.lower(input("[*] Modify [y/N]: ")) in yes_ans
                 eof = False
 
             rc_file[mtype][mname].append(opt_l)
 
-            if str.lower(input("Add more modules?[y/n] ")) == 'n':
+            if str.lower(input("[*] More modules [y/N]: ")) not in yes_ans:
                 more_mod = False
         except EOFError:
             print()
@@ -79,10 +81,10 @@ if __name__ == "__main__":
                         help="Use mscontpass as msfrpc password.")
 
     args = parser.parse_args()
-    try:
-        msfclient = MsfRpcClient(args.pwd if args.pwd is not None else 'dummypass', ssl=True)
-        gen_resource_file(msfclient, args.outrc if args.outrc is not None else 'rc.json')
-    except ConnectionError:
-        utils.log('error', "Metasploit container connection error. Check container is running.")
-    except MsfAuthError:
-        utils.log('error', "Metasploit container authentication error. Check password.")
+
+    msfclient = metasploit.get_msf_connection(args.pwd if args.pwd is not None else 'dummypass')
+
+    outf = args.outrc if args.outrc is not None else 'rc.json'
+    utils.check_file_dir(outf)
+
+    gen_resource_file(msfclient, outf)

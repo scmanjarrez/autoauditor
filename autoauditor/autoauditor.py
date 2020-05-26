@@ -35,29 +35,27 @@ if __name__ == '__main__':
                        help="Stop any orphan container.")
 
     args = parser.parse_args()
+
     vpncont = None
     msfcont = None
 
     if args.ovpn is not None:
         assert os.path.isfile(args.ovpn), "{} does not exist.".format(args.ovpn)
-        vpncont = vpn.setup_vpn(args.ovpn)
+        vpncont = vpn.setup_vpn(args.ovpn, args.stop)
 
-    try:
-        os.makedirs(os.path.dirname(args.outfile), exist_ok=True)
-        os.makedirs(args.outdir, exist_ok=True)
-    except FileExistsError:
-        utils.log('error', "Error creating {} or {}.".format(args.outfile, args.outdir), errcode=utils.EFLEXST)
+    utils.check_file_dir(args.outfile, args.outdir)
 
-    msfclient, msfcont = metasploit.start_msfrpcd(args.ovpn is not None, args.outdir)
+    msfcont = metasploit.start_msfrpcd(args.ovpn is not None, args.outdir, args.stop)
 
     if args.stop:
         utils.shutdown(vpncont, msfcont)
 
     if args.genrc is not None:
+        msfclient = metasploit.get_msf_connection('dummypass')
         wizard.gen_resource_file(msfclient, args.genrc)
     else:
-        assert os.path.isfile(args.rcfile), "{} does not exist, generate it using -g.".format(args.rcfile)
-        metasploit.launch_metasploit(msfclient, args.rcfile, args.outfile)
+        assert os.path.isfile(args.rcfile), "{} does not exist. Generate with -g.".format(args.rcfile)
+        metasploit.launch_metasploit(args.rcfile, args.outfile)
 
     if not args.background:
         utils.shutdown(vpncont, msfcont)
