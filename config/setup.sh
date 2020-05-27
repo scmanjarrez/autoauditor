@@ -1,6 +1,7 @@
 #!/bin/bash
 
 aa="../autoauditor/autoauditor.py"
+venv="virtualenv"
 aa_venv="autoauditor_venv"
 tmp_msfrpc="backup/msfrpc.py"
 env_sh="gen_venv.sh"
@@ -13,6 +14,8 @@ red="\033[0;91m[-] "
 green="\033[0;92m[+] "
 blue="\033[94m[*] "
 nc="\033[0m"
+hlf_py_sdk="fabric-sdk-py"
+hlf_py_pkg="hfc"
 
 check_privileges()
 {
@@ -119,11 +122,19 @@ chk_venv_pkg()
     which virtualenv > /dev/null
 
     if [ $? -ne 0 ]; then
-        which apt > /dev/null
-        if [ $? -ne 0 ]; then
-            echo -e "${red}Install virtualenv package.$nc"
-            exit
-        fi
+        echo -e "${red}Install virtualenv package.$nc"
+        exit 1
+    fi
+}
+
+chk_git_pkg()
+{
+    echo -e "${blue}Checking git package.$nc"
+    which git > /dev/null
+
+    if [ $? -ne 0 ]; then
+        echo -e "${red}Install git package.$nc"
+        exit 1
     fi
 }
 
@@ -133,19 +144,34 @@ gen_venv_sh()
     echo -e "${blue}Generating virtual environment.$nc"
 
     if [ ! -d $aa_venv ]; then
-        virtualenv $aa_venv -p python3 > /dev/null
+        $venv $aa_venv -p python3 > /dev/null
     fi
 
     source ${aa_venv}/bin/activate
 
     cat <<REQ > $req
 msgpack==0.6.2
-pymetasploit3
-docker
+pymetasploit3 >= 1.0.2
+docker >= 4.2.0
+aiogrpc >= 1.6
+cryptography >= 1.9
+grpcio >= 1.0.1
+hkdf >= 0.0.3
+lark-parser == 0.7.1
+pycryptodomex >= 3.4.2
+pysha3 == 1.0b1
+requests == 2.20.0
+rx >= 3.0.1
+six >= 1.4.0
+protobuf >= 3.6.0
+couchdb >= 1.2
+beautifulsoup4 >= 4.9.1
+soupsieve >= 2.0.1
 REQ
 
     pip install -r $req > /dev/null
-
+    git submodule update --remote > /dev/null
+    ln -s $hlf_py_sdk/$hlf_py_pkg $hlf_py_pkg
     echo -e "${blue}Using msrpc.py backup until pymetasploit3 package gets updated.$nc"
     cp $tmp_msfrpc $aa_venv/lib/python3.*/site-packages/pymetasploit3/
     echo -e "${green}Virtual environment ready. Enable $aa_venv and execute $aa.$nc"
@@ -161,7 +187,8 @@ stop()
 
     echo -e "${blue}Removing temporary files.$nc"
     rm $dcyml
-    rm $req
+    # rm $req
+    rm $hlf_py_pkg
     rm -rf $aa_venv
 }
 
@@ -185,5 +212,6 @@ done
 if [ $OPTIND -eq 1 ]; then
     start
     chk_venv_pkg
+    chk_git_pkg
     gen_venv_sh
 fi
