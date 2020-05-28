@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-import sys, os, argparse
-import metasploit, wizard, vpn, utils
+import sys
+import os
+import argparse
+import metasploit
+import wizard
+import vpn
+import utils
 
 
 if __name__ == '__main__':

@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-from requests.exceptions import ConnectionError
-from pymetasploit3.msfrpc import MsfRpcClient, MsfRpcError, MsfAuthError
-import utils, json, argparse, metasploit, readline
+from pymetasploit3.msfrpc import MsfRpcError
+import utils
+import json
+import argparse
+import metasploit
+import readline
+
 
 def gen_resource_file(client, rc_out):
     more_mod = True

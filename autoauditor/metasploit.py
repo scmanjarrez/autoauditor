@@ -1,15 +1,22 @@
-from pymetasploit3.msfrpc import MsfRpcClient, MsfRpcError
-from io import BytesIO as fobj
-import utils, json, os, sys, docker, time
+from pymetasploit3.msfrpc import MsfRpcClient, MsfRpcError, MsfAuthError
+from requests.exceptions import ConnectionError
+from datetime import datetime
+from io import BytesIO
+import utils
+import json
+import os
+import sys
+import docker
+import time
 
 
 def get_msf_connection(passwd):
     try:
         return MsfRpcClient(passwd, ssl=True)
     except ConnectionError:
-        utils.log('error', "Metasploit container connection error. Check container is running.", errcode=EMSCONN)
+        utils.log('error', "Metasploit container connection error. Check container is running.", errcode=utils.EMSCONN)
     except MsfAuthError:
-        utils.log('error', "Metasploit container authentication error. Check password.", errcode=EMSPASS)
+        utils.log('error', "Metasploit container authentication error. Check password.", errcode=utils.EMSPASS)
 
 def start_msfrpcd(ovpn, loot_dir, stop):
     dockercl = docker.from_env()
@@ -23,9 +30,9 @@ def start_msfrpcd(ovpn, loot_dir, stop):
     except docker.errors.ImageNotFound:
         utils.log('warn', utils.MSDOWN, end='\r')
 
-        dckf = fobj(b'FROM phocean/msf\n'
-                    b'RUN apt update && apt install -y iproute2 iputils-ping traceroute\n'
-                    b'CMD ./msfrpcd -P dummypass && tail -f /dev/null')
+        dckf = BytesIO(b'FROM phocean/msf\n'
+                       b'RUN apt update && apt install -y iproute2 iputils-ping traceroute\n'
+                       b'CMD ./msfrpcd -P dummypass && tail -f /dev/null')
         try:
             image, _ = dockercl.images.build(fileobj=dckf, tag='msfrpci')
         except docker.errors.BuildError:
@@ -43,16 +50,16 @@ def start_msfrpcd(ovpn, loot_dir, stop):
             loot = os.path.join(os.getcwd(), loot_dir)
             if ovpn:
                 msfcont = dockercl.containers.run(image,
-                                                'sh -c "ip route replace default via 10.10.20.2 && ./msfrpcd -P dummypass && tail -f /dev/null"',
-                                                auto_remove=True, detach=True, name='msfrpc',
-                                                cap_add='NET_ADMIN', network='attacker_network',
-                                                volumes={loot: {'bind': '/root/.msf4/loot'}},
-                                                ports={55553:55553})
+                                                  'sh -c "ip route replace default via 10.10.20.2 && ./msfrpcd -P dummypass && tail -f /dev/null"',
+                                                  auto_remove=True, detach=True, name='msfrpc',
+                                                  cap_add='NET_ADMIN', network='attacker_network',
+                                                  volumes={loot: {'bind': '/root/.msf4/loot'}},
+                                                  ports={55553:55553})
             else:
                 msfcont = dockercl.containers.run(image, auto_remove=True,
-                                                detach=True, name='msfrpc',
-                                                volumes={loot: {'bind': '/root/.msf4/loot'}},
-                                                ports={55553:55553})
+                                                  detach=True, name='msfrpc',
+                                                  volumes={loot: {'bind': '/root/.msf4/loot'}},
+                                                  ports={55553:55553})
             time.sleep(10)
             utils.log('succg', utils.MSCDONE)
         else:
@@ -94,6 +101,7 @@ def launch_metasploit(rc_file, log_file):
                     exp = "{}/{}".format(mtype, mname)
                     utils.log('succg', "Logging output: {}".format(exp))
                     f.write("##### {} #####\n\n".format(exp))
+                    f.write("RPRTDATE => {}\n".format(datetime.now().astimezone()))
                     f.write(msfcl.consoles.console(cid).run_module_with_output(mod))
                     f.write("\n######{}######\n\n".format("#"*len(exp)))
                     msfcl.consoles.destroy(cid)

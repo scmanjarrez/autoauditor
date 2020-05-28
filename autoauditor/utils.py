@@ -1,5 +1,10 @@
 from distutils.util import strtobool
-import sys, pwd, grp, docker, os
+import sys
+import pwd
+import grp
+import docker
+import os
+
 
 NOERROR = 0
 EBUILD = 241

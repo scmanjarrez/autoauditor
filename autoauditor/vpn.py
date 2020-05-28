@@ -1,4 +1,6 @@
-import utils, docker, os
+import utils
+import docker
+import os
 
 
 def setup_vpn(ovpn_file, stop):
