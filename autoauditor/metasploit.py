@@ -76,6 +76,11 @@ def launch_metasploit(rc_file, log_file):
         rc = json.load(f)
 
     with open(log_file, 'w') as f:
+        header = "#" * 62
+        off = "#" * 14
+        f.write("{}\n".format(header))
+        f.write("{off} {repdate} {off}\n".format(repdate=datetime.now().astimezone(), off=off))
+        f.write("{}\n\n".format(header))
         utils.log('succb', "Metasploit output log: {}".format(log_file))
         for mtype in rc:
             for mname in rc[mtype]:
@@ -101,7 +106,9 @@ def launch_metasploit(rc_file, log_file):
                     exp = "{}/{}".format(mtype, mname)
                     utils.log('succg', "Logging output: {}".format(exp))
                     f.write("##### {} #####\n\n".format(exp))
-                    f.write("RPRTDATE => {}\n".format(datetime.now().astimezone()))
                     f.write(msfcl.consoles.console(cid).run_module_with_output(mod))
                     f.write("\n######{}######\n\n".format("#"*len(exp)))
                     msfcl.consoles.destroy(cid)
+
+if __name__ == '__main__':
+    utils.log('error', "Not standalone module. Run again from autoauditor.py -r rc_json_file", errcode=utils.EMODNR)

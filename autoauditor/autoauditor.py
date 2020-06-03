@@ -45,7 +45,7 @@ if __name__ == '__main__':
     msfcont = None
 
     if args.ovpn is not None:
-        assert os.path.isfile(args.ovpn), "{} does not exist.".format(args.ovpn)
+        assert os.path.isfile(args.ovpn), "File {} does not exist.".format(args.ovpn)
         vpncont = vpn.setup_vpn(args.ovpn, args.stop)
 
     utils.check_file_dir(args.outfile, args.outdir)
@@ -59,7 +59,7 @@ if __name__ == '__main__':
         msfclient = metasploit.get_msf_connection('dummypass')
         wizard.gen_resource_file(msfclient, args.genrc)
     else:
-        assert os.path.isfile(args.rcfile), "{} does not exist. Generate with -g.".format(args.rcfile)
+        assert os.path.isfile(args.rcfile), "File {} does not exist. Check rc.json.template or generate with -g.".format(args.rcfile)
         metasploit.launch_metasploit(args.rcfile, args.outfile)
 
     if not args.background:

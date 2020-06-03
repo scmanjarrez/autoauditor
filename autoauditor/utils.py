@@ -13,6 +13,8 @@ EACCESS = 243
 EMSCONN = 244
 EMSPASS = 245
 ENOPERM = 246
+EMODNR = 247
+EBADREPFMT = 248
 
 MSSTAT = "Metasploit image status:"
 MSEXIST = "Metasploit image status: exists."
@@ -129,3 +131,6 @@ def check_file_dir(outf, outd=None):
             os.makedirs(outd, exist_ok=True)
         except PermissionError:
             log('error', "Insufficient permission to create directory {}.".format(outd), errcode=EACCESS)
+
+if __name__ == '__main__':
+    log('error', "Helper module. Not runnable.", errcode=EMODNR)

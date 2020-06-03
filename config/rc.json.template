@@ -1,0 +1,30 @@
+{
+    "module_type1": {
+        "module_name1": [
+            [["SET1OPT1", "SET1VAL1"], ["SET1OPT2", "SET1VAL2"], ["SET1OPT3", "SET1VAL3"]],
+            [["SET2OPT1", "SET2VAL1"], ["SET2OPT2", "SET2VAL2"]],
+            [["SET3OPT1", "SET3VAL1"], ["SET3OPT2", "SET3VAL2"]]
+        ],
+        "module_name2": [
+            [["SET1OPT1", "SET1VAL1"], ["SET1OPT2", "SET1VAL2"]]
+        ],
+        "module_name3": [
+            [["SET1OPT1", "SET1VAL1"], ["SET1OPT2", "SET1VAL2"]],
+            [["SET2OPT1", "SET2VAL1"], ["SET2OPT2", "SET2VAL2"]]
+        ]
+    },
+    "module_type2": {
+        "module_name1": [
+            [["SET1OPT1", "SET1VAL1"]],
+            [["SET2OPT1", "SET2VAL1"], ["SET2OPT2", "SET2VAL2"], ["SET2OPT3", "SET2VAL3"]],
+            [["SET3OPT1", "SET3VAL1"], ["SET3OPT2", "SET3VAL2"], ["SET3OPT3", "SET3VAL3"]]
+        ],
+        "module_name2": [
+            [["SET1OPT1", "SET1VAL1"], ["SET1OPT2", "SET1VAL2"]],
+            [["SET2OPT1", "SET2VAL1"], ["SET2OPT2", "SET2VAL2"]]
+        ],
+        "module_name3": [
+            [["SET1OPT1", "SET1VAL1"], ["SET1OPT2", "SET1VAL2"]]
+        ]
+    }
+}

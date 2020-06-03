@@ -3,9 +3,9 @@
 aa="../autoauditor/autoauditor.py"
 venv="virtualenv"
 aa_venv="autoauditor_venv"
+fabric_binaries="hyperledger-fabric-linux-amd64-2.1.1.tar.gz"
 tmp_msfrpc="backup/msfrpc.py"
 env_sh="gen_venv.sh"
-req="requirements.txt"
 dc="docker-compose"
 dcyml="docker-compose.yml"
 d="docker"
@@ -127,17 +127,6 @@ chk_venv_pkg()
     fi
 }
 
-chk_git_pkg()
-{
-    echo -e "${blue}Checking git package.$nc"
-    which git > /dev/null
-
-    if [ $? -ne 0 ]; then
-        echo -e "${red}Install git package.$nc"
-        exit 1
-    fi
-}
-
 gen_venv_sh()
 {
 
@@ -149,33 +138,13 @@ gen_venv_sh()
 
     source ${aa_venv}/bin/activate
 
-    cat <<REQ > $req
-msgpack==0.6.2
-pymetasploit3 >= 1.0.2
-docker >= 4.2.0
-aiogrpc >= 1.6
-cryptography >= 1.9
-grpcio >= 1.0.1
-hkdf >= 0.0.3
-lark-parser == 0.7.1
-pycryptodomex >= 3.4.2
-pysha3 == 1.0b1
-requests == 2.20.0
-rx >= 3.0.1
-six >= 1.4.0
-protobuf >= 3.6.0
-couchdb >= 1.2
-beautifulsoup4 >= 4.9.1
-soupsieve >= 2.0.1
-REQ
-
-    pip install -r $req > /dev/null
-    git submodule update --remote > /dev/null
-    ln -s $hlf_py_sdk/$hlf_py_pkg $hlf_py_pkg
+    pip install -r requirements.txt > /dev/null
     echo -e "${blue}Using msrpc.py backup until pymetasploit3 package gets updated.$nc"
+
     cp $tmp_msfrpc $aa_venv/lib/python3.*/site-packages/pymetasploit3/
     echo -e "${green}Virtual environment ready. Enable $aa_venv and execute $aa.$nc"
 
+    tar xf $fabric_binaries -C $aa_venv
 }
 
 stop()
@@ -187,7 +156,6 @@ stop()
 
     echo -e "${blue}Removing temporary files.$nc"
     rm $dcyml
-    # rm $req
     rm $hlf_py_pkg
     rm -rf $aa_venv
 }
@@ -212,6 +180,5 @@ done
 if [ $OPTIND -eq 1 ]; then
     start
     chk_venv_pkg
-    chk_git_pkg
     gen_venv_sh
 fi

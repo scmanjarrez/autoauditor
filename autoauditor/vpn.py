@@ -58,3 +58,6 @@ def setup_vpn(ovpn_file, stop):
         vpncont = vpn_l[0]
 
     return vpncont
+
+if __name__ == '__main__':
+    utils.log('error', "Not standalone module. Run again from autoauditor.py -v vpn_conf_file", errcode=utils.EMODNR)
