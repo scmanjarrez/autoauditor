@@ -172,10 +172,8 @@ store_data()
 {
     as_$1
 
-    # from datetime import datetime; print(datetime.now().astimezone()); 2020-05-21 17:37:27.910352+02:00
-    export REPORTS=$(echo -n "{\"id\":\"report007\", \"role\":\"simple\", \"org\":\"ACME\", \"date\":\"2020-05\", \"nvuln\":5, \"report\":\"dummyreportS\"}" | base64 | tr -d \\n)
-    export REPORTM=$(echo -n "{\"id\":\"report007\", \"role\":\"medium\", \"org\":\"ACME\", \"date\":\"2020-05\", \"nvuln\":5, \"report\":\"dummyreportM\"}" | base64 | tr -d \\n)
-    export REPORTF=$(echo -n "{\"id\":\"report007\", \"role\":\"full\", \"org\":\"ACME\", \"date\":\"2020-05-21 17:37:27.910352+02:00\", \"nvuln\":5, \"report\":\"dummyreportF\"}" | base64 | tr -d \\n)
+    export REPORT=$(echo -n "{\"id\": \"report007\", \"org\": \"ACME\", \"date\": \"2020-05\", \"nvuln\": 5, \"report\": \"basic_report\"}" | base64 | tr -d \\n)
+    export REPORTPRIVATE=$(echo -n "{\"id\": \"report007\", \"private\": true, \"org\": \"ACME\", \"date\": \"2020-05-21 17:37:27.910352+02:00\", \"nvuln\": 5, \"report\": \"private_report\"}" | base64 | tr -d \\n)
 
     peer chaincode invoke \
         -o localhost:7050 \
@@ -185,12 +183,14 @@ store_data()
         -C $channel_name \
         -n $aa_cc_name \
         -c '{"Args":["new"]}' \
-        --transient "{\"aareport\":\"$REPORTS\"}"
+        --transient "{\"aareport\":\"$REPORT\"}"
 
     if [ $? -eq 0 ]; then
-        echo -e "${green}ReportS stored correctly in blockchain by $1.$nc"
+        echo $REPORT | base64 -d
+        echo ""
+        echo -e "${green}REPORT stored correctly in blockchain by $1.$nc"
     else
-        echo -e "${red}Error storing REPORTS in blockchain by $1.$nc"
+        echo -e "${red}Error storing REPORT in blockchain by $1.$nc"
     fi
 
     peer chaincode invoke \
@@ -201,28 +201,14 @@ store_data()
         -C $channel_name \
         -n $aa_cc_name \
         -c '{"Args":["new"]}' \
-        --transient "{\"aareport\":\"$REPORTM\"}"
+        --transient "{\"aareport\":\"$REPORTPRIVATE\"}"
 
     if [ $? -eq 0 ]; then
-        echo -e "${green}ReportM stored correctly in blockchain by $1.$nc"
+        echo $REPORTPRIVATE | base64 -d
+        echo ""
+        echo -e "${green}REPORTPRIVATE stored correctly in blockchain by $1.$nc"
     else
-        echo -e "${red}Error storing REPORTM in blockchain by $1.$nc"
-    fi
-
-    peer chaincode invoke \
-        -o localhost:7050 \
-        --ordererTLSHostnameOverride orderer.example.com \
-        --tls \
-        --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem \
-        -C $channel_name \
-        -n $aa_cc_name \
-        -c '{"Args":["new"]}' \
-        --transient "{\"aareport\":\"$REPORTF\"}"
-
-    if [ $? -eq 0 ]; then
-        echo -e "${green}ReportF stored correctly in blockchain by $1.$nc"
-    else
-        echo -e "${red}Error storing REPORTF in blockchain by $1.$nc"
+        echo -e "${red}Error storing REPORTPRIVATE in blockchain by $1.$nc"
     fi
 }
 
@@ -233,7 +219,7 @@ query_data()
     output=$(peer chaincode query \
         -C $channel_name \
         -n $aa_cc_name \
-        -c '{"Args":["searchReport","report007"]}')
+        -c "{\"Args\":[\"searchReport\", \"report007\"]}")
 
     if [ -n "$output" ]; then
         echo $output
@@ -245,37 +231,25 @@ query_data()
     output=$(peer chaincode query \
         -C $channel_name \
         -n $aa_cc_name \
-        -c '{"Args":["searchReport","report007", "simple"]}')
+        -c "{\"Args\":[\"searchReport\", \"report007\", \"public\"]}")
 
     if [ -n "$output" ]; then
         echo $output
-        echo -e "${green}Query REPORTS successfully by $1.$nc"
+        echo -e "${green}Query REPORT successfully by $1.$nc"
     else
-        echo -e "${red}Error querying REPORTS by $1.$nc"
+        echo -e "${red}Error querying REPORT by $1.$nc"
     fi
 
     output=$(peer chaincode query \
         -C $channel_name \
         -n $aa_cc_name \
-        -c '{"Args":["searchReport","report007", "medium"]}')
+        -c "{\"Args\":[\"searchReport\", \"report007\", \"private\"]}")
 
     if [ -n "$output" ]; then
         echo $output
-        echo -e "${green}Query REPORTM successfully by $1.$nc"
+        echo -e "${green}Query REPORTPRIVATE successfully by $1.$nc"
     else
-        echo -e "${red}Error querying REPORTM by $1.$nc"
-    fi
-
-    output=$(peer chaincode query \
-        -C $channel_name \
-        -n $aa_cc_name \
-        -c '{"Args":["searchReport","report007", "full"]}')
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${green}Query REPORTF successfully by $1.$nc"
-    else
-        echo -e "${red}Error querying REPORTF by $1.$nc"
+        echo -e "${red}Error querying REPORTPRIVATE by $1.$nc"
     fi
 }
 
@@ -300,6 +274,9 @@ usage()
     echo "Usage:"
     echo "    $0 -a"
     echo "                       Generate chaincode package, install, approve, commit & initiate and finally, store and query test data."
+    echo ""
+    echo "    $0 -r"
+    echo "                       Disable store and query execution from "execute all" command."
     echo ""
     echo "    $0 -c cmd -o org"
     echo "                       Execute given cmd as org."
@@ -350,13 +327,14 @@ stop()
     exit 0
 }
 
-while getopts ":ac:o:hud" opt; do
+while getopts ":ac:o:hudr" opt; do
     case ${opt} in
         c) cmd=$OPTARG ;;
         o) org=$OPTARG ;;
         u) up="yes" ;;
         d) down="yes" ;;
         a) all="yes" ;;
+        r) raw="yes" ;;
         h) usage;;
         \?) usage;;
     esac
@@ -377,10 +355,12 @@ if [ -n "$all" ]; then
     execute_as "installed" "all"
     execute_as "approve" "all"
     execute_as "commit" "org1"
-    echo -e "${blue} Waiting transactions processing.$nc"; sleep 3 # wait time to process transaction
-    execute_as "store" "org1"
-    echo -e "${blue} Waiting transactions processing.$nc"; sleep 3 # wait time to process transaction
-    execute_as "query" "all"
+    if [ -z "$raw" ]; then
+        echo -e "${blue} Waiting transactions processing.$nc"; sleep 3 # wait time to process transaction
+        execute_as "store" "org1"
+        echo -e "${blue} Waiting transactions processing.$nc"; sleep 3 # wait time to process transaction
+        execute_as "query" "all"
+    fi
 fi
 
 if [ -n "$down" ]; then

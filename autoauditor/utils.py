@@ -15,6 +15,7 @@ EMSPASS = 245
 ENOPERM = 246
 EMODNR = 247
 EBADREPFMT = 248
+ECONN = 249
 
 MSSTAT = "Metasploit image status:"
 MSEXIST = "Metasploit image status: exists."
@@ -49,6 +50,10 @@ VPNNR = "Stopping VPN client container ... not running"
 ATNET = "Removing attacker_network ..."
 ATNETRM = "Removing attacker_network ... done"
 ATNETNF = "Removing attacker_network ... not found"
+
+GENREP = "Generating report ..."
+GENREPDONE = "Generating report ... done"
+
 
 def log(color, string, end='\n', errcode=None):
     level = {

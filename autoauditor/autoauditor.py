@@ -6,6 +6,7 @@ import metasploit
 import wizard
 import vpn
 import utils
+import blockchain
 
 
 if __name__ == '__main__':
@@ -27,6 +28,9 @@ if __name__ == '__main__':
 
     parser.add_argument('-b', '--background', action='store_true',
                         help="Keep containers running in background.")
+
+    parser.add_argument('-hc', '--hyperledger', metavar='hyperledger_config_file',
+                        help="If present, store report in hyperledger blockchain using configuration in hyperledger_config_file.")
 
     group = parser.add_mutually_exclusive_group(required=True)
 
@@ -61,6 +65,9 @@ if __name__ == '__main__':
     else:
         assert os.path.isfile(args.rcfile), "File {} does not exist. Check rc.json.template or generate with -g.".format(args.rcfile)
         metasploit.launch_metasploit(args.rcfile, args.outfile)
+
+    if args.hyperledger:
+        blockchain.store_report(args.outfile, args.hyperledger)
 
     if not args.background:
         utils.shutdown(vpncont, msfcont)

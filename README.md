@@ -8,27 +8,23 @@ Auto auditor de vulnerabilidades en un entorno dockerizado.
 La cuenta desde la cual se ejecuta el script debe pertenecer al grupo **docker** de manera
 que pueda acceder a la API sin permisos de superusuario.
 
-# Preparación del entorno
+# Preparación del entorno de pruebas
 - ./setup.sh
 > Prepara los contenedores con vulnerabilidades y el servidor VPN.
-- ./gen\_venv.sh
-> Crea un entorno virtual de python3 y descarga los módulos necesarios para la ejecución.
-
-
-**Nota:** Mientras se actualiza la versión de pymetasploit3 en PyPi, usar el fichero **msfrpc.py**.
-> cp msfrpc.py autoauditor\_venv/lib/python3.*/site-packages/pymetasploit3/
 
 # Ejecución
 - source autoauditor\_venv/bin/activate
-- python autoauditor.py -v client.ovpn -r rc.json -o msf.log -d loot
+- python ../autoauditor/autoauditor.py -v client.ovpn -r rc.json -o output/msf.log -d output/loot -hc network.json
 > Ejecuta autoauditor usando los módulos listados en **rc.json**.  
 > Crea un túnel VPN con la configuración presente en **client.ovpn**.  
-> Escribe toda la información de ejecución en el fichero **msf.log**.  
-> La información recolectada se guardará en el directorio **loot**.  
+> Escribe toda la información de ejecución en el fichero **msf.log** presente en el directorio **output**.  
+> La información recolectada se guardará en el directorio **loot** presente en el directorio **output**.  
+> Guarda la información de ejecución en la blockchain de hyperledger usando la configuración presente en **network.json**. 
 
 # Salida
-La salida de metasploit framework (community) separada por módulos se encuentra en el fichero **msf.log**.  
-El directorio **loot** contiene la información obtenida durante la ejecución.
+- La salida de metasploit framework (community) separada por módulos se encuentra en el fichero **output/msf.log**.  
+- La información recolectada durante la ejecución se encuentra en el directorio **output/loot**.
+- En la blockchain indicada por **network.json** se almacenará los reportes generados usando como identificador sha256(orgName+reportDate).
 
 # Limpieza del entorno
 - deactivate
