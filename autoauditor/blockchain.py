@@ -9,10 +9,23 @@ import hashlib
 import subprocess
 import json
 import base64
+import sys
+import asyncio
+import logging
+sys.path.append('../config')
+from hfc.fabric import Client
+from hfc.fabric_network import wallet
+from hfc.fabric_ca.caservice import Enrollment
+from hfc.util.keyvaluestore import KeyValueStore
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 
 RAPID7 = "https://www.rapid7.com/db/modules/"
 CVEDETAILS = "https://www.cvedetails.com/cve/"
+
+CHAINCODENAME = "autoauditorcc"
+NEWREPKEYWORD = "aareport"
 
 cveregex = re.compile(r'^CVE-\d+-\d+')
 modregex = re.compile(r'^#{5} (?P<modname>[a-zA-Z/_]+) #{5}$')
@@ -81,13 +94,6 @@ def parse_report(rep_file):
                 affected = False
     return mod
 
-def parse_config(conf_file):
-    with open(conf_file, 'r') as f:
-        config = json.load(f)
-        for var in config['envvars']:
-            os.environ[var] = config['envvars'][var]
-    return config['vars']
-
 def generate_reports(rep):
     info = parse_report(rep)
     report = {}
@@ -114,54 +120,120 @@ def generate_reports(rep):
 
     return report
 
-def store_report(rep_file, config_file):
+def store_report(client, user, rep_file):
     utils.log('succb', utils.GENREP, end='\r')
-    report = generate_reports(rep_file)
+    # report = generate_reports(rep_file)
     utils.log('succg', utils.GENREPDONE)
     # debug report
-    # report = json.loads("{'privrep': {'CVE-2012-2122': {'Score': '5.1', 'MSFmodule': 'auxiliary/scanner/mysql/mysql_authbypass_hashdump', 'AffectedMachines': ['10.10.0.3']}, 'CVE-2014-0160': {'Score': '5.0', 'MSFmodule': 'auxiliary/scanner/ssl/openssl_heartbleed', 'AffectedMachines': ['10.10.0.4']}, 'CVE-2003-0190': {'Score': '5.0', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2006-5229': {'Score': '2.6', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2016-6210': {'Score': '4.3', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2018-15473': {'Score': '5.0', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2014-6271': {'Score': '10.0', 'MSFmodule': 'auxiliary/scanner/http/apache_mod_cgi_bash_env', 'AffectedMachines': ['10.10.0.6']}, 'CVE-2014-6278': {'Score': '10.0', 'MSFmodule': 'auxiliary/scanner/http/apache_mod_cgi_bash_env', 'AffectedMachines': ['10.10.0.6']}, 'CVE-2018-10933': {'Score': '6.4', 'MSFmodule': 'auxiliary/scanner/ssh/libssh_auth_bypass', 'AffectedMachines': ['10.10.0.7']}}, 'pubrep': {'CVE-2012-2122': {'Score': '5.1', 'AffectedMachines': 1}, 'CVE-2014-0160': {'Score': '5.0', 'AffectedMachines': 1}, 'CVE-2003-0190': {'Score': '5.0', 'AffectedMachines': 2}, 'CVE-2006-5229': {'Score': '2.6', 'AffectedMachines': 2}, 'CVE-2016-6210': {'Score': '4.3', 'AffectedMachines': 2}, 'CVE-2018-15473': {'Score': '5.0', 'AffectedMachines': 2}, 'CVE-2014-6271': {'Score': '10.0', 'AffectedMachines': 1}, 'CVE-2014-6278': {'Score': '10.0', 'AffectedMachines': 1}, 'CVE-2018-10933': {'Score': '6.4', 'AffectedMachines': 1}}, 'date': '2020-06-03 18:54:50.433043+02:00', 'nvuln': 9}".replace("\'", "\""))
-    config = parse_config(config_file)
+    report = json.loads("{'privrep': {'CVE-2012-2122': {'Score': '5.1', 'MSFmodule': 'auxiliary/scanner/mysql/mysql_authbypass_hashdump', 'AffectedMachines': ['10.10.0.3']}, 'CVE-2014-0160': {'Score': '5.0', 'MSFmodule': 'auxiliary/scanner/ssl/openssl_heartbleed', 'AffectedMachines': ['10.10.0.4']}, 'CVE-2003-0190': {'Score': '5.0', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2006-5229': {'Score': '2.6', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2016-6210': {'Score': '4.3', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2018-15473': {'Score': '5.0', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2014-6271': {'Score': '10.0', 'MSFmodule': 'auxiliary/scanner/http/apache_mod_cgi_bash_env', 'AffectedMachines': ['10.10.0.6']}, 'CVE-2014-6278': {'Score': '10.0', 'MSFmodule': 'auxiliary/scanner/http/apache_mod_cgi_bash_env', 'AffectedMachines': ['10.10.0.6']}, 'CVE-2018-10933': {'Score': '6.4', 'MSFmodule': 'auxiliary/scanner/ssh/libssh_auth_bypass', 'AffectedMachines': ['10.10.0.7']}}, 'pubrep': {'CVE-2012-2122': {'Score': '5.1', 'AffectedMachines': 1}, 'CVE-2014-0160': {'Score': '5.0', 'AffectedMachines': 1}, 'CVE-2003-0190': {'Score': '5.0', 'AffectedMachines': 2}, 'CVE-2006-5229': {'Score': '2.6', 'AffectedMachines': 2}, 'CVE-2016-6210': {'Score': '4.3', 'AffectedMachines': 2}, 'CVE-2018-15473': {'Score': '5.0', 'AffectedMachines': 2}, 'CVE-2014-6271': {'Score': '10.0', 'AffectedMachines': 1}, 'CVE-2014-6278': {'Score': '10.0', 'AffectedMachines': 1}, 'CVE-2018-10933': {'Score': '6.4', 'AffectedMachines': 1}}, 'date': '2020-06-03 18:54:50.433043+02:00', 'nvuln': 9}".replace("\'", "\""))
 
     privdate = report.pop('date')
     pubdate = privdate[:7]  # yyyy-mm
 
     nvuln = report.pop('nvuln')
 
-    repid = config['orgName'] + privdate
+    org = client.get_net_info('client', 'org')
+    repid = org + privdate
     rephash = hashlib.sha256(repid.encode('utf-8')).hexdigest()
+
+    loop = asyncio.get_event_loop()
+
+    channel_name = client.get_net_info('client', 'channel')
+    client.new_channel(channel_name)
+
+    peers = client.get_net_info('client', 'peers')
+
+    aarep = {"id": rephash,
+             "org": org,
+             "date": privdate,
+             "nvuln": nvuln}
 
     for rep in report:
         if rep == 'privrep':
-            tmprep = '{{"id": "{}", "org": "{}", "date": "{}", "nvuln": {}, "private": true, "report": "{}"}}'.format(rephash, config['orgName'], privdate, nvuln, report[rep])
-        else:
-            tmprep = '{{"id": "{}", "org": "{}", "date": "{}", "nvuln": {}, "report": "{}"}}'.format(rephash, config['orgName'], pubdate, nvuln, report[rep])
+            aarep['private'] = True
+
+        aarep['report'] = json.dumps(report[rep])
+
+        tmprep = json.dumps(aarep).encode()
 
         utils.log('succb', "Storing report: {}".format(rephash))
 
-        output = subprocess.run(['peer', 'chaincode', 'invoke', '-o', config['ordererIP'],
-                                 '--ordererTLSHostnameOverride', config['ordererTLSHostnameOverride'],
-                                 '--tls', '--cafile', config['ordererCACert'],
-                                 '-C', config['channelName'], '-n', config['chaincodeName'],
-                                 '-c', '{"Args":["new"]}',
-                                 '--transient', '{{"aareport": "{}"}}'.format(base64.b64encode(tmprep.encode('utf-8')).decode('utf-8'))], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        try:
+            response = loop.run_until_complete(client.chaincode_invoke(
+                requestor=user,
+                channel_name=channel_name,
+                peers=peers,
+                fcn='new',
+                args=None,
+                cc_name=CHAINCODENAME,
+                transient_map={NEWREPKEYWORD: tmprep}
+            ))
+        except Exception as e:
+            utils.log('error', "Error storing report {}: {}".format(rephash, str(e)))
+        else:
+            if not response:
+                utils.log('succg', 'Report stored successfully in blockchain.')
+            elif 'already' in response:
+                utils.log('warn', 'Report already stored in blockchain.')
 
-        stdout = output.stdout.decode('utf-8')
-        if 'error' in stdout.lower():
-            utils.log('error', stdout)
+        # try:
+        #     response = loop.run_until_complete(client.chaincode_query(
+        #         requestor=user1,
+        #         channel_name='mychannel',
+        #         peers=['peer0.org1.example.com'],
+        #         fcn='searchReport',
+        #         args=[rephash],
+        #         cc_name=CHAINCODENAME
+        #     ))
+        # except Exception as e:
+        #     utils.log('error', "Error querying report {}: {}".format(rephash, str(e)))
 
+        # print(response)
+
+def load_config(config):
+    _logger = logging.getLogger('hfc.fabric.client')
+    _logger.setLevel(logging.NOTSET)
+
+    loop = asyncio.get_event_loop()
+    cli = Client(net_profile=config)
+
+    wpath = cli.get_net_info('client', 'credentialStore', 'wallet', 'path')
+    userId = cli.get_net_info('client', 'user')
+    org = cli.get_net_info('client', 'org')
+    mspId = cli.get_net_info('client', 'mspId')
+
+    wal = wallet.FileSystenWallet(wpath)
+
+    # if wal.exists(userId):
+    #     user = wal.create_user(userId, org, mspId)
+    # else:
+    with open(cli.get_net_info('client', 'credentialStore', 'wallet', 'cert'), 'rb') as f:
+        crt = f.read()
+    with open(cli.get_net_info('client', 'credentialStore', 'wallet', 'private_key'), 'rb') as f:
+        pk = load_pem_private_key(f.read(), password=None, backend=default_backend())
+
+    enroll = Enrollment(private_key=pk, enrollmentCert=crt)
+
+    uidentity = wallet.Identity(userId, enroll)
+    uidentity.CreateIdentity(wal)
+
+    user = wal.create_user(userId, org, mspId)
+
+    return user, cli
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Autoauditor submodule to store reports in blockchain.")
 
     parser.add_argument('-f', '--reportfile', metavar='report_file', required=True,
-                        help="Report file path.")
+                        help="Report file.")
 
-    parser.add_argument('-c', '--configfile', metavar='config_file', required=True,
-                        help="Network configuration file path.")
+    parser.add_argument('-c', '--netconfigfile', metavar='network_cfg_file', required=True,
+                        help="Network configuration file.")
 
     args = parser.parse_args()
     assert os.path.isfile(args.reportfile), "File {} does not exist.".format(args.reportfile)
-    assert os.path.isfile(args.configfile), "File {} does not exist.".format(args.configfile)
+    assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(args.netconfigfile)
 
-    store_report(args.reportfile, args.configfile)
+    user, client = load_config(args.netconfigfile)
+    store_report(client, user, args.reportfile)

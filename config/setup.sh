@@ -14,8 +14,7 @@ red="\033[0;91m[-] "
 green="\033[0;92m[+] "
 blue="\033[94m[*] "
 nc="\033[0m"
-hlf_py_sdk="fabric-sdk-py"
-hlf_py_pkg="hfc"
+hfc_sdk_py="fabric-sdk-py"
 
 check_privileges()
 {
@@ -141,10 +140,10 @@ gen_venv_sh()
     pip install -r requirements.txt > /dev/null
     echo -e "${blue}Using msrpc.py backup until pymetasploit3 package gets updated.$nc"
 
+    ln -s $(pwd)/$hfc_sdk_py/hfc $aa_venv/lib/python3.*/site-packages
+
     cp $tmp_msfrpc $aa_venv/lib/python3.*/site-packages/pymetasploit3/
     echo -e "${green}Virtual environment ready. Enable $aa_venv and execute $aa.$nc"
-
-    tar xf $fabric_binaries -C $aa_venv
 }
 
 stop()
@@ -156,7 +155,6 @@ stop()
 
     echo -e "${blue}Removing temporary files.$nc"
     rm $dcyml
-    rm $hlf_py_pkg
     rm -rf $aa_venv
 }
 

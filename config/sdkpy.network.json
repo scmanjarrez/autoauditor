@@ -1,0 +1,108 @@
+{
+    "name": "autoauditor-network",
+    "description": "Autoauditor test network, 2 Org, 2 Peers (1 Org, 1 Peer), 1 Orderer and 2 CAs.",
+    "version": "1",
+    "client": {
+        "user": "User1",
+        "org": "Org1",
+        "mspId": "Org1MSP",
+        "channel": "mychannel",
+        "peers": [
+            "peer0.org1.example.com"
+        ],
+        "credentialStore": {
+            "path": "/tmp/hfc-kvs",
+            "cryptoStore": {
+                "path": "/tmp/hfc-cvs"
+            },
+            "wallet": {
+                "path": "wallet-test",
+                "cert": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/User1@org1.example.com-cert.pem",
+                "private_key": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/priv_sk"
+            }
+        }
+    },
+    "organizations": {
+        "orderer.example.com": {
+            "mspid": "OrdererMSP",
+            "orderers": [
+                "orderer.example.com"
+            ],
+            "certificateAuthorities": [
+                "ca-orderer"
+            ]
+        },
+        "org1.example.com": {
+            "mspid": "Org1MSP",
+            "peers": [
+                "peer0.org1.example.com"
+            ],
+            "certificateAuthorities": [
+                "ca-org1"
+            ]
+        },
+        "org2.example.com": {
+            "mspid": "Org2MSP",
+            "peers": [
+                "peer0.org2.example.com"
+            ],
+            "certificateAuthorities": [
+                "ca-org2"
+            ]
+        }
+    },
+    "orderers": {
+        "orderer.example.com": {
+            "url": "localhost:7050",
+            "grpcOptions": {
+                "grpc.ssl_target_name_override": "orderer.example.com",
+                "grpc-max-send-message-length": 15
+            },
+            "tlsCACerts": {
+                "path": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem"
+            }
+        }
+    },
+    "peers": {
+        "peer0.org1.example.com": {
+            "url": "localhost:7051",
+            "grpcOptions": {
+                "grpc.ssl_target_name_override": "peer0.org1.example.com",
+                "grpc.http2.keepalive_time": 15
+            },
+            "tlsCACerts": {
+                "path": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/msp/tlscacerts/tlsca.org1.example.com-cert.pem"
+            }
+        },
+        "peer0.org2.example.com": {
+            "url": "localhost:9051",
+            "grpcOptions": {
+                "grpc.ssl_target_name_override": "peer0.org2.example.com",
+                "grpc.http2.keepalive_time": 15
+            },
+            "tlsCACerts": {
+                "path": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/msp/tlscacerts/tlsca.org2.example.com-cert.pem"
+            }
+        }
+    },
+    "certificateAuthorities": {
+        "ca-org1": {
+            "url": "https://localhost:7054",
+            "grpcOptions": {
+                "verify": true
+            },
+            "tlsCACerts": {
+                "path": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem"
+            }
+        },
+        "ca-org2": {
+            "url": "https://localhost:8054",
+            "grpcOptions": {
+                "verify": true
+            },
+            "tlsCACerts": {
+                "path": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/ca/ca.org2.example.com-cert.pem"
+            }
+        }
+    }
+}

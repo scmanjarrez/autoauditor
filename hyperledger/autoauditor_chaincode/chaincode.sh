@@ -85,12 +85,12 @@ installed_chaincode()
 {
     as_$1
 
-    peer lifecycle chaincode queryinstalled
+    peer lifecycle chaincode queryinstalled | grep "autoauditor"
 
     if [ $? -eq 0 ]; then
-        echo -e "${green}Installed chaincode query successfully in $1.$nc"
+        echo -e "${green}Chaincode correctly installed in $1.$nc"
     else
-        echo -e "${red}Error during installed chaincode query in $1.$nc"
+        echo -e "${red}Chaincode not installed in $1.$nc"
     fi
 }
 
