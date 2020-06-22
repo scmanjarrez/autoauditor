@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+from hfc.fabric import Client
+from hfc.fabric_network import wallet
+from hfc.fabric_ca.caservice import Enrollment
+from hfc.fabric.peer import create_peer
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from bs4 import BeautifulSoup
 import argparse
 import requests
@@ -12,13 +18,6 @@ import base64
 import sys
 import asyncio
 import logging
-sys.path.append('../config')
-from hfc.fabric import Client
-from hfc.fabric_network import wallet
-from hfc.fabric_ca.caservice import Enrollment
-from hfc.util.keyvaluestore import KeyValueStore
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 
 RAPID7 = "https://www.rapid7.com/db/modules/"
@@ -36,6 +35,7 @@ affected1 = re.compile(r'^\[\+\].*$')
 affected2 = re.compile(r'session\s\d+\sopened')
 affected3 = re.compile(r'uid=\d+\([a-z_][a-z0-9_-]*\)\s+gid=\d+\([a-z_][a-z0-9_-]*\)\s+groups=\d+\([a-z_][a-z0-9_-]*\)(?:,\d+\([a-z_][a-z0-9_-]*\))*')
 
+loop = asyncio.get_event_loop()
 
 def get_cve(exploit):
     try:
@@ -120,49 +120,43 @@ def generate_reports(rep):
 
     return report
 
-def store_report(client, user, rep_file):
-    utils.log('succb', utils.GENREP, end='\r')
-    # report = generate_reports(rep_file)
-    utils.log('succg', utils.GENREPDONE)
-    # debug report
-    report = json.loads("{'privrep': {'CVE-2012-2122': {'Score': '5.1', 'MSFmodule': 'auxiliary/scanner/mysql/mysql_authbypass_hashdump', 'AffectedMachines': ['10.10.0.3']}, 'CVE-2014-0160': {'Score': '5.0', 'MSFmodule': 'auxiliary/scanner/ssl/openssl_heartbleed', 'AffectedMachines': ['10.10.0.4']}, 'CVE-2003-0190': {'Score': '5.0', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2006-5229': {'Score': '2.6', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2016-6210': {'Score': '4.3', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2018-15473': {'Score': '5.0', 'MSFmodule': 'auxiliary/scanner/ssh/ssh_enumusers', 'AffectedMachines': ['10.10.0.5', '10.10.0.7']}, 'CVE-2014-6271': {'Score': '10.0', 'MSFmodule': 'auxiliary/scanner/http/apache_mod_cgi_bash_env', 'AffectedMachines': ['10.10.0.6']}, 'CVE-2014-6278': {'Score': '10.0', 'MSFmodule': 'auxiliary/scanner/http/apache_mod_cgi_bash_env', 'AffectedMachines': ['10.10.0.6']}, 'CVE-2018-10933': {'Score': '6.4', 'MSFmodule': 'auxiliary/scanner/ssh/libssh_auth_bypass', 'AffectedMachines': ['10.10.0.7']}}, 'pubrep': {'CVE-2012-2122': {'Score': '5.1', 'AffectedMachines': 1}, 'CVE-2014-0160': {'Score': '5.0', 'AffectedMachines': 1}, 'CVE-2003-0190': {'Score': '5.0', 'AffectedMachines': 2}, 'CVE-2006-5229': {'Score': '2.6', 'AffectedMachines': 2}, 'CVE-2016-6210': {'Score': '4.3', 'AffectedMachines': 2}, 'CVE-2018-15473': {'Score': '5.0', 'AffectedMachines': 2}, 'CVE-2014-6271': {'Score': '10.0', 'AffectedMachines': 1}, 'CVE-2014-6278': {'Score': '10.0', 'AffectedMachines': 1}, 'CVE-2018-10933': {'Score': '6.4', 'AffectedMachines': 1}}, 'date': '2020-06-03 18:54:50.433043+02:00', 'nvuln': 9}".replace("\'", "\""))
+def store_report(info, rep_file):
+    user, client, peer, channel_name = info
 
-    privdate = report.pop('date')
+    utils.log('succb', utils.GENREP, end='\r')
+    report = generate_reports(rep_file)
+    utils.log('succg', utils.GENREPDONE)
+
+    privdate = report.pop('date')  # yyyy-mm-dd hh:mm:ss.ffffff+tt:zz
     pubdate = privdate[:7]  # yyyy-mm
 
     nvuln = report.pop('nvuln')
 
-    org = client.get_net_info('client', 'org')
-    repid = org + privdate
+    repid = user.org + privdate
     rephash = hashlib.sha256(repid.encode('utf-8')).hexdigest()
 
-    loop = asyncio.get_event_loop()
-
-    channel_name = client.get_net_info('client', 'channel')
-    client.new_channel(channel_name)
-
-    peers = client.get_net_info('client', 'peers')
-
     aarep = {"id": rephash,
-             "org": org,
+             "org": user.org,
              "date": privdate,
              "nvuln": nvuln}
 
     for rep in report:
         if rep == 'privrep':
             aarep['private'] = True
+        else:
+            aarep['private'] = False
 
         aarep['report'] = json.dumps(report[rep])
 
         tmprep = json.dumps(aarep).encode()
 
-        utils.log('succb', "Storing report: {}".format(rephash))
+        utils.log('succb', "Storing {} report: {}".format("private" if aarep['private'] else "public", rephash))
 
         try:
             response = loop.run_until_complete(client.chaincode_invoke(
                 requestor=user,
                 channel_name=channel_name,
-                peers=peers,
+                peers=[peer],
                 fcn='new',
                 args=None,
                 cc_name=CHAINCODENAME,
@@ -172,54 +166,68 @@ def store_report(client, user, rep_file):
             utils.log('error', "Error storing report {}: {}".format(rephash, str(e)))
         else:
             if not response:
-                utils.log('succg', 'Report stored successfully in blockchain.')
+                utils.log('succg', "Report stored successfully in blockchain.")
             elif 'already' in response:
-                utils.log('warn', 'Report already stored in blockchain.')
+                utils.log('warn', "Report already stored in blockchain.")
+            elif 'failed' in response:
+                utils.log('error', "Error storing report {}: {}".format(rephash, response))
 
-        # try:
-        #     response = loop.run_until_complete(client.chaincode_query(
-        #         requestor=user1,
-        #         channel_name='mychannel',
-        #         peers=['peer0.org1.example.com'],
-        #         fcn='searchReport',
-        #         args=[rephash],
-        #         cc_name=CHAINCODENAME
-        #     ))
-        # except Exception as e:
-        #     utils.log('error', "Error querying report {}: {}".format(rephash, str(e)))
-
-        # print(response)
+def get_net_info(config, *key_path):
+    if config:
+        for k in key_path:
+            try:
+                config = config[k]
+            except KeyError:
+                utils.log('error', "No key path {key_path} exists in network info", errcode=utils.EBADNETFMT)
+        return config
 
 def load_config(config):
     _logger = logging.getLogger('hfc.fabric.client')
     _logger.setLevel(logging.NOTSET)
 
-    loop = asyncio.get_event_loop()
-    cli = Client(net_profile=config)
+    client_discovery = Client()
 
-    wpath = cli.get_net_info('client', 'credentialStore', 'wallet', 'path')
-    userId = cli.get_net_info('client', 'user')
-    org = cli.get_net_info('client', 'org')
-    mspId = cli.get_net_info('client', 'mspId')
+    with open(config, 'r') as f:
+        network = json.load(f)
+
+    peer_config = get_net_info(network, 'network', 'organization', 'peer')
+    tls_cacerts = peer_config['tls_cacerts']
+    opts = (('grpc.ssl_target_name_override', peer_config['server_hostname']),)
+    endpoint = peer_config['grpc_request_endpoint']
+
+    peer = create_peer(endpoint=endpoint,
+                       tls_cacerts=tls_cacerts,
+                       opts=opts)
+
+    channel_name = get_net_info(network, 'network', 'channel')
+
+    wpath = get_net_info(network, 'client', 'wallet', 'path')
+    userId = get_net_info(network, 'client', 'id')
+    org = get_net_info(network, 'network', 'organization', 'name')
+    mspId = get_net_info(network, 'network', 'organization', 'mspid')
 
     wal = wallet.FileSystenWallet(wpath)
 
-    # if wal.exists(userId):
-    #     user = wal.create_user(userId, org, mspId)
-    # else:
-    with open(cli.get_net_info('client', 'credentialStore', 'wallet', 'cert'), 'rb') as f:
-        crt = f.read()
-    with open(cli.get_net_info('client', 'credentialStore', 'wallet', 'private_key'), 'rb') as f:
-        pk = load_pem_private_key(f.read(), password=None, backend=default_backend())
+    if wal.exists(userId):
+        user = wal.create_user(userId, org, mspId)
+    else:
+        with open(get_net_info(network, 'client', 'credentials', 'cert'), 'rb') as f:
+            crt = f.read()
+        with open(get_net_info(network, 'client', 'credentials', 'private_key'), 'rb') as f:
+            pk = load_pem_private_key(f.read(), password=None, backend=default_backend())
 
-    enroll = Enrollment(private_key=pk, enrollmentCert=crt)
+        enroll = Enrollment(private_key=pk, enrollmentCert=crt)
 
-    uidentity = wallet.Identity(userId, enroll)
-    uidentity.CreateIdentity(wal)
+        uidentity = wallet.Identity(userId, enroll)
+        uidentity.CreateIdentity(wal)
 
-    user = wal.create_user(userId, org, mspId)
+        user = wal.create_user(userId, org, mspId)
 
-    return user, cli
+    loop.run_until_complete(
+        client_discovery.init_with_discovery(user, peer,
+                                             channel_name))
+
+    return (user, client_discovery, peer, channel_name)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -235,5 +243,5 @@ if __name__ == '__main__':
     assert os.path.isfile(args.reportfile), "File {} does not exist.".format(args.reportfile)
     assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(args.netconfigfile)
 
-    user, client = load_config(args.netconfigfile)
-    store_report(client, user, args.reportfile)
+    info = load_config(args.netconfigfile)
+    store_report(info, args.reportfile)

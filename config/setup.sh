@@ -3,16 +3,17 @@
 aa="../autoauditor/autoauditor.py"
 venv="virtualenv"
 aa_venv="autoauditor_venv"
-fabric_binaries="hyperledger-fabric-linux-amd64-2.1.1.tar.gz"
 tmp_msfrpc="backup/msfrpc.py"
+tmp_hfc="backup/channel.py"
 env_sh="gen_venv.sh"
 dc="docker-compose"
 dcyml="docker-compose.yml"
 d="docker"
 vpnf="client.ovpn"
-red="\033[0;91m[-] "
+red="\033[0;91m[!] "
 green="\033[0;92m[+] "
 blue="\033[94m[*] "
+yellow="\033[0;33m[-] "
 nc="\033[0m"
 hfc_sdk_py="fabric-sdk-py"
 
@@ -138,11 +139,16 @@ gen_venv_sh()
     source ${aa_venv}/bin/activate
 
     pip install -r requirements.txt > /dev/null
-    echo -e "${blue}Using msrpc.py backup until pymetasploit3 package gets updated.$nc"
-
-    ln -s $(pwd)/$hfc_sdk_py/hfc $aa_venv/lib/python3.*/site-packages
-
+    git submodule foreach git reset --hard origin/master > /dev/null
+    git submodule update --remote > /dev/null
+    cp -r $(pwd)/$hfc_sdk_py/hfc $aa_venv/lib/python3.*/site-packages
+    
+    echo -e "${blue}Using backup/msrpc.py backup until pymetasploit3 gets updated.$nc"
     cp $tmp_msfrpc $aa_venv/lib/python3.*/site-packages/pymetasploit3/
+
+    echo -e "${blue}Using backup/channel.py backup until fabric-sdk-py gets updated.$nc"
+    cp $tmp_hfc $aa_venv/lib/python3.*/site-packages/hfc/util/
+
     echo -e "${green}Virtual environment ready. Enable $aa_venv and execute $aa.$nc"
 }
 

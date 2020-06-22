@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--background', action='store_true',
                         help="Keep containers running in background.")
 
-    parser.add_argument('-hc', '--hyperledger', metavar='hyperledger_config_file',
+    parser.add_argument('-hf', '--hyperledger', metavar='hyperledger_config_file',
                         help="If present, store report in hyperledger blockchain using configuration in hyperledger_config_file.")
 
     group = parser.add_mutually_exclusive_group(required=True)
@@ -67,7 +67,8 @@ if __name__ == '__main__':
         metasploit.launch_metasploit(args.rcfile, args.outfile)
 
     if args.hyperledger:
-        blockchain.store_report(args.outfile, args.hyperledger)
+        info = blockchain.load_config(args.hyperledger)
+        blockchain.store_report(info, args.outfile)
 
     if not args.background:
         utils.shutdown(vpncont, msfcont)

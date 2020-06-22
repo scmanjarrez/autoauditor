@@ -16,6 +16,7 @@ ENOPERM = 246
 EMODNR = 247
 EBADREPFMT = 248
 ECONN = 249
+EBADNETFMT = 250
 
 MSSTAT = "Metasploit image status:"
 MSEXIST = "Metasploit image status: exists."

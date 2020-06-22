@@ -1,0 +1,31 @@
+{
+    "client": {
+        "description": "wallet where user ID are stored",
+        "id": "User1",
+        "wallet": {
+            "description": "File system wallet where user ID is stored",
+            "path": "wallet-test"
+        },
+        "credentials": {
+            "description": "optionally, a credential path can be used if user ID can't be loaded from wallet",
+            "cert": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/User1@org1.example.com-cert.pem",
+            "private_key": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/priv_sk"
+        }
+    },
+    "network": {
+        "description": "test-network, 1 peer needed to use discovery service, 1 client to operate and 1 channel where peer is a member",
+        "name": "test-network",
+        "channel": "mychannel",
+        "organization": {
+            "description": "organization information where user ID belongs to",
+            "name": "Org1",
+            "mspid": "Org1MSP",
+            "peer": {
+                "grpc_request_endpoint": "localhost:7051",
+                "grpc_event_endpoint": "localhost:7053",
+                "server_hostname": "peer0.org1.example.com",
+                "tls_cacerts": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/msp/tlscacerts/tlsca.org1.example.com-cert.pem"
+            }
+        }
+    }
+}

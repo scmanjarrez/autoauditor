@@ -14,7 +14,7 @@ que pueda acceder a la API sin permisos de superusuario.
 
 # Ejecución
 - source autoauditor\_venv/bin/activate
-- python ../autoauditor/autoauditor.py -v client.ovpn -r rc.json -o output/msf.log -d output/loot -hc network.json
+- python ../autoauditor/autoauditor.py -v client.ovpn -r rc.json -o output/msf.log -d output/loot -hf network.json
 > Ejecuta autoauditor usando los módulos listados en **rc.json**.  
 > Crea un túnel VPN con la configuración presente en **client.ovpn**.  
 > Escribe toda la información de ejecución en el fichero **msf.log** presente en el directorio **output**.  
@@ -24,7 +24,7 @@ que pueda acceder a la API sin permisos de superusuario.
 # Salida
 - La salida de metasploit framework (community) separada por módulos se encuentra en el fichero **output/msf.log**.  
 - La información recolectada durante la ejecución se encuentra en el directorio **output/loot**.
-- En la blockchain indicada por **network.json** se almacenará los reportes generados usando como identificador sha256(orgName+reportDate).
+- En la blockchain indicada por **network.json** se almacenarán los reportes generados usando como identificador sha256(orgName+reportDate).
 
 # Limpieza del entorno
 - deactivate

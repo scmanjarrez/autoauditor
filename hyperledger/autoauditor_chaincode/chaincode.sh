@@ -45,9 +45,9 @@ execute_as ()
     esac
 
     case "$2" in
-        all) $command "org1"; $command "org2" ;;
-        org1) $command "org1" ;;
-        org2) $command "org2" ;;
+        all) $command "org1" $3; $command "org2" $3 ;;
+        org1) $command "org1" $3 ;;
+        org2) $command "org2" $3 ;;
         *) echo -e "${red}Invalid organization: all, org1, org2.$nc"; exit 1 ;;
     esac
 }
@@ -172,8 +172,10 @@ store_data()
 {
     as_$1
 
-    export REPORT=$(echo -n "{\"id\": \"report007\", \"org\": \"ACME\", \"date\": \"2020-05\", \"nvuln\": 5, \"report\": \"basic_report\"}" | base64 | tr -d \\n)
-    export REPORTPRIVATE=$(echo -n "{\"id\": \"report007\", \"private\": true, \"org\": \"ACME\", \"date\": \"2020-05-21 17:37:27.910352+02:00\", \"nvuln\": 5, \"report\": \"private_report\"}" | base64 | tr -d \\n)
+    report_id=$2
+
+    export REPORT=$(echo -n "{\"id\": \"$report_id\", \"org\": \"ACME\", \"date\": \"2020-05\", \"nvuln\": 5, \"report\": \"basic_report\"}" | base64 | tr -d \\n)
+    export REPORTPRIVATE=$(echo -n "{\"id\": \"$report_id\", \"private\": true, \"org\": \"ACME\", \"date\": \"2020-05-21 17:37:27.910352+02:00\", \"nvuln\": 5, \"report\": \"private_report\"}" | base64 | tr -d \\n)
 
     peer chaincode invoke \
         -o localhost:7050 \
@@ -216,10 +218,12 @@ query_data()
 {
     as_$1
 
+    report_id=$2
+
     output=$(peer chaincode query \
         -C $channel_name \
         -n $aa_cc_name \
-        -c "{\"Args\":[\"searchReport\", \"report007\"]}")
+        -c "{\"Args\":[\"searchReport\", \"$report_id\"]}")
 
     if [ -n "$output" ]; then
         echo $output
@@ -231,7 +235,7 @@ query_data()
     output=$(peer chaincode query \
         -C $channel_name \
         -n $aa_cc_name \
-        -c "{\"Args\":[\"searchReport\", \"report007\", \"public\"]}")
+        -c "{\"Args\":[\"searchReport\", \"$report_id\", \"public\"]}")
 
     if [ -n "$output" ]; then
         echo $output
@@ -243,7 +247,7 @@ query_data()
     output=$(peer chaincode query \
         -C $channel_name \
         -n $aa_cc_name \
-        -c "{\"Args\":[\"searchReport\", \"report007\", \"private\"]}")
+        -c "{\"Args\":[\"searchReport\", \"$report_id\", \"private\"]}")
 
     if [ -n "$output" ]; then
         echo $output
@@ -278,8 +282,8 @@ usage()
     echo "    $0 -r"
     echo "                       Disable store and query execution from "execute all" command."
     echo ""
-    echo "    $0 -c cmd -o org"
-    echo "                       Execute given cmd as org."
+    echo "    $0 -c cmd -o org [-i reportId]"
+    echo "                       Execute given cmd as org. Optionally, ID parameter allowed to store/query."
     echo ""
     echo "    $0 -u"
     echo "                       Test network up."
@@ -327,7 +331,7 @@ stop()
     exit 0
 }
 
-while getopts ":ac:o:hudr" opt; do
+while getopts ":ac:o:hudri:" opt; do
     case ${opt} in
         c) cmd=$OPTARG ;;
         o) org=$OPTARG ;;
@@ -335,13 +339,18 @@ while getopts ":ac:o:hudr" opt; do
         d) down="yes" ;;
         a) all="yes" ;;
         r) raw="yes" ;;
+        i) repid=$OPTARG ;;
         h) usage;;
         \?) usage;;
     esac
 done
 
+if [ -z "$repid" ]; then
+    repid="report007"
+fi
+
 if [ -n "$cmd" ] && [ -n "$org" ]; then
-    execute_as $cmd $org
+    execute_as $cmd $org $repid
     exit
 fi
 
