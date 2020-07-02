@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -42,19 +43,21 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) peer.Response
 		return t.newReport(stub, args)
 	case "delete":
 		return t.deleteReport(stub, args)
-	case "searchReport":
-		return t.getById(stub, args)
+	case "getReport":
+		return t.getReportById(stub, args)
+	case "getReportHash":
+		return t.getReportHash(stub, args)
 	// case "searchByDate":
 	// 	//find reports by date
 	// 	return t.getByDate(stub, args)
 	// case "searchByDateRange":
 	// 	//find reports by date range
 	// 	return t.getByDateRange(stub, args)
-	// case "searchByOrganization":
-	// 	//find reports by organization
-	// 	return t.getByOrganization(stub, args)
+	case "getOrganizationReports":
+		//find reports by organization
+		return t.getReportsByOrganization(stub, args)
 	default:
-		return shim.Error("Invoke funtion not found. Choose between new, delete or searchReport.")
+		return shim.Error("Invoke function not found. Choose between new, delete, getReport, getReportHash and getOrganizationReports.")
 	}
 }
 
@@ -66,7 +69,7 @@ func (t *SimpleChaincode) newReport(stub shim.ChaincodeStubInterface, args []str
 	}
 
 	transMap, err := stub.GetTransient()
-	if err != nil {
+	if err != nil { // transient map, input data not stored in transaction record
 		return shim.Error("Error getting transient: " + err.Error())
 	}
 
@@ -127,7 +130,7 @@ func (t *SimpleChaincode) newReport(stub shim.ChaincodeStubInterface, args []str
 	reportId := reportInput.Id
 
 	reportAsBytes, err := stub.GetPrivateData(collect, reportId)
-	if err != nil {
+	if err != nil { // check in the ledger if reportId already exists
 		return shim.Error("Failed to get report " + reportId + ": " + err.Error())
 	} else if reportAsBytes != nil {
 		return shim.Error("Report already exists: " + reportId)
@@ -149,54 +152,23 @@ func (t *SimpleChaincode) newReport(stub shim.ChaincodeStubInterface, args []str
 
 	err = stub.PutPrivateData(collect, reportInput.Id, reportJSONasBytes)
 	if err != nil {
-		return shim.Error(err.Error())
+		return shim.Error("Failed storing report " + reportInput.Id + ": " + err.Error())
+	}
+
+	if collect == pubcol { // save a composite key to query all reports of organization
+		indexName := "organization~id"
+		organizationIdIndexKey, err := stub.CreateCompositeKey(indexName, []string{reportInput.Organization, reportInput.Id})
+		if err != nil {
+			return shim.Error("Failed to generate composite key " + organizationIdIndexKey + ": " + err.Error())
+		}
+		value := []byte{0x00} // passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
+		err = stub.PutPrivateData(collect, organizationIdIndexKey, value)
+		if err != nil {
+			return shim.Error("Failed storing composite key " + organizationIdIndexKey + ": " + err.Error())
+		}
 	}
 
 	return shim.Success(nil)
-}
-
-func (t *SimpleChaincode) getById(stub shim.ChaincodeStubInterface, args []string) peer.Response {
-	var id string
-	var valAsbytes []byte
-	var err error
-
-	if len(args) < 1 || len(args) > 2 {
-		return shim.Error("Incorrect number of arguments. Expecting id of the report to query. Optionally, database can be passed: public or private.")
-	}
-
-	id = args[0]
-
-	if len(args) == 1 {
-		valAsbytes, err = stub.GetPrivateData(privcol, id) // try private report
-		if err != nil || valAsbytes == nil {
-			valAsbytes, err = stub.GetPrivateData(pubcol, id) // try simple report
-			if err != nil {
-				return shim.Error("Failed to get report " + id + ": " + err.Error())
-			} else if valAsbytes == nil {
-				return shim.Error("Report does not exist: " + id)
-			}
-		}
-	} else {
-		col := args[1]
-		var collect string
-		switch col {
-		case "private":
-			collect = privcol
-		case "public":
-			collect = pubcol
-		default:
-			return shim.Error("Collection does not exist: " + col + ". Choose between public or private")
-		}
-
-		valAsbytes, err = stub.GetPrivateData(collect, id)
-		if err != nil {
-			return shim.Error("Failed to get report " + id + ": " + err.Error())
-		} else if valAsbytes == nil {
-			return shim.Error("Report does not exist: " + id)
-		}
-	}
-
-	return shim.Success(valAsbytes)
 }
 
 func (t *SimpleChaincode) deleteReport(stub shim.ChaincodeStubInterface, args []string) peer.Response {
@@ -209,7 +181,7 @@ func (t *SimpleChaincode) deleteReport(stub shim.ChaincodeStubInterface, args []
 	}
 
 	transMap, err := stub.GetTransient()
-	if err != nil {
+	if err != nil { // transient map, input data not stored in transaction record
 		return shim.Error("Error getting transient: " + err.Error())
 	}
 
@@ -233,14 +205,211 @@ func (t *SimpleChaincode) deleteReport(stub shim.ChaincodeStubInterface, args []
 	}
 
 	err = stub.DelPrivateData(pubcol, reportDeleteInput.Id)
-	if err != nil {
-		return shim.Error(err.Error())
+	if err != nil { // delete from public collection
+		return shim.Error("Failed deleting public report " + reportDeleteInput.Id + ": " + err.Error())
 	}
 
 	err = stub.DelPrivateData(privcol, reportDeleteInput.Id)
+	if err != nil { // delete from private collection
+		return shim.Error("Failed deleting private report " + reportDeleteInput.Id + ": " + err.Error())
+	}
+
+	reportAsBytes, err := stub.GetPrivateData(pubcol, reportDeleteInput.Id)
+	if err != nil { // we need to query the report from chaincode state to obtain the organization info
+		return shim.Error("Failed to get report " + reportDeleteInput.Id + ": " + err.Error())
+	} else if reportAsBytes == nil {
+		return shim.Error("Report does not exists: " + reportDeleteInput.Id)
+	}
+
+	var reportToDelete report
+	err = json.Unmarshal([]byte(reportAsBytes), &reportToDelete)
 	if err != nil {
-		return shim.Error(err.Error())
+		return shim.Error("Failed to decode JSON of: " + string(reportAsBytes))
+	}
+
+	indexName := "organization~id"
+	organizationIdIndexKey, err := stub.CreateCompositeKey(indexName, []string{reportToDelete.Organization, reportToDelete.Id})
+	if err != nil {
+		return shim.Error("Failed to generate composite key (deletion) " + organizationIdIndexKey + ": " + err.Error())
+	}
+	err = stub.DelPrivateData(pubcol, organizationIdIndexKey)
+	if err != nil {
+		return shim.Error("Failed deleting composite key " + organizationIdIndexKey + ": " + err.Error())
 	}
 
 	return shim.Success(nil)
+}
+
+func (t *SimpleChaincode) getReportById(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	var id string
+	var reportAsBytes []byte
+	var err error
+
+	if len(args) < 1 || len(args) > 2 {
+		return shim.Error("Incorrect number of arguments. Expecting id of the report to query. Optionally, database can be passed: public or private.")
+	}
+
+	id = args[0]
+
+	if len(args) == 1 { // with no arguments, client will receive the higher report according to its permissions
+		reportAsBytes, err = stub.GetPrivateData(privcol, id) // try private report
+		if err != nil || reportAsBytes == nil {
+			reportAsBytes, err = stub.GetPrivateData(pubcol, id) // try simple report
+			if err != nil {
+				return shim.Error("Failed to get report " + id + ": " + err.Error())
+			} else if reportAsBytes == nil {
+				return shim.Error("Report does not exist: " + id)
+			}
+		}
+	} else {
+		col := args[1]
+		var collect string
+		switch col {
+		case "private":
+			collect = privcol
+		case "public":
+			collect = pubcol
+		default:
+			return shim.Error("Collection does not exist: " + col + ". Choose between public or private")
+		}
+
+		reportAsBytes, err = stub.GetPrivateData(collect, id)
+		if err != nil {
+			return shim.Error("Failed to get report " + id + ": " + err.Error())
+		} else if reportAsBytes == nil {
+			return shim.Error("Report does not exist: " + id)
+		}
+	}
+
+	return shim.Success(reportAsBytes)
+}
+
+func (t *SimpleChaincode) getReportHash(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	var id string
+	var err error
+	var hashAsBytes []byte
+
+	if len(args) < 1 || len(args) > 2 {
+		return shim.Error("Incorrect number of arguments. Expecting id of the report to query. Optionally, database can be passed: public or private.")
+	}
+
+	id = args[0]
+
+	if len(args) == 1 {
+		hashAsBytes, err = stub.GetPrivateDataHash(privcol, id) // try private report
+		if err != nil || hashAsBytes == nil {
+			hashAsBytes, err = stub.GetPrivateDataHash(pubcol, id) // try simple report
+			if err != nil {
+				return shim.Error("Failed to get public data hash for report " + id + ": " + err.Error())
+			} else if hashAsBytes == nil {
+				return shim.Error("Report does not exist: " + id)
+			}
+		}
+	} else {
+		col := args[1]
+		var collect string
+		switch col {
+		case "private":
+			collect = privcol
+		case "public":
+			collect = pubcol
+		default:
+			return shim.Error("Collection does not exist: " + col + ". Choose between public or private")
+		}
+
+		hashAsBytes, err = stub.GetPrivateDataHash(collect, id)
+		if err != nil {
+			return shim.Error("Failed to get " + col + " data hash for report " + id + ": " + err.Error())
+		} else if hashAsBytes == nil {
+			return shim.Error("Report does not exist: " + id)
+		}
+	}
+
+	return shim.Success(hashAsBytes)
+}
+
+func (t *SimpleChaincode) getReportsByOrganization(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	var org string
+	var reportAsBytes []byte
+	var resultsIterator shim.StateQueryIteratorInterface
+	var err error
+
+	if len(args) < 1 || len(args) > 2 {
+		return shim.Error("Incorrect number of arguments. Expecting organization name to query. Optionally, database can be passed: public or private.")
+	}
+
+	org = args[0]
+
+	indexName := "organization~id"
+
+	resultsIterator, err = stub.GetPrivateDataByPartialCompositeKey(pubcol, indexName, []string{org})
+	if err != nil {
+		return shim.Error("Failed to get organization reports: " + err.Error())
+	} else if resultsIterator == nil {
+		return shim.Error("Organization reports do not exist: " + err.Error())
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing QueryResults
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		_, compositeKeyParts, err := stub.SplitCompositeKey(queryResponse.Key)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		returnedReportId := compositeKeyParts[1]
+
+		if len(args) == 1 {
+			reportAsBytes, err = stub.GetPrivateData(privcol, returnedReportId) // try private report
+			if err != nil || reportAsBytes == nil {
+				reportAsBytes, err = stub.GetPrivateData(pubcol, returnedReportId) // try simple report
+				if err != nil {
+					return shim.Error("Failed to get report " + returnedReportId + ": " + err.Error())
+				} else if reportAsBytes == nil {
+					return shim.Error("Report does not exist: " + returnedReportId)
+				}
+			}
+		} else {
+			col := args[1]
+			var collect string
+			switch col {
+			case "private":
+				collect = privcol
+			case "public":
+				collect = pubcol
+			default:
+				return shim.Error("Collection does not exist: " + col + ". Choose between public or private")
+			}
+			returnedReportId := compositeKeyParts[1]
+			reportAsBytes, err = stub.GetPrivateData(collect, returnedReportId)
+			if err != nil {
+				return shim.Error("Failed to get report " + returnedReportId + ": " + err.Error())
+			} else if reportAsBytes == nil {
+				return shim.Error("Report does not exist: " + returnedReportId)
+			}
+		}
+
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten {
+			buffer.WriteString(",")
+		}
+
+		buffer.WriteString(
+			fmt.Sprintf(
+				`{"ReportID": "%s", "ReportData": %s}`,
+				returnedReportId, reportAsBytes,
+			),
+		)
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	return shim.Success(buffer.Bytes())
 }
