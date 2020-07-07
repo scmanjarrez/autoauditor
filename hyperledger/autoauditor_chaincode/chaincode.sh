@@ -13,15 +13,17 @@ ORDERER_URL="localhost:7050"
 ORDERER_CA_FILE="${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 PEER1_URL="localhost:7051"
 PEER2_URL="localhost:9051"
-RED="\033[0;91m[-] "
-GREEN="\033[0;92m[+] "
+RED="\033[0;91m[!] ERROR:"
+GREEN="\033[0;92m[+] SUCCESS:"
 BLUE="\033[94m[*] "
 NC="\033[0m"
+FN_HELP="Help"
 FN_STORE="NewReport"
 FN_DELETE="DeleteReport"
 FN_QUERY="GetReportById"
 FN_QUERYHASH="GetReportHash"
 FN_QUERYORG="GetReportsByOrganization"
+FN_QUERYDATE="GetReportsByDate"
 TRANS_STORE="report"
 TRANS_DELETE="report_delete"
 
@@ -56,19 +58,36 @@ execute_as ()
         approve) command=approve_chaincode_definition ;;
         commit) command=commit_chaincode_definition ;;
         store) command=store_data ;;
+        help) command=show_help ;;
         query) command=query_data ;;
         queryhash) command=query_data_hash ;;
         queryorg) command=query_data_org ;;
+        querydate) command=query_data_date ;;
         delete) command=delete_data ;;
-        *) echo -e "${RED}Invalid command: package, install, approve, store, query, queryhash, queryorg, delete.$NC"; exit 1 ;;
+        *) echo -e "${RED} Invalid command: package, install, approve, store, query, queryhash, queryorg, delete.$NC"; exit 1 ;;
     esac
 
     case "$2" in
-        all) $command "org1" $3; $command "org2" $3 ;;
-        org1) $command "org1" $3 ;;
-        org2) $command "org2" $3 ;;
-        *) echo -e "${RED}Invalid organization: all, org1, org2.$NC"; exit 1 ;;
+        all) $command "org1" $3 $4 $5; $command "org2" $3 $4 $5 ;;
+        org1) $command "org1" $3 $4 $5 ;;
+        org2) $command "org2" $3 $4 $5 ;;
+        *) echo -e "${RED} Invalid organization: all, org1, org2.$NC"; exit 1 ;;
     esac
+}
+
+show_help ()
+{
+    as_$1
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_HELP\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_HELP -> $1.$NC"
 }
 
 package_chaincode ()
@@ -80,11 +99,11 @@ package_chaincode ()
         --lang $CC_RUNTIME_LANGUAGE \
         --label ${CC_NAME}_$CC_VERSION
 
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Success packaging $CC_NAME chaincode in $CC_TAR.$NC"
-    else
-        echo -e "${RED}Error packaging $CC_NAME chaincode.$NC"
-    fi
+    [[ $? -eq 0 ]] \
+        && prefix=$GREEN \
+        || prefix=$RED
+
+    echo -e "${prefix} Package ($CC_NAME) -> $CC_TAR.$NC"
 }
 
 install_chaincode()
@@ -93,11 +112,10 @@ install_chaincode()
 
     peer lifecycle chaincode install $CC_TAR
 
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Success installing $CC_NAME chaincode in $1.$NC"
-    else
-        echo -e "${RED}Error installing $CC_NAME chaincode in $1.$NC"
-    fi
+    [[ $? -eq 0 ]] \
+        && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} Install ($CC_NAME) -> $1.$NC"
 }
 
 installed_chaincode()
@@ -106,11 +124,10 @@ installed_chaincode()
 
     peer lifecycle chaincode queryinstalled | grep ${CC_NAME}_$CC_VERSION
 
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Success querying installed chaincode in $1.$NC"
-    else
-        echo -e "${RED}Error querying installed chaincode in $1.$NC"
-    fi
+    [[ $? -eq 0 ]] \
+        && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} QueryInstalled ($CC_NAME) -> $1.$NC"
 }
 
 approve_chaincode_definition()
@@ -132,11 +149,10 @@ approve_chaincode_definition()
         --tls true \
         --cafile $ORDERER_CA
 
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Success approving $CC_NAME chaincode by $1.$NC"
-    else
-        echo -e "${RED}Error approving $CC_NAME chaincode by $1.$NC"
-    fi
+    [[ $? -eq 0 ]] \
+        && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} ApproveDefinition ($CC_NAME) -> $1.$NC"
 }
 
 commit_chaincode_definition()
@@ -162,11 +178,10 @@ commit_chaincode_definition()
         --peerAddresses $PEER2_URL \
         --tlsRootCertFiles $ORG2_CA
 
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Success committing $CC_NAME chaincode by $1.$NC"
-    else
-        echo -e "${RED}Error committing $CC_NAME chaincode by $1.$NC"
-    fi
+    [[ $? -eq 0 ]] \
+        && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} Commit ($CC_NAME) -> $1.$NC"
 }
 
 store_data()
@@ -188,13 +203,10 @@ store_data()
         -c "{\"Args\":[\"$FN_STORE\"]}" \
         --transient "{\"$TRANS_STORE\":\"$REPORT\"}"
 
-    if [ $? -eq 0 ]; then
-        echo $REPORT | base64 -d
-        echo ""
-        echo -e "${GREEN}Success storing public report in blockchain by $1.$NC"
-    else
-        echo -e "${RED}Error storing public report in blockchain by $1.$NC"
-    fi
+    [[ $? -eq 0 ]] \
+        && echo $REPORTPRIVATE | base64 -d && echo "" && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_STORE (Transient: report::PublicReport) -> $1.$NC"
 
     peer chaincode invoke \
         -o $ORDERER_URL \
@@ -206,141 +218,10 @@ store_data()
         -c "{\"Args\":[\"$FN_STORE\"]}" \
         --transient "{\"$TRANS_STORE\":\"$REPORTPRIVATE\"}"
 
-    if [ $? -eq 0 ]; then
-        echo $REPORTPRIVATE | base64 -d
-        echo ""
-        echo -e "${GREEN}Success storing private report in blockchain by $1.$NC"
-    else
-        echo -e "${RED}Error storing private report in blockchain by $1.$NC"
-    fi
-}
-
-query_data()
-{
-    as_$1
-
-    report_id=$2
-
-    output=$(peer chaincode query \
-        -C $CHANNEL_NAME \
-        -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_QUERY\", \"$report_id\"]}")
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${GREEN}Success querying highest permission report by $1.$NC"
-    else
-        echo -e "${RED}Error querying highest permission report by $1.$NC"
-    fi
-
-    output=$(peer chaincode query \
-        -C $CHANNEL_NAME \
-        -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_QUERY\", \"$report_id\", \"public\"]}")
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${GREEN}Success querying public report by $1.$NC"
-    else
-        echo -e "${RED}Error querying public report by $1.$NC"
-    fi
-
-    output=$(peer chaincode query \
-        -C $CHANNEL_NAME \
-        -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_QUERY\", \"$report_id\", \"private\"]}")
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${GREEN}Success querying private report by $1.$NC"
-    else
-        echo -e "${RED}Error querying private report by $1.$NC"
-    fi
-}
-
-query_data_hash()
-{
-    as_$1
-
-    report_id=$2
-
-    output=$(peer chaincode query \
-        -C $CHANNEL_NAME \
-        -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_QUERYHASH\", \"$report_id\"]}")
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${GREEN}Success querying highest permission report hash by $1.$NC"
-    else
-        echo -e "${RED}Error querying highest permission report hash by $1.$NC"
-    fi
-
-    output=$(peer chaincode query \
-        -C $CHANNEL_NAME \
-        -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_QUERYHASH\", \"$report_id\", \"public\"]}")
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${GREEN}Success querying public report hash by $1.$NC"
-    else
-        echo -e "${RED}Error querying public report hash by $1.$NC"
-    fi
-
-    output=$(peer chaincode query \
-        -C $CHANNEL_NAME \
-        -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_QUERYHASH\", \"$report_id\", \"private\"]}")
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${GREEN}Success querying private report hash by $1.$NC"
-    else
-        echo -e "${RED}Error querying private report hash by $1.$NC"
-    fi
-}
-
-query_data_org()
-{
-    as_$1
-    org=$2
-
-    output=$(peer chaincode query \
-        -C $CHANNEL_NAME \
-        -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_QUERYORG\", \"$org\"]}")
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${GREEN}Success querying highest permission reports from organization by $1.$NC"
-    else
-        echo -e "${RED}Error querying highest permission reports from organization by $1.$NC"
-    fi
-
-    output=$(peer chaincode query \
-        -C $CHANNEL_NAME \
-        -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_QUERYORG\", \"$org\", \"public\"]}")
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${GREEN}Success querying public reports from organization by $1.$NC"
-    else
-        echo -e "${RED}Error querying public reports from organization by $1.$NC"
-    fi
-
-    output=$(peer chaincode query \
-        -C $CHANNEL_NAME \
-        -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_QUERYORG\", \"$org\", \"private\"]}")
-
-    if [ -n "$output" ]; then
-        echo $output
-        echo -e "${GREEN}Success querying private reports from organization by $1.$NC"
-    else
-        echo -e "${RED}Error querying private report from organization by $1.$NC"
-    fi
+    [[ $? -eq 0 ]] \
+        && echo $REPORTPRIVATE | base64 -d && echo "" && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_STORE (Transient: report::PrivateReport) -> $1.$NC"
 }
 
 delete_data()
@@ -359,11 +240,168 @@ delete_data()
          -c "{\"Args\":[\"$FN_DELETE\"]}" \
          --transient "{\"$TRANS_DELETE\":\"$REPORT_DELETE\"}"
 
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Success deleting report from blockchain by $1.$NC"
-    else
-        echo -e "${RED}Error deleting report from blockchain by $1.$NC"
-    fi
+    [[ $? -eq 0 ]] \
+        && prefix=$GREEN \
+        || prefix=$RED
+
+    echo -e "${prefix} $FN_DELETE (Transient: report_delete) -> $1.$NC"
+}
+
+query_data()
+{
+    as_$1
+
+    id=$2
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERY\", \"$id\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERY ($id) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERY\", \"$id\", \"public\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERY ($id, public) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERY\", \"$id\", \"private\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERY ($id, private) -> $1.$NC"
+}
+
+query_data_hash()
+{
+    as_$1
+
+    id=$2
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYHASH\", \"$id\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYHASH ($id) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYHASH\", \"$id\", \"public\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYHASH ($id, public) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYHASH\", \"$id\", \"private\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYHASH ($id, private) -> $1.$NC"
+}
+
+query_data_org()
+{
+    as_$1
+    org=$3
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYORG\", \"$org\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYORG ($org) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYORG\", \"$org\", \"public\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYORG ($org, public) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYORG\", \"$org\", \"private\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYORG ($org, private) -> $1.$NC"
+}
+
+query_data_date()
+{
+    as_$1
+    org=$3
+    date=$4
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYDATE\", \"$date\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYDATE ($date) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYDATE\", \"$date\", \"$org\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYDATE ($date, $org) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYDATE\", \"$date\", \"$org\", \"public\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYDATE ($date, $org, public) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYDATE\", \"$date\", \"$org\", \"private\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYDATE ($date, $org, private) -> $1.$NC"
 }
 
 usage()
@@ -403,16 +441,18 @@ usage()
     echo "                       Show this help."
     echo ""
     echo "Commands:"
+    echo "       -c help         Show $CC_NAME chaincode available functions."
     echo "       -c package      Package $CC_NAME chaincode."
     echo "       -c installed    Query installed chaincodes in peer."
     echo "       -c install      Install $CC_NAME chaincode."
     echo "       -c approve      Approve $CC_NAME chaincode definition."
     echo "       -c commit       Commit $CC_NAME chaincode definition."
-    echo "       -c store        Store test data in blockchain."
-    echo "       -c query        Query test data from blockchain."
-    echo "       -c queryhash    Query test data hash from blockchain."
-    echo "       -c queryorg     Query test data of organization from blockchain."
-    echo "       -c delete       Delete test data from blockchain."
+    echo "       -c store        Store test data."
+    echo "       -c query        Query test data."
+    echo "       -c queryhash    Query test data hash."
+    echo "       -c queryorg     Query test data from organization."
+    echo "       -c querydate    Query test data from date and organization."
+    echo "       -c delete       Delete test data."
     echo ""
     echo "Organizations:"
     echo "       -o all          Execute command as all organizations."
@@ -425,7 +465,7 @@ start()
 {
     ./network.sh up createChannel -s couchdb > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-        echo -e "${RED}Error during ./network.sh up createChannel -s couchdb.$NC"
+        echo -e "${RED} Network -> ./network.sh up createChannel -s couchdb.$NC"
         exit 1
     fi
 }
@@ -434,14 +474,14 @@ stop()
 {
     ./network.sh down > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-        echo -e "${RED}Error during ./network.sh down.$NC"
+        echo -e "${RED} Network -> ./network.sh down.$NC"
         exit 1
     fi
 
     exit 0
 }
 
-while getopts ":ac:o:hudri:qv:g:p:n:s" opt; do
+while getopts ":ac:o:hudri:qv:g:p:n:sm:t:" opt; do
     case ${opt} in
         c) cmd=$OPTARG ;;
         o) org=$OPTARG ;;
@@ -452,6 +492,8 @@ while getopts ":ac:o:hudri:qv:g:p:n:s" opt; do
         s) store="yes" ;;
         r) raw="yes" ;;
         i) queryid=$OPTARG ;;
+        m) companyid=$OPTARG ;;
+        t) date=$OPTARG ;;
         v) CC_VERSION=$OPTARG ;;
         g) CC_COLLECTION_CONFIG=$OPTARG ;;
         n) CC_NAME=$OPTARG;CC_TAR="${CC_NAME}.tar.gz" ;;
@@ -463,10 +505,14 @@ done
 
 if [ -z "$queryid" ]; then
     queryid="report007"
-    if [ "$cmd" == "queryorg" ]; then
-        echo -e "${RED}Org name must be passed as ID argument.$NC"
-        exit
-    fi
+fi
+
+if [ -z "$companyid" ]; then
+    companyid="ACME"
+fi
+
+if [ -z "$date" ]; then
+    date="2020-05"
 fi
 
 if [ -n "$query" ]; then
@@ -475,12 +521,13 @@ if [ -n "$query" ]; then
     fi
     execute_as "query" "all" $queryid
     execute_as "queryhash" "all" $queryid
-    execute_as "queryorg" "all" "ACME"
+    execute_as "queryorg" "all" $queryid $companyid
+    execute_as "querydate" "all" $queryid $companyid $date
     exit
 fi
 
 if [ -n "$cmd" ] && [ -n "$org" ]; then
-    execute_as $cmd $org $queryid
+    execute_as $cmd $org $queryid $companyid $date
     exit
 fi
 
@@ -500,7 +547,8 @@ if [ -n "$all" ]; then
         echo -e "${BLUE} Waiting transactions processing.$NC"; sleep 3 # wait time to process transaction
         execute_as "query" "all" $queryid
         execute_as "queryhash" "all" $queryid
-        execute_as "queryorg" "all" "ACME"
+        execute_as "queryorg" "all" $queryid $companyid
+        execute_as "querydate" "all" $queryid $companyid $date
     fi
 fi
 
