@@ -124,7 +124,7 @@ def shutdown(vpncont, msfcont):
         net.remove()
         log('succg', ATNETRM)
 
-    log('succg', 'Ending autoauditor.', errcode=NOERROR)
+    log('succg', 'Exiting autoauditor.', errcode=NOERROR)
 
 def check_file_dir(outf, outd=None):
     try:

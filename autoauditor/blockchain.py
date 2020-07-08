@@ -23,8 +23,9 @@ import logging
 RAPID7 = "https://www.rapid7.com/db/modules/"
 CVEDETAILS = "https://www.cvedetails.com/cve/"
 
-CHAINCODENAME = "autoauditorcc"
-NEWREPKEYWORD = "aareport"
+CHAINCODENAME = "autoauditor"
+NEWREPORTFUNC = "NewReport"
+NEWREPKEYWORD = "report"
 
 cveregex = re.compile(r'^CVE-\d+-\d+')
 modregex = re.compile(r'^#{5} (?P<modname>[a-zA-Z/_]+) #{5}$')
@@ -120,7 +121,7 @@ def generate_reports(rep):
 
     return report
 
-def store_report(info, rep_file):
+def store_report(info, rep_file, out_file):
     user, client, peer, channel_name = info
 
     utils.log('succb', utils.GENREP, end='\r')
@@ -140,14 +141,21 @@ def store_report(info, rep_file):
              "date": privdate,
              "nvuln": nvuln}
 
+    out = open(out_file, 'w')
+    utils.log('succb', "Blockchain output log: {}".format(out_file))
+
     for rep in report:
+        aarep['report'] = report[rep]  # dump report to log file
+
         if rep == 'privrep':
             aarep['private'] = True
+            out.write(json.dumps(aarep, indent=4) + ',\n')
         else:
             aarep['private'] = False
+            aarep['date'] = pubdate
+            out.write(json.dumps(aarep, indent=4) + '\n')
 
-        aarep['report'] = json.dumps(report[rep])
-
+        aarep['report'] = json.dumps(report[rep])  # must be serialized
         tmprep = json.dumps(aarep).encode()
 
         utils.log('succb', "Storing {} report: {}".format("private" if aarep['private'] else "public", rephash))
@@ -157,7 +165,7 @@ def store_report(info, rep_file):
                 requestor=user,
                 channel_name=channel_name,
                 peers=[peer],
-                fcn='new',
+                fcn=NEWREPORTFUNC,
                 args=None,
                 cc_name=CHAINCODENAME,
                 transient_map={NEWREPKEYWORD: tmprep}
@@ -171,6 +179,9 @@ def store_report(info, rep_file):
                 utils.log('warn', "Report already stored in blockchain.")
             elif 'failed' in response:
                 utils.log('error', "Error storing report {}: {}".format(rephash, response))
+            else:
+                utils.log('error', "Unknown error storing report {}: {}".format(rephash, response))
+    out.close()
 
 def get_net_info(config, *key_path):
     if config:
@@ -236,6 +247,10 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--reportfile', metavar='report_file', required=True,
                         help="Report file.")
 
+    parser.add_argument('-b', '--blockchainlog', metavar='blockchain_log_file',
+                        default='output/blockchain.log',
+                        help="Blockchain report log file.")
+
     parser.add_argument('-c', '--netconfigfile', metavar='network_cfg_file', required=True,
                         help="Network configuration file.")
 
@@ -244,4 +259,7 @@ if __name__ == '__main__':
     assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(args.netconfigfile)
 
     info = load_config(args.netconfigfile)
-    store_report(info, args.reportfile)
+
+    utils.check_file_dir(args.blockchainlog)
+
+    store_report(info, args.reportfile, args.blockchainlog)
