@@ -12,19 +12,22 @@ que pueda acceder a la API sin permisos de superusuario.
 > cd config && ./setup.sh
 - Prepara los contenedores con vulnerabilidades y el servidor VPN.
 ## Opcional
-> curl -sSL https://bit.ly/2ysbOFE | bash -s
+> curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.1.1 1.4.7
 - Descarga los binarios y ficheros de prueba para crear una red de hyperledger fabric.
 > cp ../hyperledger/autoauditor\_chaincode/chaincode.sh fabric-samples/test-network
 - Copia el fichero de configuración de la blockchain.
-> cp -R ../hyperledger/autoauditor\_chaincode/autoauditor\_chaincode fabric-samples/chaincode
+> cp -R ../hyperledger/autoauditor\_chaincode/ fabric-samples/chaincode
 - Copia los ficheros con el chaincode de autoauditor.
 > cd fabric-samples/test-network && ./chaincode.sh -u -a -r && cd -
 - Ejecuta el script que se encarga de instalar el SmartContract en la blockchain.
+> docker run --rm -d --name docker-resolver -v /var/run/docker.sock:/tmp/docker.sock -v /etc/hosts:/tmp/hosts dvdarias/docker-hoster
+- Será necesario instanciar un contenedor que sirva como DNS local y resuelva los nombres
+de los demás contenedores.
 
 # Ejecución
 > source autoauditor\_venv/bin/activate
 <!-- -->
-> python ../autoauditor/autoauditor.py -v client.ovpn -r rc.json -o output/msf.log -d output/loot -hc network.json -ho output/blockchain.log
+> python ../autoauditor/autoauditor.py -v client.ovpn -r rc5.json -o output/msf.log -d output/loot -hc network.template.json -ho output/blockchain.log
 - Ejecuta autoauditor usando los módulos listados en **rc.json**.
 - Crea un túnel VPN con la configuración presente en **client.ovpn**.
 - Guarda un registro de ejecución en el fichero **msf.log** presente en el directorio **output**.

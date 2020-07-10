@@ -8,8 +8,8 @@
         },
         "credentials": {
             "description": "optionally, a credential path can be used if user ID can't be loaded from wallet",
-            "cert": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/User1@org1.example.com-cert.pem",
-            "private_key": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/priv_sk"
+            "cert": "fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/User1@org1.example.com-cert.pem",
+            "private_key": "fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/priv_sk"
         }
     },
     "network": {
@@ -24,7 +24,7 @@
                 "grpc_request_endpoint": "localhost:7051",
                 "grpc_event_endpoint": "localhost:7053",
                 "server_hostname": "peer0.org1.example.com",
-                "tls_cacerts": "/home/schica/HyperledgerFabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/msp/tlscacerts/tlsca.org1.example.com-cert.pem"
+                "tls_cacerts": "fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/msp/tlscacerts/tlsca.org1.example.com-cert.pem"
             }
         }
     }

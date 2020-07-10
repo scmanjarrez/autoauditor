@@ -3,9 +3,9 @@
 aa="../autoauditor/autoauditor.py"
 venv="virtualenv"
 aa_venv="autoauditor_venv"
+wallet="wallet-test"
 tmp_msfrpc="backup/msfrpc.py"
 tmp_hfc="backup/channel.py"
-env_sh="gen_venv.sh"
 dc="docker-compose"
 dcyml="docker-compose.yml"
 d="docker"
@@ -127,7 +127,7 @@ chk_venv_pkg()
     fi
 }
 
-gen_venv_sh()
+gen_venv()
 {
 
     echo -e "${blue}Generating virtual environment.$nc"
@@ -162,6 +162,7 @@ stop()
     echo -e "${blue}Removing temporary files.$nc"
     rm $dcyml
     rm -rf $aa_venv
+    rm -rf $wallet
 }
 
 usage()
@@ -184,5 +185,5 @@ done
 if [ $OPTIND -eq 1 ]; then
     start
     chk_venv_pkg
-    gen_venv_sh
+    gen_venv
 fi
