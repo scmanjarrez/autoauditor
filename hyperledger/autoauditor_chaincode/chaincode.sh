@@ -68,9 +68,9 @@ execute_as ()
     esac
 
     case "$2" in
-        all) $command "org1" $3 $4 $5; $command "org2" $3 $4 $5 ;;
-        org1) $command "org1" $3 $4 $5 ;;
-        org2) $command "org2" $3 $4 $5 ;;
+        all) "$command" "org1" "$3" "$4" "$5"; "$command" "org2" "$3" "$4" "$5" ;;
+        org1) "$command" "org1" "$3" "$4" "$5" ;;
+        org2) "$command" "org2" "$3" "$4" "$5" ;;
         *) echo -e "${RED} Invalid organization: all, org1, org2.$NC"; exit 1 ;;
     esac
 }
@@ -188,10 +188,12 @@ store_data()
 {
     as_$1
 
-    report_id=$2
+    id=$2
+    org=$3
+    date=$4
 
-    export REPORT=$(echo -n "{\"id\": \"$report_id\", \"org\": \"ACME\", \"date\": \"2020-05\", \"nvuln\": 5, \"report\": \"basic_report\"}" | base64 | tr -d \\n)
-    export REPORTPRIVATE=$(echo -n "{\"id\": \"$report_id\", \"private\": true, \"org\": \"ACME\", \"date\": \"2020-05-21 17:37:27.910352+02:00\", \"nvuln\": 5, \"report\": \"private_report\"}" | base64 | tr -d \\n)
+    export REPORT=$(echo -n "{\"id\": \"$id\", \"org\": \"$org\", \"date\": \"$date\", \"nvuln\": 5, \"report\": \"basic_report\"}" | base64 | tr -d \\n)
+    export REPORTPRIVATE=$(echo -n "{\"id\": \"$id\", \"private\": true, \"org\": \"$org\", \"date\": \"$date\", \"nvuln\": 5, \"report\": \"private_report\"}" | base64 | tr -d \\n)
 
     peer chaincode invoke \
         -o $ORDERER_URL \
@@ -227,8 +229,9 @@ store_data()
 delete_data()
 {
     as_$1
+    id=$2
 
-    export REPORT_DELETE=$(echo -n "{\"id\":\"report007\"}" | base64 | tr -d \\n)
+    export REPORT_DELETE=$(echo -n "{\"id\":\"$id\"}" | base64 | tr -d \\n)
 
     peer chaincode invoke \
          -o $ORDERER_URL \
@@ -376,6 +379,26 @@ query_data_date()
     output=$(peer chaincode query \
         -C $CHANNEL_NAME \
         -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYDATE\", \"$date\", \"public\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYDATE ($date, public) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYDATE\", \"$date\", \"private\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYDATE ($date, private) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
         -c "{\"Args\":[\"$FN_QUERYDATE\", \"$date\", \"$org\"]}")
 
     [[ -n "$output" ]] \
@@ -512,22 +535,23 @@ if [ -z "$companyid" ]; then
 fi
 
 if [ -z "$date" ]; then
-    date="2020-05"
+    date="2020-05-21 17:37:27.910352+02:00"
+fi
+
+if [ -n "$store" ]; then
+    execute_as "store" "org1" "$queryid" "$companyid" "$date"
 fi
 
 if [ -n "$query" ]; then
-    if [ -n "$store" ]; then
-        execute_as "store" "org1" $queryid
-    fi
-    execute_as "query" "all" $queryid
-    execute_as "queryhash" "all" $queryid
-    execute_as "queryorg" "all" $queryid $companyid
-    execute_as "querydate" "all" $queryid $companyid $date
+    execute_as "query" "all" "$queryid"
+    execute_as "queryhash" "all" "$queryid"
+    execute_as "queryorg" "all" "$queryid" "$companyid"
+    execute_as "querydate" "all" "$queryid" "$companyid" "$date"
     exit
 fi
 
 if [ -n "$cmd" ] && [ -n "$org" ]; then
-    execute_as $cmd $org $queryid $companyid $date
+    execute_as "$cmd" "$org" "$queryid" "$companyid" $date
     exit
 fi
 
@@ -543,12 +567,12 @@ if [ -n "$all" ]; then
     execute_as "commit" "org1"
     if [ -z "$raw" ]; then
         echo -e "${BLUE} Waiting transactions processing.$NC"; sleep 3 # wait time to process transaction
-        execute_as "store" "org1" $queryid
+        execute_as "store" "org1" "$queryid" "$companyid" "$date"
         echo -e "${BLUE} Waiting transactions processing.$NC"; sleep 3 # wait time to process transaction
-        execute_as "query" "all" $queryid
-        execute_as "queryhash" "all" $queryid
-        execute_as "queryorg" "all" $queryid $companyid
-        execute_as "querydate" "all" $queryid $companyid $date
+        execute_as "query" "all" "$queryid"
+        execute_as "queryhash" "all" "$queryid"
+        execute_as "queryorg" "all" "$queryid" "$companyid"
+        execute_as "querydate" "all" "$queryid" "$companyid" "$date"
     fi
 fi
 

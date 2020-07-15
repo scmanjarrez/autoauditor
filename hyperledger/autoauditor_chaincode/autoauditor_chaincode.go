@@ -391,6 +391,8 @@ func (s *SmartContract) GetReportsByDate(ctx contractapi.TransactionContextInter
 
 	var reportJSON []byte
 	var err error
+	var orgAsDB bool = false
+
 	if len(params) < 1 || len(params) > 3 {
 		return nil, fmt.Errorf("Incorrect number of arguments. Expecting: YYYY-MM [, OrgName [, public|private]].")
 	}
@@ -399,11 +401,14 @@ func (s *SmartContract) GetReportsByDate(ctx contractapi.TransactionContextInter
 
 	var resultsIterator shim.StateQueryIteratorInterface
 	indexName := "date~organization~id"
-	if len(params) > 1 {
+	if len(params) > 1 && params[1] != "private" && params[1] != "public" {
 		org := params[1]
 		resultsIterator, err = ctx.GetStub().GetPrivateDataByPartialCompositeKey(publicCollection, indexName, []string{date, org})
 	} else {
 		resultsIterator, err = ctx.GetStub().GetPrivateDataByPartialCompositeKey(publicCollection, indexName, []string{date})
+		if len(params) > 1 {
+			orgAsDB = true
+		}
 	}
 
 	if err != nil {
@@ -429,13 +434,20 @@ func (s *SmartContract) GetReportsByDate(ctx contractapi.TransactionContextInter
 
 		id := compositeKeyParts[2]
 
-		if len(params) < 3 { // if no collection given, client will receive the higher report according to its permissions
+		if len(params) < 3 && !orgAsDB { // if no collection given, client will receive the higher report according to its permissions
 			reportJSON, err = getDataHighestPermission(ctx, id)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to get report %s: %s", id, err.Error())
 			}
 		} else {
-			collect, err := getCollection(params[2])
+			var collect string
+
+			if orgAsDB {
+				collect, err = getCollection(params[1])
+			} else {
+				collect, err = getCollection(params[2])
+			}
+
 			if err != nil {
 				return nil, err
 			}
@@ -458,7 +470,7 @@ func (s *SmartContract) GetReportsByDate(ctx contractapi.TransactionContextInter
 	}
 
 	if len(results) == 0 {
-		return nil, fmt.Errorf("Failed to get results. Check parameters: %+q", params)
+		return nil, fmt.Errorf("No results found for such criteria. Check parameters: %+q", params)
 	}
 	return results, nil
 }
