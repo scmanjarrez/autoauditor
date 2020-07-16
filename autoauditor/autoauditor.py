@@ -41,7 +41,7 @@ if __name__ == '__main__':
     group.add_argument('-r', '--rcfile', metavar='rc_file',
                        help="Run metasploit using rc_file")
 
-    group.add_argument('-g', '--genrc', metavar='rc_out',
+    group.add_argument('-g', '--genrc', metavar='rc_file',
                        help="Start wizard helper to generate automated resource script file.")
 
     group.add_argument('-s', '--stop', action='store_true',
