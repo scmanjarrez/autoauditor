@@ -36,6 +36,9 @@ if __name__ == '__main__':
                         default='output/blockchain.log',
                         help="If present, log blockchain output to hyperledger_log_file, otherwise log to output/blockchain.log file.")
 
+    parser.add_argument('--no-color', action='store_true',
+                        help="Disable ANSI color output.")
+
     group = parser.add_mutually_exclusive_group(required=True)
 
     group.add_argument('-r', '--rcfile', metavar='rc_file',
@@ -51,6 +54,9 @@ if __name__ == '__main__':
 
     vpncont = None
     msfcont = None
+
+    if args.no_color:
+        utils._GREEN = utils._BLUE = utils._YELLOW = utils._RED = utils._CLEANC = utils._NC
 
     if args.ovpn is not None:
         assert os.path.isfile(args.ovpn), "File {} does not exist.".format(args.ovpn)

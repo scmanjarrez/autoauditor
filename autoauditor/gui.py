@@ -67,7 +67,7 @@ bc_lf_fb = browse('', KEY_BC_LF_FB, KEY_INPUT_BC_LF, FILEPNG, BUTTON_SIZE, BUTTO
 
 sc_cb = ImageCheckBox(image_on=CBON, image_off=CBOFF, key=KEY_SC_CB, button_color=BUTTON_COLOR, border_width=BUTTON_BORDER, enabled=True)
 
-console = sg.Multiline('', key=KEY_CONSOLE, size=(79, 8), pad=(20, 30), visible=False, font=FONT)
+console = sg.Multiline('', key=KEY_CONSOLE, size=(79, 8), pad=(20, 30), visible=False, font=FONT, autoscroll=True)
 
 layout = [
     [sg.Text('')],
@@ -125,7 +125,7 @@ def run_command(console, cmd, timeout=None, window=None):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = ''
     for line in p.stdout:
-        line = line.decode(errors='replace' if (sys.version_info) < (3, 5) else 'backslashreplace')
+        line = line.decode(errors='replace' if (sys.version_info) < (3, 5) else 'backslashreplace').replace('\r', '\n').rstrip()
         output += line
         print(line)
         console.print(line)
@@ -154,7 +154,8 @@ while True:
             window[KEY_INPUT_AA].Get(),
             '-r', window[KEY_INPUT_RC].Get(),
             '-o', window[KEY_INPUT_LF].Get(),
-            '-d', window[KEY_INPUT_LD].Get()
+            '-d', window[KEY_INPUT_LD].Get(),
+            '--no-color'
         ]
         if vpn_cb.enabled:
             cmd.extend(
@@ -169,15 +170,30 @@ while True:
                     '-ho', window[KEY_INPUT_BC_LF].Get()
                 ]
             )
-        if sc_cb.enabled:
+        if not sc_cb.enabled:
             cmd.extend(
                 [
                     '-b'
                 ]
             )
-        print(cmd)
         console(visible=True)
-        run_command(console, cmd=cmd, window=window)
+        run_command(console, cmd=" ".join(cmd), window=window)
+
+    if event == KEY_STOP_B:
+        cmd = [
+            window[KEY_INPUT_PY].Get(),
+            window[KEY_INPUT_AA].Get(),
+            '-s',
+            '--no-color'
+        ]
+        if vpn_cb.enabled:
+            cmd.extend(
+                [
+                    '-v', window[KEY_INPUT_VPN_CF].Get()
+                ]
+            )
+        console(visible=True)
+        run_command(console, cmd=" ".join(cmd), window=window)
     if event == sg.WIN_CLOSED:  # if user closes window or clicks cancel
         break
 

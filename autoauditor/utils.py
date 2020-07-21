@@ -133,23 +133,29 @@ BUTTON_SIZE = (32, 32)
 BUTTON_BORDER = 0
 BUTTON_EXEC_SIZE = (48, 48)
 
-DEFAULT_PY = 'autoauditor_venv/bin/python'
-DEFAULT_AA = '../autoauditor/autoauditor.py'
-DEFAULT_LF = 'output/msf.log'
-DEFAULT_LD = 'output'
-DEFAULT_RC = 'rc5.json'
-DEFAULT_VPN_CF = 'client.ovpn'
-DEFAULT_BC_CF = 'network.template.json'
-DEFAULT_BC_LF = 'output/blockchain.log'
+DEFAULT_PY = os.path.abspath('autoauditor_venv/bin/python')
+DEFAULT_AA = os.path.abspath('../autoauditor/autoauditor.py')
+DEFAULT_LF = os.path.abspath('output/msf.log')
+DEFAULT_LD = os.path.abspath('output')
+DEFAULT_RC = os.path.abspath('rc2.json')
+DEFAULT_VPN_CF = os.path.abspath('client.ovpn')
+DEFAULT_BC_CF = os.path.abspath('network.template.json')
+DEFAULT_BC_LF = os.path.abspath('output/blockchain.log')
 
+_RED = '\033[91m'
+_YELLOW = '\033[93m'
+_BLUE = '\033[94m'
+_GREEN = '\033[92m'
+_CLEANC = '\033[0m'
+_NC = ''
 
 def log(color, string, end='\n', errcode=None):
     level = {
         'normal': '',
-        'succg' : '\033[92m[+] \033[0m',
-        'succb' : '\033[94m[*] \033[0m',
-        'warn'  : '\033[93m[-] \033[0m',
-        'error' : '\033[91m[!] \033[0m',
+        'succg' : '{}[+] {}'.format(_GREEN, _CLEANC),
+        'succb' : '{}[*] {}'.format(_BLUE, _CLEANC),
+        'warn'  : '{}[-] {}'.format(_YELLOW, _CLEANC),
+        'error' : '{}[!] {}'.format(_RED, _CLEANC)
     }
 
     print(level.get(color) + string, end=end, flush=True)
@@ -172,9 +178,9 @@ def print_options(exploit, adv=False):
     for opt in opt_l:
         sym = ''
         if opt in exploit.required:
-            sym = '\033[93m- \033[0m'
+            sym = '{}- {}'.format(_YELLOW, _CLEANC)
             if opt in exploit.missing_required:
-                sym = '\033[91m* \033[0m'
+                sym = '{}* {}'.format(_RED, _CLEANC)
 
         print("\t{}{}: {}".format(sym, opt, exploit[opt] if exploit[opt] is not None else ''))
 
