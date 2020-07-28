@@ -1,3 +1,22 @@
+# vpn - VPN module.
+
+# Copyright (C) 2020 Sergio Chica Manjarrez.
+
+# This file is part of AutoAuditor.
+
+# AutoAuditor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# AutoAuditor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
 import utils
 import docker
 import os
@@ -19,7 +38,7 @@ def setup_vpn(ovpn_file, stop):
 
     utils.log('succb', utils.VPNCSTAT, end='\r')
 
-    vpn_l = client.containers.list(filters={'name':'vpncl'})
+    vpn_l = client.containers.list(filters={'name': 'vpncl'})
     if not vpn_l:
         if not stop:
             utils.log('warn', utils.VPNCSTART, end='\r')
@@ -30,14 +49,15 @@ def setup_vpn(ovpn_file, stop):
             try:
                 net = client.networks.get('attacker_network')
             except docker.errors.NotFound:
-                net = client.networks.create('attacker_network', driver='bridge', ipam=ipam_config)
+                net = client.networks.create(
+                    'attacker_network', driver='bridge', ipam=ipam_config)
 
             vpncont = client.containers.run(image, 'sh -c "sleep 5 && /sbin/tini -- /usr/bin/openvpn.sh"',
                                             auto_remove=True,
                                             stdin_open=True, tty=True,
                                             detach=True, cap_add='NET_ADMIN',
                                             security_opt=['label:disable'],
-                                            tmpfs={'/run': '', '/tmp':''},
+                                            tmpfs={'/run': '', '/tmp': ''},
                                             name='vpncl',
                                             network='attacker_network',
                                             volumes={'/dev/net': {'bind': '/dev/net', 'mode': 'z'},
@@ -47,7 +67,8 @@ def setup_vpn(ovpn_file, stop):
             try:
                 net = client.networks.get('bridge')
             except docker.errors.NotFound:
-                utils.log('error', "Docker 'bridge' network not found.", errcode=utils.ENOBRDGNET)
+                utils.log('error', "Docker 'bridge' network not found.",
+                          errcode=utils.ENOBRDGNET)
             else:
                 net.connect('vpncl')
             utils.log('succg', utils.VPNCDONE)
@@ -59,5 +80,7 @@ def setup_vpn(ovpn_file, stop):
 
     return vpncont
 
+
 if __name__ == '__main__':
-    utils.log('error', "Not standalone module. Run again from autoauditor.py -v vpn_conf_file", errcode=utils.EMODNR)
+    utils.log('error', "Not standalone module. Run again from autoauditor.py.",
+              errcode=utils.EMODNR)

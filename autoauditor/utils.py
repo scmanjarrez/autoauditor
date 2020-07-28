@@ -1,3 +1,22 @@
+# utils - Utilities module.
+
+# Copyright (C) 2020 Sergio Chica Manjarrez.
+
+# This file is part of AutoAuditor.
+
+# AutoAuditor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# AutoAuditor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
 from distutils.util import strtobool
 from datetime import date
 import sys
@@ -79,12 +98,15 @@ PLAY = 'iVBORw0KGgoAAAANSUhEUgAAACoAAAAwCAYAAABnjuimAAAABHNCSVQICAgIfAhkiAAAAAlw
 STOP = 'iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAABYgAAAWIBXyfQUwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAObSURBVGiBxdpNb5VVEAfwXxFEaetCiC9tXBJQEQ20XamJxmhM1NLEJYpx4caPQFK/ASYoCRuVrrpVlGpQ40ZX6kJjVWCtO0zoG7YU6+Lcm16vd573ezvJbJ47Z2b+z8yZM8+cO6R5GsIY9mO49WwV1/FHP4zVpWE8j2fwJA5hXyC7iiv4Ft/gy9azHaEpzGEZWxV5CRcwOUjHJ6U3V9XpiC9jop+O34PzuN0H59t8G+cw2rTzx3Ctj45381U80ZTzM7hZ0oE1/IQfWryI9Qo6pus6fwqbBYxt4FOcxGHc0UPXbhzE6/istSZP762WfCWaKeD8Mk7jvgr692MWKwVAvFJW+XH5aTMvHVh1aUwqpXnpVHhPjOD3HIVb+AJ3NQCgTW/K3ifXpEqYS+cLON/mBextEMRTUssR2Xs/T8GU8nW+aRBPiyOxKZX0kL4q6Xy/0umNDFufR4umMhbNS296kJGYy7DVs+WIFixLleJOXMwB0WQkxsQl9sNu4WFxV3m6Q26vwUbincDGkq6WfSYQ3PD/Q2qQIA6IT+z/HG7vBUIXA8WDTKfoZb3bKfRjIHQyQ/GgInEq0P19W2BInP+HcpQPIhIPB3qXW74bDwTW9O4qu6nfkdgtPtgehMeCH38pYaTfIH4NdB7ZJf582yhhYB0npG+CiF7EJ6ql03rwfHRXxqJ/ShrZwKuyQbyAj5UHkZnKUQotljTSpn6k02+BnkeJN/Hf0gbaaRB7Wr6EmzirjB6sCIDmSmyUIUs6JovRQfZaDQA0E4ncgwzOBkKXagKgfiSiF3CmU+hEILQhTQ/qUtVI3C9NJXrJv9wpOCzlVC/B2QYAVAUxG8jdwN3dBi4Ewmt4qCEQZdJpXPxB80Ev5ZMZSucaAkDxSMxn/H48Un45Y9FbDYIoEomIMwvLhHicuC6NPJqiIpHo5k0FJnTnMhRc32EQZ4soHRH3HltSWXu7QRBF0+mqgqNFUpjWchTOSZWiLo3L3rBb0kXg0bKKp8WHSJtXpNHHgQqOP6D4eP2lCvqRLhfyQGxJJ/aC1Lcc1ruL3YMjLZlLBfXeUr8fMy0/nXpVrEXbV0w/K3/FtKrGm++mR1oOVanbVfgKHm/K+TaNSvP5IndmVXlTKpUjTTvfScekEXfTzi9o8Gq1CE3gI3EXW4RvSJPmsLfJoyb+7LEPz+FZ23/2iFJgWcrv7/C1dKFys47xJgD0ojHcaxvICv7Cn00b+hdnbKCDt3YiiQAAAABJRU5ErkJggg=='
 WIZARD = 'iVBORw0KGgoAAAANSUhEUgAAABIAAAAwCAYAAAAcqipqAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAABYgAAAWIBXyfQUwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFBSURBVEiJ7dfNKgVhGAfw3xEWiiLZsMNRtpZKyscd+LgCF0GxlLKRXAsLt0CxxQX42hyOhGJxZmrwzjHnNYuzOP96mmaa93fmnWfm7QzhDGEH53hO6gzbGMwZ8yuLeMRnTj1g4S9kFq9NkLTeMJeH9OC6AJLWDXpD0FoLSFor6eCuDLT017wDWQ5BoxHQWAh6iYCeQtBFBHQZOjiFD8Vv9Dsm837hqAXooNml9uKkAHIs5xnKphtbqAWAGjaTc76l0gTs03jvxpP9G5yK624nSdZxr/jzU8d+CGoFydZ0FunCcORMRn5CpaQ9oXpZ0GEZUJoJzGBD8fbPZ4F0ObhOtv2xV9KeXetAHahtoPRdm8QAqi2MrWr8P6rhCvbELf7Z2q1oLGx98ZMC9Uoi/jvt17VSofsSnDsanw534lt/i9UvqgmwtEFEVrsAAAAASUVORK5CYII='
 CBOFF = 'iVBORw0KGgoAAAANSUhEUgAAABUAAAAYCAYAAAAVibZIAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAsQAAALEBxi1JjQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAB2SURBVDiN7dWxDYMwEAXQR5SamglSpWSAbACLAbNkj5Rp2CBteiTTGCo6G4nCX7rS767y54RUcXo8Mngz3jAhZJyxwh81vvglXNngGb19wysBFN8HhFsidJiCFrSgBb02etonPcpbJ8NWfB1a3BMuXfARiy97VsCXOZPYbuz2AAAAAElFTkSuQmCC'
-CBON= 'iVBORw0KGgoAAAANSUhEUgAAABUAAAAYCAYAAAAVibZIAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAsQAAALEBxi1JjQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAERSURBVDiNtdU9SsRAFADgb2VFbER7CysvoK2whS6ihZ5EBEURBE/gegZPoHYeQg9g5wVELFx/EGORZJkNiUk22QdTvMzMl8m8JMMUopO0fay24D3hDq4QtdgGHbxhAY94bbDKJawl3ugOvQagZH6EaKYhlBtN0bm20U284Civc5I97WMYzF3RcE/7uMV8kl/guWyls9goALfxEcw5C/p6wfUxtIubJD/PgDv4DMafZvoL0WW856xkNwOe5DxFIUpc1bAI1/gK8uMcsBSFrQyct4e10RROi/KLw3/AyihxtYc4KAHH0G7JwHss4rsCOooqL38tsCpaO6b2kx5o9zi5TA++PayLP9NJ4wcPkoOv9fgD1GiK6TLKDs8AAAAASUVORK5CYII='
+CBON = 'iVBORw0KGgoAAAANSUhEUgAAABUAAAAYCAYAAAAVibZIAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAsQAAALEBxi1JjQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAERSURBVDiNtdU9SsRAFADgb2VFbER7CysvoK2whS6ihZ5EBEURBE/gegZPoHYeQg9g5wVELFx/EGORZJkNiUk22QdTvMzMl8m8JMMUopO0fay24D3hDq4QtdgGHbxhAY94bbDKJawl3ugOvQagZH6EaKYhlBtN0bm20U284Civc5I97WMYzF3RcE/7uMV8kl/guWyls9goALfxEcw5C/p6wfUxtIubJD/PgDv4DMafZvoL0WW856xkNwOe5DxFIUpc1bAI1/gK8uMcsBSFrQyct4e10RROi/KLw3/AyihxtYc4KAHH0G7JwHss4rsCOooqL38tsCpaO6b2kx5o9zi5TA++PayLP9NJ4wcPkoOv9fgD1GiK6TLKDs8AAAAASUVORK5CYII='
 INFO = 'iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAsQAAALEBxi1JjQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAG6SURBVEiJrdY9axRBGAfwX5IzvmFSCB42YqFJIWiMpYpYxEawsRP0C1iK2NhY2KQRtAkJaWxFYlJYqPVFP4CF2CdYiG8gd8ihxe7CZG5mdw/8wwO7M/P8n9d5mdCMWSxhHt1y7As+4Q1+tuBIYhFbGOBvRgbYxMI4xAexjmENcSxDrOJAE3kXH8YgjmUbx+o8z5F/xAPcwBXcUaQvFeV2LpL1xOI/uIeJjFOXsJPQW40XLma8uZsLN8AZ/I70hqLCbyXIP0dEJ/AQj3A6mnuS0H9VTc7Kt+JzHMYpe1PxA0cDA9cTun3MdHAN05nwb+MyDtnbHYNoXapG+7E0mQg3xsmI/AXO4mswdjWjOwfPtOvxPm4mSC4aLXIlTycbvA/xGC+D/324j3eKPZREB7stDbwOvqfRw4UGnZ2O0XbM4VZAON+CXMVd16axfC+lbc2OVJY2WygsY6qU5RbrN8JQzqs/nr+VxBWmGiIZ4lycr7WG1IxjYCUmpzhi3/+HFPUUuziJboORpiL31Fw4YSRrxr8yV+o8T2FBceT2a4j7im4ZKWiF3E0VYkbxbJnD8XJsV/FseYtfdcr/ANVRC3ZXH1BbAAAAAElFTkSuQmCC'
 ABOUT = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAA7AAAAOwBeShxvQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAHfSURBVFiFxdfLThRBFAbgj4YV6LBRZO114cbrK5j4AKIm7kh8BTND4pqFT+DCLfo0jpeYiANBTIwxLhC8bHRwUV2ZsZmhu3qa8Ccn6VT6nP+vrjpVf09JxyKu4AJm87Gf6KGLLzVqlmIBK3iD/ZJ4jQ5ON0E8h0fYqUBcjB9YRasu+U18qkFcjG3cSCW/I6zrpOQxfuNBVfJ76DdIHqOPu2Xk1xqeeTF+CUs7EiekrfkHtPPoJeR9NGjf//A4och6LjjiZKKIlSL5AnYTCrRHTKCTkP9dfk5kefLDfBaTYCrh3RaWhwfejlE6LnoFwS1sJNboRtWL+Jw4Aznhs/x5GWcT8/dzbrcTlTcZt7IaytcwI3yxGJcTa0SczzCfmLSOv4WxdzUFzGfl7xzARUzXJDyATOjJFNzHn4b4dzJsNlSsDjYIrVDn9isiNb8vnMCoZrWaFvCSwVG8VvKphhHbsIgZPE+o82JYwFPhMqqCUW0oH3tfscae/BSNAr7hScXkcW04jUsVa6zia3FwTjCQR338bhljSOCqY7RkEUdpSpfKyCOO1ZZHXNfMntgS3HYtzKr/a7Yn7PZJrR6CgezglcP3R1+wWm2cqlI41YbBGeH3/JzB7HaFi6VrRH8fhn9QlcxM55dRyAAAAABJRU5ErkJggg=='
+CONSOLE_UNHIDE = 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAYCAYAAAAlBadpAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAsQAAALEBxi1JjQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABbSURBVDiN7c0xCoRAEAXRh55NkF1QD+5pFHbVRKNJZJCezGAKOuig6lOpBOjxx1lwP3QNFrSFgy3W9HywBVd3TPdaJHDkxEjgUUx8M4GQmAsUiYkRM4ZSsfI6LsddNmrLM3dAAAAAAElFTkSuQmCC'
+CONSOLE_HIDE = 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAYCAYAAAAlBadpAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAsQAAALEBxi1JjQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABgSURBVDiN7dChDYAwFAbhT2BogmUyRoDtYAVCwkgMAIa6pmkxCLjkd+9OPH6+TosBoVYMWHFiR/dEjCsKpMSiQE7MBkrEZCBgKxTjttszVYpxY4MZfe4ZCQ4sFfc/73IB07s9/4Aha1cAAAAASUVORK5CYII='
 
-FONT = ('font-awesome/Hack-Regular.ttf', 12)
-FONTB = ('font-awesome/Hack-Regular.ttf', 12, 'bold')
+FONT = ('../autoauditor/gui_files/font/Hack-Regular.ttf', 12)
+FONT_S = ('../autoauditor/gui_files/font/Hack-Regular.ttf', 11)
+FONTB = ('../autoauditor/gui_files/font/Hack-Regular.ttf', 12, 'bold')
 TEXT_DESCR_SIZE = (30, 1)
 TEXT_PY = 'Python Executable Path'
 TEXT_AA = 'AutoAuditor Path'
@@ -160,6 +182,7 @@ KEY_STOP_T = 'stop_t'
 KEY_WIZARD_B = 'wizard_b'
 KEY_WIZARD_T = 'wizard_t'
 KEY_CONSOLE = 'console'
+KEY_CONSOLE_CB = 'console_cb'
 
 COLOR_ENABLED = 'black'
 COLOR_DISABLED = 'grey'
@@ -168,8 +191,7 @@ BUTTON_COLOR = ('white', 'white')
 BUTTON_S_SIZE = (24, 24)
 BUTTON_M_SIZE = (32, 32)
 BUTTON_B_SIZE = (48, 48)
-
-PAD_EXEC_TEXT = ((10, 10), (10, 10))
+PAD_EXEC_TEXT = ((10, 10), (10, 0))
 PAD_TOP = ((5, 5), (20, 0))
 PAD_IT_TOP = ((5, 5), (2, 0))
 PAD_NO = ((0, 0), (0, 0))
@@ -180,16 +202,18 @@ EXEC_TEXT_SIZE = (10, 1)
 NO_BORDER = 0
 CENTER = 'center'
 NO_TEXT = ''
+LICENSE_TEXT_SIZE = (105, 675)
+LICENSE_COLUMN_SIZE = (950, 500)
 
 
 DEFAULT_PY = os.path.abspath('../config/autoauditor_venv/bin/python')
 DEFAULT_AA = os.path.abspath('../autoauditor/autoauditor.py')
-DEFAULT_LF = os.path.abspath('../config/output/msf.log')
-DEFAULT_LD = os.path.abspath('../config/output')
-DEFAULT_RC = os.path.abspath('../config/rc5.json')
-DEFAULT_VPN_CF = os.path.abspath('../config/client.ovpn')
-DEFAULT_BC_CF = os.path.abspath('../config/network.template.json')
-DEFAULT_BC_LF = os.path.abspath('../config/output/blockchain.log')
+DEFAULT_LF = os.path.abspath('output/msf.log')
+DEFAULT_LD = os.path.abspath('output')
+DEFAULT_RC = os.path.abspath('../config/rc.example.5vuln.json')
+DEFAULT_VPN_CF = os.path.abspath('../config/client.example.ovpn')
+DEFAULT_BC_CF = os.path.abspath('../config/network.example.json')
+DEFAULT_BC_LF = os.path.abspath('output/blockchain.log')
 
 _RED = '\033[91m'
 _YELLOW = '\033[93m'
@@ -198,13 +222,14 @@ _GREEN = '\033[92m'
 _CLEANC = '\033[0m'
 _NC = ''
 
+
 def log(color, string, end='\n', errcode=None):
     level = {
         'normal': '',
-        'succg' : '{}[+] {}'.format(_GREEN, _CLEANC),
-        'succb' : '{}[*] {}'.format(_BLUE, _CLEANC),
-        'warn'  : '{}[-] {}'.format(_YELLOW, _CLEANC),
-        'error' : '{}[!] {}'.format(_RED, _CLEANC)
+        'succg': '{}[+] {}'.format(_GREEN, _CLEANC),
+        'succb': '{}[*] {}'.format(_BLUE, _CLEANC),
+        'warn': '{}[-] {}'.format(_YELLOW, _CLEANC),
+        'error': '{}[!] {}'.format(_RED, _CLEANC)
     }
 
     print(level.get(color) + string, end=end, flush=True)
@@ -212,12 +237,16 @@ def log(color, string, end='\n', errcode=None):
     if errcode is not None:
         sys.exit(errcode)
 
+
 def check_privileges():
     user = pwd.getpwuid(os.geteuid()).pw_name
-    groups = [group.gr_name for group in grp.getgrall() if user in group.gr_mem]
+    groups = [group.gr_name for group in grp.getgrall()
+              if user in group.gr_mem]
 
     if 'docker' not in groups:
-        log('error', "User '{}' must belong to 'docker' group to communicate with docker API.".format(user), errcode=ENOPERM)
+        log('error', "User '{}' must belong to 'docker' group to communicate with docker API.".format(
+            user), errcode=ENOPERM)
+
 
 def print_options(exploit, adv=False):
     opt_l = exploit.options
@@ -231,7 +260,9 @@ def print_options(exploit, adv=False):
             if opt in exploit.missing_required:
                 sym = '{}* {}'.format(_RED, _CLEANC)
 
-        print("\t{}{}: {}".format(sym, opt, exploit[opt] if exploit[opt] is not None else ''))
+        print("\t{}{}: {}".format(
+            sym, opt, exploit[opt] if exploit[opt] is not None else ''))
+
 
 def correct_type(value):
     if value.isdigit():
@@ -239,6 +270,7 @@ def correct_type(value):
     if value.lower() in ('true', 'false'):
         return bool(strtobool(value))
     return value
+
 
 def shutdown(vpncont, msfcont):
     client = docker.from_env()
@@ -263,22 +295,32 @@ def shutdown(vpncont, msfcont):
     except docker.errors.NotFound:
         log('succg', ATNETNF)
     else:
-        net.remove()
-        log('succg', ATNETRM)
+        try:
+            net.remove()
+        except docker.errors.APIError:
+            log('warn', "Can not remove attacker_network. There are active endpoints.")
+        else:
+            log('succg', ATNETRM)
 
     log('succg', 'Exiting autoauditor.', errcode=NOERROR)
 
+
 def check_file_dir(outf, outd=None):
-    try:
-        os.makedirs(os.path.dirname(outf), exist_ok=True)
-    except PermissionError:
-        log('error', "Insufficient permission to create file path {}.".format(outf), errcode=EACCESS)
+    dirname = os.path.dirname(outf)
+    if dirname:
+        try:
+            os.makedirs(dirname, exist_ok=True)
+        except PermissionError:
+            log('error', "Insufficient permission to create file path {}.".format(
+                outf), errcode=EACCESS)
 
     if outd is not None:
         try:
             os.makedirs(outd, exist_ok=True)
         except PermissionError:
-            log('error', "Insufficient permission to create directory {}.".format(outd), errcode=EACCESS)
+            log('error', "Insufficient permission to create directory {}.".format(
+                outd), errcode=EACCESS)
+
 
 if __name__ == '__main__':
-    log('error', "Helper module. Not runnable.", errcode=EMODNR)
+    log('error', "Not standalone module. Run again from autoauditor.py.", errcode=EMODNR)

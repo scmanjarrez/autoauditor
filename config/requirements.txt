@@ -1,5 +1,5 @@
 msgpack==0.6.2
-pymetasploit3 >= 1.0.2
+pymetasploit3 >= 1.0.3
 docker >= 4.2.0
 aiogrpc >= 1.6
 cryptography >= 1.9

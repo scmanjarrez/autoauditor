@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+
+# query - Blockchain Query module.
+
+# Copyright (C) 2020 Sergio Chica Manjarrez.
+
+# This file is part of AutoAuditor.
+
+# AutoAuditor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# AutoAuditor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
 from blockchain import load_config
 import argparse
 import utils
@@ -11,22 +31,27 @@ CHAINCODENAME = "autoauditor"
 
 loop = asyncio.get_event_loop()
 
+
 def query(info, pretty, qtype, rid=None, org=None, date=None, db=None):
     user, client, peer, channel_name = info
 
     if qtype == 'id':
-        fcn='GetReportById'
-        args=[rid]
-        if db: args.append(db)
+        fcn = 'GetReportById'
+        args = [rid]
+        if db:
+            args.append(db)
     elif qtype == 'org':
-        fcn='GetReportsByOrganization'
-        args=[org]
-        if db: args.append(db)
+        fcn = 'GetReportsByOrganization'
+        args = [org]
+        if db:
+            args.append(db)
     else:
-        fcn='GetReportsByDate'
-        args=[date]
-        if org: args.append(org)
-        if db: args.append(db)
+        fcn = 'GetReportsByDate'
+        args = [date]
+        if org:
+            args.append(org)
+        if db:
+            args.append(db)
 
     try:
         response = loop.run_until_complete(client.chaincode_query(
@@ -43,18 +68,27 @@ def query(info, pretty, qtype, rid=None, org=None, date=None, db=None):
         if not pretty:
             print(response)
         else:
-            print(json.dumps(json.loads(response), indent=4))
+            reports = json.loads(response)
+            rep_list = []
+            for r in reports:
+                r['report'] = json.loads(r['report'])
+                rep_list.append(r)
+            print(json.dumps(rep_list, indent=4))
+
 
 def verify_arguments(args):
     if args.query == 'id':
         if not args.reportid:
-            utils.log('error', "Missing argument: reportid.", errcode=utils.EMISSINGARG)
+            utils.log('error', "Missing argument: reportid.",
+                      errcode=utils.EMISSINGARG)
     elif args.query == 'org':
         if not args.orgname:
-            utils.log('error', "Missing argument: orgname.", errcode=utils.EMISSINGARG)
+            utils.log('error', "Missing argument: orgname.",
+                      errcode=utils.EMISSINGARG)
     else:
         if not args.date:
-            utils.log('error', "Missing argument: date.", errcode=utils.EMISSINGARG)
+            utils.log('error', "Missing argument: date.",
+                      errcode=utils.EMISSINGARG)
 
 
 if __name__ == '__main__':
@@ -86,7 +120,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     verify_arguments(args)
 
-    assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(args.netconfigfile)
+    assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(
+        args.netconfigfile)
 
     info = load_config(args.netconfigfile)
-    query(info, args.pretty, args.query, args.reportid, args.orgname, args.date, args.database)
+    query(info, args.pretty, args.query, args.reportid,
+          args.orgname, args.date, args.database)

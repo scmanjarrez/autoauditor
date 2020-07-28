@@ -192,7 +192,7 @@ store_data()
     org=$3
     date=$4
 
-    export REPORT=$(echo -n "{\"id\": \"$id\", \"org\": \"$org\", \"date\": \"$date\", \"nvuln\": 5, \"report\": \"basic_report\"}" | base64 | tr -d \\n)
+    export REPORT=$(echo -n "{\"id\": \"$id\", \"org\": \"$org\", \"date\": \"${date:0:7}\", \"nvuln\": 5, \"report\": \"basic_report\"}" | base64 | tr -d \\n)
     export REPORTPRIVATE=$(echo -n "{\"id\": \"$id\", \"private\": true, \"org\": \"$org\", \"date\": \"$date\", \"nvuln\": 5, \"report\": \"private_report\"}" | base64 | tr -d \\n)
 
     peer chaincode invoke \
@@ -364,7 +364,7 @@ query_data_date()
 {
     as_$1
     org=$3
-    date=$4
+    date=${4:0:7}
 
     output=$(peer chaincode query \
         -C $CHANNEL_NAME \

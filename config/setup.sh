@@ -143,9 +143,6 @@ gen_venv()
     git submodule update --remote > /dev/null
     cp -r $(pwd)/$hfc_sdk_py/hfc $aa_venv/lib/python3.*/site-packages
     
-    echo -e "${blue}Using backup/msrpc.py backup until pymetasploit3 gets updated.$nc"
-    cp $tmp_msfrpc $aa_venv/lib/python3.*/site-packages/pymetasploit3/
-
     echo -e "${blue}Using backup/channel.py backup until fabric-sdk-py gets updated.$nc"
     cp $tmp_hfc $aa_venv/lib/python3.*/site-packages/hfc/util/
 

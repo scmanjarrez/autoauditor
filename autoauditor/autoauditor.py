@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+
+# autoauditor - Main program.
+
+# Copyright (C) 2020 Sergio Chica Manjarrez.
+
+# This file is part of AutoAuditor.
+
+# AutoAuditor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# AutoAuditor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
 import sys
 import os
 import argparse
@@ -52,6 +72,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    utils.log('normal',
+              """
+AutoAuditor  Copyright (C) 2020  Sergio Chica Manjarrez
+This program comes with ABSOLUTELY NO WARRANTY; for details check COPYING.
+This is free software, and you are welcome to redistribute it
+under certain conditions; check COPYING for details.
+""")
+
     vpncont = None
     msfcont = None
 
@@ -59,21 +87,24 @@ if __name__ == '__main__':
         utils._GREEN = utils._BLUE = utils._YELLOW = utils._RED = utils._CLEANC = utils._NC
 
     if args.ovpn is not None:
-        assert os.path.isfile(args.ovpn), "File {} does not exist.".format(args.ovpn)
+        assert os.path.isfile(
+            args.ovpn), "File {} does not exist.".format(args.ovpn)
         vpncont = vpn.setup_vpn(args.ovpn, args.stop)
 
     utils.check_file_dir(args.outfile, args.outdir)
 
-    msfcont = metasploit.start_msfrpcd(args.ovpn is not None, args.outdir, args.stop)
+    msfcont = metasploit.start_msfrpcd(
+        args.ovpn is not None, args.outdir, args.stop)
 
     if args.stop:
         utils.shutdown(vpncont, msfcont)
 
     if args.genrc is not None:
         msfclient = metasploit.get_msf_connection('dummypass')
-        wizard.gen_resource_file(msfclient, args.genrc)
+        wizard.generate_resources_file(msfclient, args.genrc)
     else:
-        assert os.path.isfile(args.rcfile), "File {} does not exist. Check rc.json.template or generate with -g.".format(args.rcfile)
+        assert os.path.isfile(
+            args.rcfile), "File {} does not exist. Check rc.json.template or generate with -g.".format(args.rcfile)
         metasploit.launch_metasploit(args.rcfile, args.outfile)
 
     if args.hyperledger:

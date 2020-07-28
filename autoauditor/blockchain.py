@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+
+# blockchain - Blockchain module.
+
+# Copyright (C) 2020 Sergio Chica Manjarrez.
+
+# This file is part of AutoAuditor.
+
+# AutoAuditor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# AutoAuditor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
 from hfc.fabric import Client
 from hfc.fabric_network import wallet
 from hfc.fabric_ca.caservice import Enrollment
@@ -34,30 +54,38 @@ rprtdateregex = re.compile(r'^#{14}\s(?P<date>[\d:\-\s\+\.]+)\s#{14}$')
 rhostregex = re.compile(r'^RHOSTS?\s+=>\s+(?P<ip>[\d\.]+)$')
 affected1 = re.compile(r'^\[\+\].*$')
 affected2 = re.compile(r'session\s\d+\sopened')
-affected3 = re.compile(r'uid=\d+\([a-z_][a-z0-9_-]*\)\s+gid=\d+\([a-z_][a-z0-9_-]*\)\s+groups=\d+\([a-z_][a-z0-9_-]*\)(?:,\d+\([a-z_][a-z0-9_-]*\))*')
+affected3 = re.compile(
+    r'uid=\d+\([a-z_][a-z0-9_-]*\)\s+gid=\d+\([a-z_][a-z0-9_-]*\)\s+groups=\d+\([a-z_][a-z0-9_-]*\)(?:,\d+\([a-z_][a-z0-9_-]*\))*')
 
 loop = asyncio.get_event_loop()
+
 
 def get_cve(exploit):
     try:
         req = requests.get(RAPID7 + exploit)
     except requests.exceptions.ConnectionError:
-        utils.log('error', 'Connection error. Check internet connection.', errcode=utils.ECONN)
+        utils.log(
+            'error', 'Connection error. Check internet connection.', errcode=utils.ECONN)
 
     soup = BeautifulSoup(req.text, features='html.parser')
-    references = soup.find('section', attrs={'class': 'vulndb__references'}).find_all('a')
-    cve_vuln = [ref.string for ref in references if cveregex.match(ref.string) is not None]
+    references = soup.find(
+        'section', attrs={'class': 'vulndb__references'}).find_all('a')
+    cve_vuln = [ref.string for ref in references if cveregex.match(
+        ref.string) is not None]
     return cve_vuln
+
 
 def get_score(cve):
     try:
         req = requests.get(CVEDETAILS + cve)
     except requests.exceptions.ConnectionError:
-        utils.log('error', 'Connection error. Check internet connection.', errcode=utils.ECONN)
+        utils.log(
+            'error', 'Connection error. Check internet connection.', errcode=utils.ECONN)
 
     soup = BeautifulSoup(req.text, features='html.parser')
     score = soup.find('div', attrs={'class': 'cvssbox'}).string
     return score
+
 
 def parse_report(rep_file):
     mod = {}
@@ -95,6 +123,7 @@ def parse_report(rep_file):
                 affected = False
     return mod
 
+
 def generate_reports(rep):
     info = parse_report(rep)
     report = {}
@@ -113,13 +142,17 @@ def generate_reports(rep):
         nvuln += len(cve_sc)
         for elem in cve_sc:
             cve, score = elem
-            affected_mach = [mach[0] for mach in info[mod] if mach[1]]  # (1.1.1.1, True)
-            report['privrep'][cve] = {'Score': score, 'MSFmodule': mod, 'AffectedMachines': affected_mach}
-            report['pubrep'][cve] = {'Score': score, 'AffectedMachines': len(affected_mach)}
+            affected_mach = [mach[0]
+                             for mach in info[mod] if mach[1]]  # (1.1.1.1, True)
+            report['privrep'][cve] = {
+                'Score': score, 'MSFmodule': mod, 'AffectedMachines': affected_mach}
+            report['pubrep'][cve] = {'Score': score,
+                                     'AffectedMachines': len(affected_mach)}
 
     report['nvuln'] = nvuln
 
     return report
+
 
 def store_report(info, rep_file, out_file):
     user, client, peer, channel_name = info
@@ -158,7 +191,8 @@ def store_report(info, rep_file, out_file):
         aarep['report'] = json.dumps(report[rep])  # must be serialized
         tmprep = json.dumps(aarep).encode()
 
-        utils.log('succb', "Storing {} report: {}".format("private" if aarep['private'] else "public", rephash))
+        utils.log('succb', "Storing {} report: {}".format(
+            "private" if aarep['private'] else "public", rephash))
 
         try:
             response = loop.run_until_complete(client.chaincode_invoke(
@@ -171,17 +205,21 @@ def store_report(info, rep_file, out_file):
                 transient_map={NEWREPKEYWORD: tmprep}
             ))
         except Exception as e:
-            utils.log('error', "Error storing report {}: {}".format(rephash, str(e)))
+            utils.log('error', "Error storing report {}: {}".format(
+                rephash, str(e)))
         else:
             if not response:
                 utils.log('succg', "Report stored successfully in blockchain.")
             elif 'already' in response:
                 utils.log('warn', "Report already stored in blockchain.")
             elif 'failed' in response:
-                utils.log('error', "Error storing report {}: {}".format(rephash, response))
+                utils.log('error', "Error storing report {}: {}".format(
+                    rephash, response))
             else:
-                utils.log('error', "Unknown error storing report {}: {}".format(rephash, response))
+                utils.log('error', "Unknown error storing report {}: {}".format(
+                    rephash, response))
     out.close()
+
 
 def get_net_info(config, *key_path):
     if config:
@@ -189,8 +227,10 @@ def get_net_info(config, *key_path):
             try:
                 config = config[k]
             except KeyError:
-                utils.log('error', "No key path {key_path} exists in network info", errcode=utils.EBADNETFMT)
+                utils.log(
+                    'error', "No key path {key_path} exists in network info", errcode=utils.EBADNETFMT)
         return config
+
 
 def load_config(config):
     _logger = logging.getLogger('hfc.fabric.client')
@@ -225,7 +265,8 @@ def load_config(config):
         with open(get_net_info(network, 'client', 'credentials', 'cert'), 'rb') as f:
             crt = f.read()
         with open(get_net_info(network, 'client', 'credentials', 'private_key'), 'rb') as f:
-            pk = load_pem_private_key(f.read(), password=None, backend=default_backend())
+            pk = load_pem_private_key(
+                f.read(), password=None, backend=default_backend())
 
         enroll = Enrollment(private_key=pk, enrollmentCert=crt)
 
@@ -239,6 +280,7 @@ def load_config(config):
                                              channel_name))
 
     return (user, client_discovery, peer, channel_name)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -255,8 +297,10 @@ if __name__ == '__main__':
                         help="Network configuration file.")
 
     args = parser.parse_args()
-    assert os.path.isfile(args.reportfile), "File {} does not exist.".format(args.reportfile)
-    assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(args.netconfigfile)
+    assert os.path.isfile(
+        args.reportfile), "File {} does not exist.".format(args.reportfile)
+    assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(
+        args.netconfigfile)
 
     info = load_config(args.netconfigfile)
 
