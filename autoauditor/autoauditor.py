@@ -75,9 +75,9 @@ if __name__ == '__main__':
     utils.log('normal',
               """
 AutoAuditor  Copyright (C) 2020  Sergio Chica Manjarrez
-This program comes with ABSOLUTELY NO WARRANTY; for details check COPYING.
+This program comes with ABSOLUTELY NO WARRANTY; for details check file LICENSE.
 This is free software, and you are welcome to redistribute it
-under certain conditions; check COPYING for details.
+under certain conditions; check file LICENSE for details.
 """)
 
     vpncont = None

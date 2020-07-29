@@ -249,7 +249,7 @@ This is free software, and you are welcome to redistribute it
 under certain conditions; check below for details.
 """
 
-with open('../COPYING', 'r') as f:
+with open(DEFAULT_LICENSE, 'r') as f:
     gplv3_full = f.read().replace('.  ', '. ').replace('  ', '')
 
 gplv3_full_layout = [

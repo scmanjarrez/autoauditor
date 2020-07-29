@@ -214,6 +214,7 @@ DEFAULT_RC = os.path.abspath('../config/rc.example.5vuln.json')
 DEFAULT_VPN_CF = os.path.abspath('../config/client.example.ovpn')
 DEFAULT_BC_CF = os.path.abspath('../config/network.example.json')
 DEFAULT_BC_LF = os.path.abspath('output/blockchain.log')
+DEFAULT_LICENSE = os.path.abspath('../LICENSE')
 
 _RED = '\033[91m'
 _YELLOW = '\033[93m'
