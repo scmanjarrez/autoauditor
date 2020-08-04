@@ -28,6 +28,7 @@ import sys
 import docker
 import time
 
+_loot_dir = None
 
 def get_msf_connection(passwd):
     try:
@@ -40,7 +41,10 @@ def get_msf_connection(passwd):
             'error', "Metasploit container authentication error. Check password.", errcode=utils.EMSPASS)
 
 
-def start_msfrpcd(ovpn, loot_dir, stop):
+def start_msfrpcd(loot_dir, ovpn=False, stop=False):
+    global _loot_dir
+    _loot_dir = loot_dir
+
     dockercl = docker.from_env()
     msfcont = None
 
@@ -65,8 +69,13 @@ def start_msfrpcd(ovpn, loot_dir, stop):
     utils.log('succb', utils.MSCSTAT, end='\r')
 
     cont_l = dockercl.containers.list(filters={'name': 'msfrpc'})
-    if not cont_l:
-        if not stop:
+    if cont_l:
+        utils.log('succg', utils.MSCR)
+        msfcont = cont_l[0]
+    else:
+        if stop:  # if want to stop but already stopped, don't start again
+            utils.log('succg', utils.MSCNR)
+        else:
             utils.log('warn', utils.MSCSTART, end='\r')
 
             loot = os.path.join(os.getcwd(), loot_dir)
@@ -86,19 +95,17 @@ def start_msfrpcd(ovpn, loot_dir, stop):
                                                   ports={55553: 55553})
             time.sleep(10)
             utils.log('succg', utils.MSCDONE)
-        else:
-            utils.log('succg', utils.MSCNR)
-    else:
-        utils.log('succg', utils.MSCR)
-        msfcont = cont_l[0]
     return msfcont
 
 
-def launch_metasploit(rc_file, log_file):
-    msfcl = get_msf_connection('dummypass')
-
+def launch_metasploit(msfcl, rc_file, log_file):
+    print(_loot_dir)
     with open(rc_file, 'r') as f:
-        rc = json.load(f)
+        try:
+            rc = json.load(f)
+        except json.JSONDecodeError:
+            utils.log('error', "Wrong resources script file format. Check {}.".format(
+                utils.RC_TEMPLATE), errcode=utils.EBADRCFMT)
 
     with open(log_file, 'w') as f:
         header = "#" * 62

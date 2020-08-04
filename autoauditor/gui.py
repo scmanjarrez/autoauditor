@@ -22,7 +22,10 @@
 from utils import *
 import PySimpleGUI as sg
 import subprocess
+import metasploit
+import wizard
 import sys
+import re
 
 sg.theme('Reddit')  # Add a touch of color
 # All the stuff inside your window.
@@ -41,14 +44,14 @@ def browse(text, key, target, image, image_size, color, border, disabled=False, 
     return bt
 
 
-def input_text(default, key, disabled=False, font=None, pad=None):
-    it = sg.InputText(default, key=key, disabled=disabled, font=font, pad=pad)
+def input_text(default, key, disabled=False, font=None, pad=None, visible=True):
+    it = sg.InputText(default, key=key, disabled=disabled, font=font, pad=pad, visible=visible)
     return it
 
 
-def button(text, key, image, image_size, color, border, tooltip, pad=None, disabled=False):
+def button(text, key, image, image_size, color, border, tooltip, pad=None, disabled=False, visible=True):
     bt = sg.Button(text, key=key, image_size=image_size, button_color=color,
-                   border_width=border, image_data=image, tooltip=tooltip, pad=pad, disabled=disabled)
+                   border_width=border, image_data=image, tooltip=tooltip, pad=pad, disabled=disabled, visible=visible)
     return bt
 
 
@@ -101,23 +104,23 @@ def run_command(console, cmd, timeout=None, window=None):
 
 
 py_fb = browse(NO_TEXT, KEY_PY_FB, KEY_INPUT_PY, FILEPNG, BUTTON_M_SIZE,
-               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TOPBOT)
+               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
 py_i_b = button(NO_TEXT, KEY_PY_I_B, INFO, BUTTON_S_SIZE,
                 BUTTON_COLOR, NO_BORDER, TOOLTIP_PY)
 aa_fb = browse(NO_TEXT, KEY_AA_FB, KEY_INPUT_AA, FILEPNG, BUTTON_M_SIZE,
-               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TOPBOT)
+               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
 aa_i_b = button(NO_TEXT, KEY_AA_I_B, INFO, BUTTON_S_SIZE,
                 BUTTON_COLOR, NO_BORDER, TOOLTIP_AA)
 lf_fb = browse(NO_TEXT, KEY_LF_FB, KEY_INPUT_LF, FILEPNG, BUTTON_M_SIZE,
-               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TOPBOT)
+               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
 lf_i_b = button(NO_TEXT, KEY_LF_I_B, INFO, BUTTON_S_SIZE,
                 BUTTON_COLOR, NO_BORDER, TOOLTIP_LF)
 ld_fb = browse(NO_TEXT, KEY_LD_FB, KEY_INPUT_LD, FOLDERPNG, BUTTON_M_SIZE, BUTTON_COLOR,
-               NO_BORDER, tooltip=TOOLTIP_FOLDER_BROWSER, filetype=False, pad=PAD_NO_TOPBOT)
+               NO_BORDER, tooltip=TOOLTIP_FOLDER_BROWSER, filetype=False, pad=PAD_NO_TB)
 ld_i_b = button(NO_TEXT, KEY_LD_I_B, INFO, BUTTON_S_SIZE,
                 BUTTON_COLOR, NO_BORDER, TOOLTIP_LD)
 rc_fb = browse(NO_TEXT, KEY_RC_FB, KEY_INPUT_RC, FILEPNG, BUTTON_M_SIZE,
-               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TOPBOT)
+               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
 rc_i_b = button(NO_TEXT, KEY_RC_I_B, INFO, BUTTON_S_SIZE,
                 BUTTON_COLOR, NO_BORDER, TOOLTIP_RC)
 
@@ -126,24 +129,24 @@ vpn_cb = ImageCheckBox(image_on=CBON, image_off=CBOFF, image_size=BUTTON_S_SIZE,
 vpn_cf_i_b = button(NO_TEXT, KEY_VPN_CF_I_B, INFO, BUTTON_S_SIZE,
                     BUTTON_COLOR, NO_BORDER, TOOLTIP_VPN_CF, disabled=True)
 vpn_cf_it = input_text(DEFAULT_VPN_CF, KEY_INPUT_VPN_CF,
-                       disabled=True, font=FONT, pad=PAD_IT_TOP)
+                       disabled=True, font=FONT, pad=PAD_IT_T)
 vpn_cf_fb = browse(NO_TEXT, KEY_VPN_CF_FB, KEY_INPUT_VPN_CF, FILEPNG, BUTTON_M_SIZE,
-                   BUTTON_COLOR, NO_BORDER, disabled=True, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TOPBOT)
+                   BUTTON_COLOR, NO_BORDER, disabled=True, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
 
 bc_cb = ImageCheckBox(image_on=CBON, image_off=CBOFF, image_size=BUTTON_S_SIZE,
                       key=KEY_BC_CB, button_color=BUTTON_COLOR, border_width=NO_BORDER, enabled=False)
 bc_cf_i_b = button(NO_TEXT, KEY_BC_CF_I_B, INFO, BUTTON_S_SIZE,
                    BUTTON_COLOR, NO_BORDER, TOOLTIP_BC_CF, disabled=True)
 bc_cf_it = input_text(DEFAULT_BC_CF, KEY_INPUT_BC_CF,
-                      disabled=True, font=FONT, pad=PAD_IT_TOP)
+                      disabled=True, font=FONT, pad=PAD_IT_T)
 bc_cf_fb = browse(NO_TEXT, KEY_BC_CF_FB, KEY_INPUT_BC_CF, FILEPNG, BUTTON_M_SIZE,
-                  BUTTON_COLOR, NO_BORDER, disabled=True, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TOPBOT)
+                  BUTTON_COLOR, NO_BORDER, disabled=True, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
 bc_lf_i_b = button(NO_TEXT, KEY_BC_LF_I_B, INFO, BUTTON_S_SIZE,
                    BUTTON_COLOR, NO_BORDER, TOOLTIP_BC_LF, disabled=True)
 bc_lf_it = input_text(DEFAULT_BC_LF, KEY_INPUT_BC_LF,
-                      disabled=True, font=FONT, pad=PAD_IT_TOP)
+                      disabled=True, font=FONT, pad=PAD_IT_T)
 bc_lf_fb = browse(NO_TEXT, KEY_BC_LF_FB, KEY_INPUT_BC_LF, FILEPNG, BUTTON_M_SIZE,
-                  BUTTON_COLOR, NO_BORDER, disabled=True, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TOPBOT)
+                  BUTTON_COLOR, NO_BORDER, disabled=True, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
 
 sc_cb = ImageCheckBox(image_on=CBON, image_off=CBOFF, image_size=BUTTON_S_SIZE,
                       key=KEY_SC_CB, button_color=BUTTON_COLOR, border_width=NO_BORDER, enabled=True)
@@ -154,37 +157,37 @@ console = sg.Multiline(NO_TEXT, key=KEY_CONSOLE, size=CONSOLE_SIZE,
                        pad=CONSOLE_PAD, visible=False, font=FONT, autoscroll=True)
 
 mandatory_layout = [
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)],
-    [sg.Text(TEXT_PY, key=KEY_PY_T, size=TEXT_DESCR_SIZE, font=FONTB), py_i_b,
-     input_text(DEFAULT_PY, KEY_INPUT_PY, font=FONT, pad=PAD_IT_TOP), py_fb],
-    [sg.Text(TEXT_AA, key=KEY_AA_T, size=TEXT_DESCR_SIZE, font=FONTB), aa_i_b,
-     input_text(DEFAULT_AA, KEY_INPUT_AA, font=FONT, pad=PAD_IT_TOP), aa_fb],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)],
-    [sg.Text(TEXT_LF, key=KEY_LF_T, size=TEXT_DESCR_SIZE, font=FONTB), lf_i_b,
-     input_text(DEFAULT_LF, KEY_INPUT_LF, font=FONT, pad=PAD_IT_TOP), lf_fb],
-    [sg.Text(TEXT_LD, key=KEY_LD_T, size=TEXT_DESCR_SIZE, font=FONTB), ld_i_b,
-     input_text(DEFAULT_LD, KEY_INPUT_LD, font=FONT, pad=PAD_IT_TOP), ld_fb],
-    [sg.Text(TEXT_RC, key=KEY_RC_T, size=TEXT_DESCR_SIZE, font=FONTB), rc_i_b,
-     input_text(DEFAULT_RC, KEY_INPUT_RC, font=FONT, pad=PAD_IT_TOP), rc_fb],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)]
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
+    [sg.Text(TEXT_PY, key=KEY_PY_T, size=TEXT_DESC_SIZE, font=FONTB), py_i_b,
+     input_text(DEFAULT_PY, KEY_INPUT_PY, font=FONT, pad=PAD_IT_T), py_fb],
+    [sg.Text(TEXT_AA, key=KEY_AA_T, size=TEXT_DESC_SIZE, font=FONTB), aa_i_b,
+     input_text(DEFAULT_AA, KEY_INPUT_AA, font=FONT, pad=PAD_IT_T), aa_fb],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
+    [sg.Text(TEXT_LF, key=KEY_LF_T, size=TEXT_DESC_SIZE, font=FONTB), lf_i_b,
+     input_text(DEFAULT_LF, KEY_INPUT_LF, font=FONT, pad=PAD_IT_T), lf_fb],
+    [sg.Text(TEXT_LD, key=KEY_LD_T, size=TEXT_DESC_SIZE, font=FONTB), ld_i_b,
+     input_text(DEFAULT_LD, KEY_INPUT_LD, font=FONT, pad=PAD_IT_T), ld_fb],
+    [sg.Text(TEXT_RC, key=KEY_RC_T, size=TEXT_DESC_SIZE, font=FONTB), rc_i_b,
+     input_text(DEFAULT_RC, KEY_INPUT_RC, font=FONT, pad=PAD_IT_T), rc_fb],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)]
 ]
 
 vpn_layout = [
     [vpn_cb, sg.Text(TEXT_VPN_CB, key=KEY_VPN_CB_T,
                      text_color=COLOR_DISABLED, font=FONTB, enable_events=True)],
-    [sg.Text(TEXT_VPN_CF, key=KEY_VPN_CF_T, size=TEXT_DESCR_SIZE, font=FONTB,
+    [sg.Text(TEXT_VPN_CF, key=KEY_VPN_CF_T, size=TEXT_DESC_SIZE, font=FONTB,
              text_color=COLOR_DISABLED), vpn_cf_i_b, vpn_cf_it, vpn_cf_fb],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)]
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)]
 ]
 
 blockchain_layout = [
     [bc_cb, sg.Text(TEXT_BC_CB, key=KEY_BC_CB_T,
                     text_color=COLOR_DISABLED, font=FONTB, enable_events=True)],
-    [sg.Text(TEXT_BC_CF, key=KEY_BC_CF_T, size=TEXT_DESCR_SIZE, font=FONTB,
+    [sg.Text(TEXT_BC_CF, key=KEY_BC_CF_T, size=TEXT_DESC_SIZE, font=FONTB,
              text_color=COLOR_DISABLED), bc_cf_i_b, bc_cf_it, bc_cf_fb],
-    [sg.Text(TEXT_BC_LF, key=KEY_BC_LF_T, size=TEXT_DESCR_SIZE, font=FONTB,
+    [sg.Text(TEXT_BC_LF, key=KEY_BC_LF_T, size=TEXT_DESC_SIZE, font=FONTB,
              text_color=COLOR_DISABLED), bc_lf_i_b, bc_lf_it, bc_lf_fb],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
 
     [sc_cb, sg.Text(TEXT_SC_CB, key=KEY_SC_CB_T,
                     text_color=COLOR_ENABLED, font=FONTB,  enable_events=True)]
@@ -192,22 +195,22 @@ blockchain_layout = [
 
 button_layout = [
     [
-        button(NO_TEXT, KEY_WIZARD_B, WIZARD, BUTTON_B_SIZE,
-               BUTTON_COLOR, NO_BORDER, TOOLTIP_WIZARD, PAD_TOP),
-        sg.Text(NO_TEXT, size=EXEC_TEXT_SIZE, pad=PAD_NO),
-        button(NO_TEXT, KEY_START_B, PLAY, BUTTON_B_SIZE,
-               BUTTON_COLOR, NO_BORDER, TOOLTIP_START, PAD_TOP),
-        sg.Text(NO_TEXT, size=EXEC_TEXT_SIZE, pad=PAD_NO),
-        button(NO_TEXT, KEY_STOP_B, STOP, BUTTON_B_SIZE,
-               BUTTON_COLOR, NO_BORDER, TOOLTIP_STOP, PAD_TOP),
+        button(NO_TEXT, KEY_WIZARD_B, WIZARD, BUTTON_L_SIZE,
+               BUTTON_COLOR, NO_BORDER, TOOLTIP_WIZARD, PAD_T),
+        sg.Text(NO_TEXT, size=EXEC_TEXT_SIZE_S, pad=PAD_NO),
+        button(NO_TEXT, KEY_START_B, PLAY, BUTTON_L_SIZE,
+               BUTTON_COLOR, NO_BORDER, TOOLTIP_START, PAD_T),
+        sg.Text(NO_TEXT, size=EXEC_TEXT_SIZE_S, pad=PAD_NO),
+        button(NO_TEXT, KEY_STOP_B, STOP, BUTTON_L_SIZE,
+               BUTTON_COLOR, NO_BORDER, TOOLTIP_STOP, PAD_T),
     ],
     [
-        sg.Text(TEXT_WIZARD, key=KEY_WIZARD_T, size=EXEC_TEXT_SIZE,
-                font=FONTB, pad=PAD_EXEC_TEXT, justification=CENTER),
+        sg.Text(TEXT_WIZARD, key=KEY_WIZARD_T, size=EXEC_TEXT_SIZE_S,
+                font=FONTB, pad=PAD_EXEC_TEXT, justification=CENTER, enable_events=True),
         sg.Text(TEXT_START, key=KEY_START_T, font=FONTB,
-                size=EXEC_TEXT_SIZE, pad=PAD_EXEC_TEXT, justification=CENTER),
+                size=EXEC_TEXT_SIZE_S, pad=PAD_EXEC_TEXT, justification=CENTER, enable_events=True),
         sg.Text(TEXT_STOP, key=KEY_STOP_T, font=FONTB,
-                size=EXEC_TEXT_SIZE, pad=PAD_EXEC_TEXT, justification=CENTER)
+                size=EXEC_TEXT_SIZE_S, pad=PAD_EXEC_TEXT, justification=CENTER, enable_events=True)
     ],
     [sg.Frame(NO_TEXT, [[sg.Text(NO_TEXT, size=(110, 1), pad=PAD_NO),
                          console_cb]], border_width=NO_BORDER)],
@@ -222,23 +225,23 @@ autoauditor_layout = [
 ]
 
 about_layout = [
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
     [sg.Text(ABOUT_NAME, font=FONTB)],
     [sg.Text(ABOUT_VERSION, font=FONTB)],
     [sg.Text(NO_TEXT)],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
     [sg.Text(ABOUT_AUTHOR, font=FONT)],
     [sg.Text(ABOUT_LAB, font=FONT)],
     [sg.Text(ABOUT_DEPARTMENT, font=FONT)],
     [sg.Text(ABOUT_UC3M, font=FONT)],
     [sg.Text(ABOUT_LOCATION, font=FONT)],
     [sg.Text(NO_TEXT)],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
     [sg.Text(ABOUT_ACKNOWLEDGEMENT, font=FONT, justification=CENTER)],
     [sg.Text(NO_TEXT)],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TOPBOT)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
     [sg.Text(ABOUT_YEAR, font=FONT)],
 ]
 
@@ -259,7 +262,7 @@ gplv3_full_layout = [
 license_layout = [
     [sg.Text(gplv3, font=FONT, justification=CENTER)],
     [sg.Column(gplv3_full_layout,
-               scrollable=True, size=LICENSE_COLUMN_SIZE, vertical_scroll_only=True, justification=CENTER, background_color=COLOR_TAB_DISABLED, pad=PAD_TOP)]
+               scrollable=True, size=LICENSE_COLUMN_SIZE, vertical_scroll_only=True, justification=CENTER, background_color=COLOR_TAB_DISABLED, pad=PAD_T)]
 ]
 
 
@@ -290,6 +293,7 @@ def shrink_enlarge_window():
         window.size = window_console_size
     else:
         window.size = window_no_console_size
+    window.refresh()
 
 
 # Event Loop to process "events" and get the "values" of the inputs
@@ -311,7 +315,7 @@ while True:
     if event == KEY_SC_CB or event == KEY_SC_CB_T:
         switch(sc_cb, KEY_SC_CB_T, KEY_SC_CB_T)
 
-    if event == KEY_START_B:
+    if event == KEY_START_B or event == KEY_START_T:
         cmd = [
             window[KEY_INPUT_PY].Get(),
             window[KEY_INPUT_AA].Get(),
@@ -343,7 +347,7 @@ while True:
             shrink_enlarge_window()
         run_command(console, cmd=" ".join(cmd), window=window)
 
-    if event == KEY_STOP_B:
+    if event == KEY_STOP_B or event == KEY_STOP_T:
         cmd = [
             window[KEY_INPUT_PY].Get(),
             window[KEY_INPUT_AA].Get(),
@@ -356,7 +360,8 @@ while True:
                     '-v', window[KEY_INPUT_VPN_CF].Get()
                 ]
             )
-        console(visible=True)
+        if not console_cb.enabled:
+            shrink_enlarge_window()
         errcode = run_command(console, cmd=" ".join(cmd), window=window)
         if errcode == 0:
             sg.Popup('AutoAuditor finished without errors.', title='Success')
@@ -464,7 +469,136 @@ while True:
     if event == KEY_CONSOLE_CB:
         shrink_enlarge_window()
 
-    if event == KEY_WIZARD_B:
-        wizard_layout = []
-        sg.Popup('Wizard GUI not implemented yet!', title='Error')
+    if event == KEY_WIZARD_B or event == KEY_WIZARD_T:
+        if not console_cb.enabled:
+            shrink_enlarge_window()
+        console_log(window, console)
+
+        msfcont = metasploit.start_msfrpcd(KEY_INPUT_LD)
+        msfclient = metasploit.get_msf_connection(DEFAULT_MSFRPC_PASSWD)
+        mtype = None
+        mname = None
+        mod = None
+
+        mt_i_b = button(NO_TEXT, KEY_MT_I_B, INFO, BUTTON_S_SIZE,
+                        BUTTON_COLOR, NO_BORDER, TOOLTIP_MT)
+        mn_i_b = button(NO_TEXT, KEY_MN_I_B, INFO, BUTTON_S_SIZE,
+                        BUTTON_COLOR, NO_BORDER, TOOLTIP_MN)
+
+        mod_layout = [[sg.Frame(NO_TEXT, [[
+            sg.InputText(str(i), size=TEXT_DESC_SIZE_L, pad=PAD_NO, disabled_readonly_background_color=COLOR_IT_AS_T,
+                         readonly=True, border_width=NO_BORDER, font=FONT, key=KEY_MOD_NAME+str(i)),
+            button(NO_TEXT, KEY_MOD_EDIT+str(i), EDIT, BUTTON_M_SIZE,
+                   BUTTON_COLOR, NO_BORDER, TOOLTIP_MOD_EDIT, pad=PAD_MOD),
+            button(NO_TEXT, KEY_MOD_REM+str(i), REMOVE, BUTTON_M_SIZE,
+                   BUTTON_COLOR, NO_BORDER, TOOLTIP_MOD_REMOVE)
+        ]], visible=False, pad=PAD_NO, border_width=NO_BORDER, key=KEY_MOD_FRAME+str(i), element_justification=CENTER)] for i in range(MAX_MODULES)]
+
+        wizard_layout = [
+            [sg.Text(NO_TEXT, font=FONT, pad=PAD_NO_TB)],
+            [sg.Text(TEXT_MODULE_TYPE, font=FONTB, size=TEXT_DESC_SIZE), sg.DropDown(
+                MODULE_TYPES, size=EXEC_TEXT_SIZE_L, font=FONT, enable_events=True, key=KEY_MODULE_TYPE, readonly=True)],
+            [sg.Text(TEXT_MODULE_NAME, font=FONTB, size=TEXT_DESC_SIZE), sg.DropDown(
+                NO_TEXT, size=EXEC_TEXT_SIZE_L, font=FONT, key=KEY_MODULE_NAME, readonly=True)],
+            [sg.Text(NO_TEXT, font=FONT, pad=PAD_NO)],
+            [sg.Column(mod_layout, size=OPT_MOD_COLUMN_SIZE, element_justification=CENTER, pad=PAD_NO, justification=CENTER, scrollable=True, vertical_scroll_only=True, key=KEY_MOD_COL)],
+            [sg.Text(NO_TEXT, font=FONT, pad=PAD_NO)],
+            [button(NO_TEXT, KEY_MOD_ADD, ADD, BUTTON_L_SIZE, BUTTON_COLOR, NO_BORDER, TOOLTIP_MOD_ADD)],
+            [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
+            [sg.Button(TEXT_WIZARD_GEN, key=KEY_WIZARD_GEN), sg.Button(TEXT_WIZARD_EXIT, key=KEY_WIZARD_EXIT)],
+            [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)]
+        ]
+        wwindow = sg.Window('Helper', wizard_layout,
+                            element_justification=CENTER)
+        total_mod = 0
+        mod_list = {}
+        while True:
+            wevent, wvalues = wwindow.read()
+            if wevent == KEY_MODULE_TYPE:
+                mtype = wvalues[KEY_MODULE_TYPE]
+                mods = [''] + wizard._get_modules(msfclient, mtype)
+                wwindow[KEY_MODULE_NAME](
+                    values=mods)
+
+            if wevent == KEY_MOD_ADD:
+                mname = wvalues[KEY_MODULE_NAME]
+                if mtype and mname:
+                    mod = wizard._get_module(msfclient, mtype, mname)
+                    opts, ropts = wizard._get_module_options(mod)
+                    scrollable = len(opts) > 18
+                    mod_full_name = "/".join([mtype, mname])
+                    opt_layout = [
+                        [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
+                        [sg.Text(mod_full_name, font=FONTB)],
+                        [sg.Frame(NO_TEXT, [[sg.Text(NO_TEXT, font=FONTPAD, pad=PAD_NO, size=TEXT_DESC_SIZE_XL2)],
+                                            [sg.Text(TEXT_OPT_NAME, font=FONTB, size=TEXT_OPT_NAME_SIZE, pad=PAD_OPT_HEAD), sg.Text(TEXT_OPT_REQ, font=FONTB, pad=PAD_OPT_HEAD2, size=TEXT_REQ_SIZE), sg.Text(TEXT_OPT_VAL, font=FONTB, size=TEXT_OPT_VAL_SIZE, pad=PAD_OPT_HEAD3)]], border_width=NO_BORDER)],
+                        [sg.Column(
+                            [[sg.Frame(NO_TEXT, [
+                                [sg.InputText(opt[0], size=TEXT_DESC_SIZE_2, key=KEY_OPT+str(idx), pad=PAD_IT_T, font=FONT, disabled_readonly_background_color=COLOR_IT_AS_T, readonly=True, border_width=NO_BORDER),
+                                 sg.Text(TEXT_REQ_Y if opt[0] in ropts else TEXT_REQ_N, size=TEXT_REQ_SIZE, justification=CENTER, font=FONT),
+                                 button(NO_TEXT, KEY_OPT_HELP+str(idx), INFO, BUTTON_S_SIZE, BUTTON_COLOR, NO_BORDER, wizard._get_option_desc(mod, opt[0])),
+                                 sg.InputText(opt[1], size=TEXT_DESC_SIZE_M, key=KEY_OPT_VAL+str(idx), pad=PAD_IT_T, font=FONT)]], border_width=NO_BORDER, pad=PAD_NO)] for idx, opt in enumerate(opts)], size=OPT_MOD_COLUMN_SIZE, scrollable=scrollable, vertical_scroll_only=True)],
+                        [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
+                        [sg.Button('Accept', key=KEY_OPT_ACCEPT), sg.Button('Cancel', key=KEY_OPT_CANCEL)]
+                    ]
+
+                    owindow = sg.Window(TEXT_OPTIONS, opt_layout, element_justification=CENTER, finalize=True)
+                    help_regex = re.compile(KEY_OPT_HELP+'\d+')
+                    while True:
+                        oevent, ovalue = owindow.read()
+                        if help_regex.match(oevent):
+                            opt_n = int(oevent.split('_')[2])
+                            opt = opts[opt_n]
+                            opt_info = wizard._get_option_info(mod, opt[0])
+                            info_layout = [[sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)], [sg.Text(opt[0], font=FONTB)], [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)]] \
+                                + [[sg.Frame(NO_TEXT, [[sg.Text(el, font=FONTB, size=EXEC_TEXT_SIZE_S), sg.Text(opt_info[el], font=FONT)] for el in opt_info], border_width=NO_BORDER)]] \
+                                + [[sg.OK(font=FONT)]]
+
+                            sg.Window(TEXT_OPTION_INFO, info_layout, element_justification=CENTER).read(close=True)
+
+                        if oevent == KEY_OPT_ACCEPT:
+                            if mtype not in mod_list:
+                                mod_list[mtype] = {}
+                            if mname not in mod_list[mtype]:
+                                mod_list[mtype][mname] = []
+
+                            opt_l = []
+                            for idx, opt in enumerate(opts):
+                                opt_l.append((owindow[KEY_OPT+str(idx)], owindow[KEY_OPT_VAL+str(idx)]))
+
+                            mod_list[mtype][mname].append(opt_l)
+
+                            if total_mod < MAX_MODULES:
+                                wwindow[KEY_MOD_NAME+str(total_mod)](value=mod_full_name)
+                                wwindow[KEY_MOD_FRAME+str(total_mod)](visible=True)
+                                wwindow.refresh()
+                                wwindow[KEY_MOD_COL].Widget.canvas.config(scrollregion=wwindow[KEY_MOD_COL].Widget.canvas.bbox('all'))
+                                wwindow[KEY_MOD_COL].Widget.canvas.yview_moveto(999)
+                            else:
+                                sg.Window('Error', [
+                                    [sg.Text('Maximum modules allowed ({}).'.format(MAX_MODULES), font=FONT)],
+                                    [sg.Text('Limit can be changed in utils.py:MAX_MODULES', font=FONT)],
+                                    [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
+                                ], element_justification=CENTER, auto_close=True, auto_close_duration=2).read(close=True)
+
+                            total_mod += 1
+                            break
+
+                        if oevent == KEY_OPT_CANCEL:
+                            break
+                    owindow.close()
+
+                else:
+                    sg.Window('Error', [
+                        [sg.Text('Empty module type/name.'.format(MAX_MODULES), font=FONT)],
+                        [sg.Text('Choose a module type and module name from the dropdown.', font=FONT)],
+                        [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
+                    ], element_justification=CENTER, auto_close=True, auto_close_duration=2).read(close=True)
+            if wevent == KEY_WIZARD_EXIT:
+                shutdown(msfcont)
+                break
+            if wevent == sg.WIN_CLOSED:
+                break
+        break
+        wwindow.close()
 window.close()

@@ -286,24 +286,33 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Autoauditor submodule to store reports in blockchain.")
 
-    parser.add_argument('-f', '--reportfile', metavar='report_file', required=True,
-                        help="Report file.")
+    parser.add_argument('-f', '--reportfile', metavar='log_file', required=True,
+                        help="AutoAuditor log file.")
 
-    parser.add_argument('-b', '--blockchainlog', metavar='blockchain_log_file',
+    parser.add_argument('-ho', '--hyperledgerout', metavar='hyperledger_log_file',
                         default='output/blockchain.log',
                         help="Blockchain report log file.")
 
-    parser.add_argument('-c', '--netconfigfile', metavar='network_cfg_file', required=True,
-                        help="Network configuration file.")
+    parser.add_argument('-hc', '--hyperledgercfg', metavar='hyperledger_config_file', required=True,
+                        help="Blockchain network configuration file.")
 
     args = parser.parse_args()
+
+    utils.log('normal',
+              """
+AutoAuditor  Copyright (C) 2020  Sergio Chica Manjarrez
+This program comes with ABSOLUTELY NO WARRANTY; for details check file LICENSE.
+This is free software, and you are welcome to redistribute it
+under certain conditions; check file LICENSE for details.
+""")
+
     assert os.path.isfile(
         args.reportfile), "File {} does not exist.".format(args.reportfile)
-    assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(
-        args.netconfigfile)
+    assert os.path.isfile(args.hyperledgercfg), "File {} does not exist.".format(
+        args.hyperledgercfg)
 
-    info = load_config(args.netconfigfile)
+    info = load_config(args.hyperledgercfg)
 
-    utils.check_file_dir(args.blockchainlog)
+    utils.check_file_dir(args.hyperledgerout)
 
-    store_report(info, args.reportfile, args.blockchainlog)
+    store_report(info, args.reportfile, args.hyperledgerout)

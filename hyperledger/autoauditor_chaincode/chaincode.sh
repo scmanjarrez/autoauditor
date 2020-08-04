@@ -15,7 +15,7 @@ PEER1_URL="localhost:7051"
 PEER2_URL="localhost:9051"
 RED="\033[0;91m[!] ERROR:"
 GREEN="\033[0;92m[+] SUCCESS:"
-BLUE="\033[94m[*] "
+BLUE="\033[94m[*] INFO:"
 NC="\033[0m"
 FN_HELP="Help"
 FN_STORE="NewReport"
@@ -500,8 +500,6 @@ stop()
         echo -e "${RED} Network -> ./network.sh down.$NC"
         exit 1
     fi
-
-    exit 0
 }
 
 while getopts ":ac:o:hudri:qv:g:p:n:sm:t:" opt; do
@@ -556,7 +554,10 @@ if [ -n "$cmd" ] && [ -n "$org" ]; then
 fi
 
 if [ -n "$up" ]; then
+    echo -e "${BLUE} Starting hyperledger fabric test-network."
     start
+    echo -e "${BLUE} Starting docker-resolver container."
+    docker run --rm -d --name docker-resolver -v /var/run/docker.sock:/tmp/docker.sock -v /etc/hosts:/tmp/hosts dvdarias/docker-hoster > /dev/null
 fi
 
 if [ -n "$all" ]; then
@@ -577,7 +578,10 @@ if [ -n "$all" ]; then
 fi
 
 if [ -n "$down" ]; then
+    echo -e "${BLUE} Stopping hyperledger fabric test-network."
     stop
+    echo -e "${BLUE} Stopping docker-resolver container."
+    docker container stop docker-resolver > /dev/null
     exit
 fi
 

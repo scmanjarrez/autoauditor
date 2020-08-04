@@ -37,7 +37,7 @@ def generate_resources_file(client, rc_out):
             mod = None
             while mod is None:
                 mtype = input(
-                    "[*] Module type (exploit|auxiliary|payload|encoder|post|nop): ")
+                    "[*] Module type ({}): ".format("|".join(utils.MODULE_TYPES)))
                 mname = input("[*] Module: ")
                 try:
                     mod = client.modules.use(mtype, mname)
@@ -99,22 +99,61 @@ def generate_resources_file(client, rc_out):
         utils.log('succg', "Resource script file generated at {}".format(rc_out))
 
 
+def _get_module(client, mtype, mname):
+    return client.modules.use(mtype, mname)
+
+
+def _get_modules(client, mtype):
+    if mtype in ['encoder', 'exploit', 'payload', 'nop']:
+        mtype = mtype + 's'
+    return getattr(client.modules, mtype)
+
+
+def _get_option_info(module, option):
+    return module.optioninfo(option)
+
+
+def _get_option_desc(module, option):
+    try:
+        return module.optioninfo(option)['desc']
+    except:
+        return ''
+
+
+def _get_module_options(module):
+    opts = [(opt, module[opt] if module[opt] is not None else '')
+            for opt in module.options]
+    ropts = module.required
+    return opts, ropts
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Tool to run metasploit automatically given a resource script.")
 
-    parser.add_argument('-o', '--outrc', metavar='out_rcfile',
+    parser.add_argument('-g', '--genrc', metavar='rc_file',
                         default='rc.json',
                         help="Run wizard and generate out_rcfile.")
 
-    parser.add_argument('-p', '--pwd', metavar='metasploit_container_pwd',
-                        default='dummypass',
-                        help="Use mscontpass as msfrpc password.")
+    parser.add_argument('-d', '--outdir', metavar='gather_dir',
+                        default='/tmp/output',
+                        help="Temporary metasploit RPC service directory.")
 
     args = parser.parse_args()
 
-    msfclient = metasploit.get_msf_connection(args.pwd)
+    utils.log('normal',
+              """
+AutoAuditor  Copyright (C) 2020  Sergio Chica Manjarrez
+This program comes with ABSOLUTELY NO WARRANTY; for details check file LICENSE.
+This is free software, and you are welcome to redistribute it
+under certain conditions; check file LICENSE for details.
+""")
 
-    utils.check_file_dir(args.outrc)
+    msfcont = metasploit.start_msfrpcd(args.outdir)
+    msfclient = metasploit.get_msf_connection(utils.DEFAULT_MSFRPC_PASSWD)
 
-    generate_resources_file(msfclient, args.outrc)
+    utils.check_file_dir(args.genrc)
+
+    generate_resources_file(msfclient, args.genrc)
+
+    utils.shutdown(msfcont)

@@ -39,8 +39,13 @@ def setup_vpn(ovpn_file, stop):
     utils.log('succb', utils.VPNCSTAT, end='\r')
 
     vpn_l = client.containers.list(filters={'name': 'vpncl'})
-    if not vpn_l:
-        if not stop:
+    if vpn_l:
+        utils.log('succg', utils.VPNCR)
+        vpncont = vpn_l[0]
+    else:
+        if stop:  # if want to stop but already stopped, don't start again
+            utils.log('succg', utils.VPNCNR)
+        else:
             utils.log('warn', utils.VPNCSTART, end='\r')
             of = os.path.abspath(ovpn_file)
 
@@ -72,11 +77,6 @@ def setup_vpn(ovpn_file, stop):
             else:
                 net.connect('vpncl')
             utils.log('succg', utils.VPNCDONE)
-        else:
-            utils.log('succg', utils.VPNCNR)
-    else:
-        utils.log('succg', utils.VPNCR)
-        vpncont = vpn_l[0]
 
     return vpncont
 

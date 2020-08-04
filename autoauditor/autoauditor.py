@@ -49,10 +49,10 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--background', action='store_true',
                         help="Keep containers running in background.")
 
-    parser.add_argument('-hc', '--hyperledger', metavar='hyperledger_config_file',
-                        help="If present, store report in hyperledger blockchain using configuration in hyperledger_config_file.")
+    parser.add_argument('-hc', '--hyperledgercfg', metavar='hyperledger_config_file',
+                        help="If present, store reports in hyperledger blockchain using configuration in hyperledger_config_file.")
 
-    parser.add_argument('-ho', '--hyperledgeroutput', metavar='hyperledger_log_file',
+    parser.add_argument('-ho', '--hyperledgerout', metavar='hyperledger_log_file',
                         default='output/blockchain.log',
                         help="If present, log blockchain output to hyperledger_log_file, otherwise log to output/blockchain.log file.")
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     group = parser.add_mutually_exclusive_group(required=True)
 
-    group.add_argument('-r', '--rcfile', metavar='rc_file',
+    group.add_argument('-r', '--runrc', metavar='rc_file',
                        help="Run metasploit using rc_file")
 
     group.add_argument('-g', '--genrc', metavar='rc_file',
@@ -84,7 +84,7 @@ under certain conditions; check file LICENSE for details.
     msfcont = None
 
     if args.no_color:
-        utils._GREEN = utils._BLUE = utils._YELLOW = utils._RED = utils._CLEANC = utils._NC
+        utils.disable_ansi_colors()
 
     if args.ovpn is not None:
         assert os.path.isfile(
@@ -94,23 +94,26 @@ under certain conditions; check file LICENSE for details.
     utils.check_file_dir(args.outfile, args.outdir)
 
     msfcont = metasploit.start_msfrpcd(
-        args.ovpn is not None, args.outdir, args.stop)
+        args.outdir, args.ovpn is not None, args.stop)
 
     if args.stop:
-        utils.shutdown(vpncont, msfcont)
-
-    if args.genrc is not None:
-        msfclient = metasploit.get_msf_connection('dummypass')
-        wizard.generate_resources_file(msfclient, args.genrc)
+        utils.shutdown(msfcont, vpncont)
     else:
-        assert os.path.isfile(
-            args.rcfile), "File {} does not exist. Check rc.json.template or generate with -g.".format(args.rcfile)
-        metasploit.launch_metasploit(args.rcfile, args.outfile)
+        msfclient = metasploit.get_msf_connection(utils.DEFAULT_MSFRPC_PASSWD)
 
-    if args.hyperledger:
-        info = blockchain.load_config(args.hyperledger)
-        utils.check_file_dir(args.hyperledgeroutput)
-        blockchain.store_report(info, args.outfile, args.hyperledgeroutput)
+        if args.genrc:
+            utils.check_file_dir(args.genrc)
+            wizard.generate_resources_file(msfclient, args.genrc)
 
-    if not args.background:
-        utils.shutdown(vpncont, msfcont)
+        if args.runrc:
+            assert os.path.isfile(
+                args.runrc), "File {} does not exist.".format(args.runrc)
+            metasploit.launch_metasploit(msfclient, args.runrc, args.outfile)
+
+        if args.hyperledgercfg:
+            info = blockchain.load_config(args.hyperledgercfg)
+            utils.check_file_dir(args.hyperledgerout)
+            blockchain.store_report(info, args.outfile, args.hyperledgerout)
+
+        if not args.background:
+            utils.shutdown(msfcont, vpncont)
