@@ -131,10 +131,10 @@ def launch_metasploit(msfcl, rc_file, log_file):
                 for expl in rc[mtype][mname]:
                     for opt in expl:
                         try:
-                            if opt[0] == "ACTION":
-                                mod.action = opt[1]
+                            if opt == "ACTION":
+                                mod.action = expl[opt]
                             else:
-                                mod[opt[0]] = opt[1]
+                                mod[opt] = expl[opt]
                         except KeyError:
                             utils.log('error', "Invalid option: {}. Check {}.".format(
                                 opt[0], rc_file))

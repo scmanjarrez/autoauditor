@@ -45,7 +45,8 @@ def browse(text, key, target, image, image_size, color, border, disabled=False, 
 
 
 def input_text(default, key, disabled=False, font=None, pad=None, visible=True):
-    it = sg.InputText(default, key=key, disabled=disabled, font=font, pad=pad, visible=visible)
+    it = sg.InputText(default, key=key, disabled=disabled,
+                      font=font, pad=pad, visible=visible)
     return it
 
 
@@ -296,6 +297,84 @@ def shrink_enlarge_window():
     window.refresh()
 
 
+def opt_window(msfclient, mtype, mname, mod_idx, current_opts=[]):
+    added = False
+    mod = wizard._get_module(msfclient, mtype, mname)
+    opts, ropts = wizard._get_module_options(mod)
+    if current_opts:
+        for cp in current_opts:
+            opts[cp] = current_opts[cp]
+    scrollable = len(opts) > 18
+    opt_layout = [
+        [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
+        [sg.Text("/".join([mtype, mname]), font=FONTB)],
+        [sg.Frame(NO_TEXT, [[sg.Text(NO_TEXT, font=FONTPAD, pad=PAD_NO, size=TEXT_DESC_SIZE_XL2)],
+                            [sg.Text(TEXT_OPT_NAME, font=FONTB, size=TEXT_OPT_NAME_SIZE, pad=PAD_OPT_HEAD), sg.Text(TEXT_OPT_REQ, font=FONTB, pad=PAD_OPT_HEAD2, size=TEXT_REQ_SIZE), sg.Text(TEXT_OPT_VAL, font=FONTB, size=TEXT_OPT_VAL_SIZE, pad=PAD_OPT_HEAD3)]], border_width=NO_BORDER)],
+        [sg.Column(
+            [[sg.Frame(NO_TEXT, [
+                [sg.InputText(opt, size=TEXT_DESC_SIZE_2, key=KEY_OPT+str(idx), pad=PAD_IT_T, font=FONT, disabled_readonly_background_color=COLOR_IT_AS_T, readonly=True, border_width=NO_BORDER),
+                 sg.Text(TEXT_REQ_Y if opt in ropts else TEXT_REQ_N,
+                         size=TEXT_REQ_SIZE, justification=CENTER, font=FONT),
+                 button(NO_TEXT, KEY_OPT_HELP+str(idx), INFO, BUTTON_S_SIZE,
+                        BUTTON_COLOR, NO_BORDER, wizard._get_option_desc(mod, opt)),
+                 sg.InputText(str(opts[opt]), size=TEXT_DESC_SIZE_M, key=KEY_OPT_VAL+str(idx), pad=PAD_IT_T, font=FONT)]], border_width=NO_BORDER, pad=PAD_NO)] for idx, opt in enumerate(opts)], size=OPT_MOD_COLUMN_SIZE, scrollable=scrollable, vertical_scroll_only=True)],
+        [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
+        [sg.Button('Accept', key=KEY_OPT_ACCEPT),
+         sg.Button('Cancel', key=KEY_OPT_CANCEL)]
+    ]
+
+    owindow = sg.Window(
+        TEXT_OPTIONS, opt_layout, element_justification=CENTER, finalize=True)
+    help_regex = re.compile(KEY_OPT_HELP+'\d+')
+    while True:
+        oevent, ovalue = owindow.read()
+        if oevent is not None and help_regex.match(oevent):
+            opt_n = int(oevent.split('_')[2])  # option_help_xxx
+            opt = owindow[KEY_OPT+str(opt_n)].Get()
+            opt_info = wizard._get_option_info(mod, opt)
+            info_layout = [
+                [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
+                [sg.Text(opt, font=FONTB)],
+                [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)]] +\
+                [[sg.Frame(NO_TEXT, [[sg.Text(el, font=FONTB, size=EXEC_TEXT_SIZE_S), sg.Text(opt_info[el], font=FONT)]
+                                     for el in opt_info], border_width=NO_BORDER)]] +\
+                [[sg.OK(font=FONT)]]
+
+            sg.Window(TEXT_OPTION_INFO, info_layout,
+                      element_justification=CENTER).read(close=True)
+
+        if oevent == KEY_OPT_ACCEPT:
+            if mtype not in mod_list:
+                mod_list[mtype] = {}
+            if mname not in mod_list[mtype]:
+                mod_list[mtype][mname] = {}
+
+            opt_l = {opt: correct_type(owindow[KEY_OPT_VAL+str(idx)].Get())
+                     for idx, opt in enumerate(opts)
+                     if opts[opt] != correct_type(owindow[KEY_OPT_VAL+str(idx)].Get())}
+
+            mod_list[mtype][mname][mod_idx] = opt_l
+
+            wwindow[KEY_MOD_NAME +
+                    str(mod_idx)](value=": ".join([mtype, mname]))
+
+            # wwindow[KEY_MOD_FRAME +
+            #         str(mod_idx)].unhide_row()
+            wwindow[KEY_MOD_FRAME +
+                    str(mod_idx)](visible=True)
+            wwindow.refresh()  # trick to show last element inmediately
+            wwindow[KEY_MOD_COL].Widget.canvas.config(
+                scrollregion=wwindow[KEY_MOD_COL].Widget.canvas.bbox('all'))
+            wwindow[KEY_MOD_COL].Widget.canvas.yview_moveto(
+                999)
+            added = True
+            break
+        if oevent == KEY_OPT_CANCEL:
+            break
+    owindow.close()
+    return added
+
+
 # Event Loop to process "events" and get the "values" of the inputs
 while True:
     event, values = window.read()
@@ -501,18 +580,25 @@ while True:
             [sg.Text(TEXT_MODULE_NAME, font=FONTB, size=TEXT_DESC_SIZE), sg.DropDown(
                 NO_TEXT, size=EXEC_TEXT_SIZE_L, font=FONT, key=KEY_MODULE_NAME, readonly=True)],
             [sg.Text(NO_TEXT, font=FONT, pad=PAD_NO)],
-            [sg.Column(mod_layout, size=OPT_MOD_COLUMN_SIZE, element_justification=CENTER, pad=PAD_NO, justification=CENTER, scrollable=True, vertical_scroll_only=True, key=KEY_MOD_COL)],
+            [sg.Column(mod_layout, size=OPT_MOD_COLUMN_SIZE, element_justification=CENTER, pad=PAD_NO,
+                       justification=CENTER, scrollable=True, vertical_scroll_only=True, key=KEY_MOD_COL)],
             [sg.Text(NO_TEXT, font=FONT, pad=PAD_NO)],
-            [button(NO_TEXT, KEY_MOD_ADD, ADD, BUTTON_L_SIZE, BUTTON_COLOR, NO_BORDER, TOOLTIP_MOD_ADD)],
+            [button(NO_TEXT, KEY_MOD_ADD, ADD, BUTTON_L_SIZE,
+                    BUTTON_COLOR, NO_BORDER, TOOLTIP_MOD_ADD)],
             [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
-            [sg.Button(TEXT_WIZARD_GEN, key=KEY_WIZARD_GEN), sg.Button(TEXT_WIZARD_EXIT, key=KEY_WIZARD_EXIT)],
+            [sg.Button(TEXT_WIZARD_GEN, key=KEY_WIZARD_GEN),
+             sg.Button(TEXT_WIZARD_EXIT, key=KEY_WIZARD_EXIT)],
             [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)]
         ]
         wwindow = sg.Window('Helper', wizard_layout,
                             element_justification=CENTER)
-        total_mod = 0
+
+        edit_regex = re.compile(KEY_MOD_EDIT+'\d+')
+        rem_regex = re.compile(KEY_MOD_REM+'\d+')
+        mod_idx = [idx for idx in range(MAX_MODULES-1, -1, -1)]  # (MAX_MODULES-1) ... 0
         mod_list = {}
         while True:
+            print(mod_list)
             wevent, wvalues = wwindow.read()
             if wevent == KEY_MODULE_TYPE:
                 mtype = wvalues[KEY_MODULE_TYPE]
@@ -523,82 +609,58 @@ while True:
             if wevent == KEY_MOD_ADD:
                 mname = wvalues[KEY_MODULE_NAME]
                 if mtype and mname:
-                    mod = wizard._get_module(msfclient, mtype, mname)
-                    opts, ropts = wizard._get_module_options(mod)
-                    scrollable = len(opts) > 18
-                    mod_full_name = "/".join([mtype, mname])
-                    opt_layout = [
-                        [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
-                        [sg.Text(mod_full_name, font=FONTB)],
-                        [sg.Frame(NO_TEXT, [[sg.Text(NO_TEXT, font=FONTPAD, pad=PAD_NO, size=TEXT_DESC_SIZE_XL2)],
-                                            [sg.Text(TEXT_OPT_NAME, font=FONTB, size=TEXT_OPT_NAME_SIZE, pad=PAD_OPT_HEAD), sg.Text(TEXT_OPT_REQ, font=FONTB, pad=PAD_OPT_HEAD2, size=TEXT_REQ_SIZE), sg.Text(TEXT_OPT_VAL, font=FONTB, size=TEXT_OPT_VAL_SIZE, pad=PAD_OPT_HEAD3)]], border_width=NO_BORDER)],
-                        [sg.Column(
-                            [[sg.Frame(NO_TEXT, [
-                                [sg.InputText(opt[0], size=TEXT_DESC_SIZE_2, key=KEY_OPT+str(idx), pad=PAD_IT_T, font=FONT, disabled_readonly_background_color=COLOR_IT_AS_T, readonly=True, border_width=NO_BORDER),
-                                 sg.Text(TEXT_REQ_Y if opt[0] in ropts else TEXT_REQ_N, size=TEXT_REQ_SIZE, justification=CENTER, font=FONT),
-                                 button(NO_TEXT, KEY_OPT_HELP+str(idx), INFO, BUTTON_S_SIZE, BUTTON_COLOR, NO_BORDER, wizard._get_option_desc(mod, opt[0])),
-                                 sg.InputText(opt[1], size=TEXT_DESC_SIZE_M, key=KEY_OPT_VAL+str(idx), pad=PAD_IT_T, font=FONT)]], border_width=NO_BORDER, pad=PAD_NO)] for idx, opt in enumerate(opts)], size=OPT_MOD_COLUMN_SIZE, scrollable=scrollable, vertical_scroll_only=True)],
-                        [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
-                        [sg.Button('Accept', key=KEY_OPT_ACCEPT), sg.Button('Cancel', key=KEY_OPT_CANCEL)]
-                    ]
-
-                    owindow = sg.Window(TEXT_OPTIONS, opt_layout, element_justification=CENTER, finalize=True)
-                    help_regex = re.compile(KEY_OPT_HELP+'\d+')
-                    while True:
-                        oevent, ovalue = owindow.read()
-                        if help_regex.match(oevent):
-                            opt_n = int(oevent.split('_')[2])
-                            opt = opts[opt_n]
-                            opt_info = wizard._get_option_info(mod, opt[0])
-                            info_layout = [[sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)], [sg.Text(opt[0], font=FONTB)], [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)]] \
-                                + [[sg.Frame(NO_TEXT, [[sg.Text(el, font=FONTB, size=EXEC_TEXT_SIZE_S), sg.Text(opt_info[el], font=FONT)] for el in opt_info], border_width=NO_BORDER)]] \
-                                + [[sg.OK(font=FONT)]]
-
-                            sg.Window(TEXT_OPTION_INFO, info_layout, element_justification=CENTER).read(close=True)
-
-                        if oevent == KEY_OPT_ACCEPT:
-                            if mtype not in mod_list:
-                                mod_list[mtype] = {}
-                            if mname not in mod_list[mtype]:
-                                mod_list[mtype][mname] = []
-
-                            opt_l = []
-                            for idx, opt in enumerate(opts):
-                                opt_l.append((owindow[KEY_OPT+str(idx)], owindow[KEY_OPT_VAL+str(idx)]))
-
-                            mod_list[mtype][mname].append(opt_l)
-
-                            if total_mod < MAX_MODULES:
-                                wwindow[KEY_MOD_NAME+str(total_mod)](value=mod_full_name)
-                                wwindow[KEY_MOD_FRAME+str(total_mod)](visible=True)
-                                wwindow.refresh()
-                                wwindow[KEY_MOD_COL].Widget.canvas.config(scrollregion=wwindow[KEY_MOD_COL].Widget.canvas.bbox('all'))
-                                wwindow[KEY_MOD_COL].Widget.canvas.yview_moveto(999)
-                            else:
-                                sg.Window('Error', [
-                                    [sg.Text('Maximum modules allowed ({}).'.format(MAX_MODULES), font=FONT)],
-                                    [sg.Text('Limit can be changed in utils.py:MAX_MODULES', font=FONT)],
-                                    [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
-                                ], element_justification=CENTER, auto_close=True, auto_close_duration=2).read(close=True)
-
-                            total_mod += 1
-                            break
-
-                        if oevent == KEY_OPT_CANCEL:
-                            break
-                    owindow.close()
-
+                    if mod_idx:
+                        added = opt_window(
+                            msfclient, mtype, mname, mod_idx[-1])
+                        if added:
+                            mod_idx.remove(mod_idx[-1])
+                    else:
+                        sg.Window('Error', [
+                            [sg.Text('Maximum modules allowed ({}).'.format(
+                                MAX_MODULES), font=FONT)],
+                            [sg.Text(
+                                'Limit can be changed in utils.py:MAX_MODULES', font=FONT)],
+                            [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
+                        ], element_justification=CENTER, auto_close=True).read(close=True)
                 else:
                     sg.Window('Error', [
-                        [sg.Text('Empty module type/name.'.format(MAX_MODULES), font=FONT)],
-                        [sg.Text('Choose a module type and module name from the dropdown.', font=FONT)],
+                        [sg.Text(
+                            'Empty module type/name.'.format(MAX_MODULES), font=FONT)],
+                        [sg.Text(
+                            'Choose a module type and module name from the dropdown.', font=FONT)],
                         [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
                     ], element_justification=CENTER, auto_close=True, auto_close_duration=2).read(close=True)
+
+            if wevent is not None and edit_regex.match(wevent):
+                aux_mod_idx = int(wevent.split("_")[2])  # module_name_xxx
+                aux_mt, aux_mn = wwindow[KEY_MOD_NAME +
+                                         str(aux_mod_idx)].Get().split(': ')
+                opt_window(
+                            msfclient, aux_mt, aux_mn, aux_mod_idx, mod_list[aux_mt][aux_mn][aux_mod_idx])
+            if wevent is not None and rem_regex.match(wevent):
+                aux_mod_idx = int(wevent.split("_")[2])  # module_rem_xxx
+                aux_mt, aux_mn = wwindow[KEY_MOD_NAME +
+                                         str(aux_mod_idx)].Get().split(': ')
+                wwindow[KEY_MOD_FRAME+str(aux_mod_idx)](visible=False)
+                wwindow[KEY_MOD_FRAME+str(aux_mod_idx)].ParentRowFrame.config(width=0, height=1)
+                del mod_list[aux_mt][aux_mn][aux_mod_idx]
+                mod_idx.insert(0, aux_mod_idx)  # reuse removed item
             if wevent == KEY_WIZARD_EXIT:
                 shutdown(msfcont)
                 break
             if wevent == sg.WIN_CLOSED:
                 break
+
+            if wevent == KEY_WIZARD_GEN:
+                print(window[KEY_INPUT_RC].Get())
+                # for mlt in mod_list:
+                #     for mln in mod_list[mlt]:
+                #         mod_list[mlt][mln] = list(mod_list[mlt][mln].values())
+                # with open(window[KEY_INPUT_RC].Get(), 'w') as f:
+                #     json.dump(rc_file, f, indent=2)
+                #     utils.log('succg', "Resource script file generated at {}".format(rc_out))
+                # shutdown(msfcont)
+                # break
         break
         wwindow.close()
 window.close()

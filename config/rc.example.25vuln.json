@@ -1,39 +1,39 @@
 {
     "auxiliary": {
         "scanner/mysql/mysql_authbypass_hashdump": [
-            [["RHOSTS", "10.10.0.3"]],
-            [["RHOSTS", "10.10.0.4"]],
-            [["RHOSTS", "10.10.0.5"]],
-            [["RHOSTS", "10.10.0.6"]],
-            [["RHOSTS", "10.10.0.7"]]
+            { "RHOSTS": "10.10.0.3" },
+            { "RHOSTS": "10.10.0.4" },
+            { "RHOSTS": "10.10.0.5" },
+            { "RHOSTS": "10.10.0.6" },
+            { "RHOSTS": "10.10.0.7" }
         ],
         "scanner/ssl/openssl_heartbleed": [
-            [["RHOSTS", "10.10.0.3"], ["ACTION", "KEYS"]],
-            [["RHOSTS", "10.10.0.4"], ["ACTION", "KEYS"]],
-            [["RHOSTS", "10.10.0.5"], ["ACTION", "KEYS"]],
-            [["RHOSTS", "10.10.0.6"], ["ACTION", "KEYS"]],
-            [["RHOSTS", "10.10.0.7"], ["ACTION", "KEYS"]]
+            { "RHOSTS": "10.10.0.3", "ACTION": "KEYS" },
+            { "RHOSTS": "10.10.0.4", "ACTION": "KEYS" },
+            { "RHOSTS": "10.10.0.5", "ACTION": "KEYS" },
+            { "RHOSTS": "10.10.0.6", "ACTION": "KEYS" },
+            { "RHOSTS": "10.10.0.7", "ACTION": "KEYS" }
         ],
         "scanner/ssh/ssh_enumusers": [
-            [["RHOSTS", "10.10.0.3"], ["USERNAME", "root"]],
-            [["RHOSTS", "10.10.0.4"], ["USERNAME", "root"]],
-            [["RHOSTS", "10.10.0.5"], ["USERNAME", "root"]],
-            [["RHOSTS", "10.10.0.6"], ["USERNAME", "root"]],
-            [["RHOSTS", "10.10.0.7"], ["USERNAME", "root"]]
+            { "RHOSTS": "10.10.0.3", "USERNAME": "root" },
+            { "RHOSTS": "10.10.0.4", "USERNAME": "root" },
+            { "RHOSTS": "10.10.0.5", "USERNAME": "root" },
+            { "RHOSTS": "10.10.0.6", "USERNAME": "root" },
+            { "RHOSTS": "10.10.0.7", "USERNAME": "root" }
         ],
         "scanner/http/apache_mod_cgi_bash_env": [
-            [["RHOSTS", "10.10.0.3"], ["TARGETURI", "/victim.cgi"]],
-            [["RHOSTS", "10.10.0.4"], ["TARGETURI", "/victim.cgi"]],
-            [["RHOSTS", "10.10.0.5"], ["TARGETURI", "/victim.cgi"]],
-            [["RHOSTS", "10.10.0.6"], ["TARGETURI", "/victim.cgi"]],
-            [["RHOSTS", "10.10.0.7"], ["TARGETURI", "/victim.cgi"]]
+            { "RHOSTS": "10.10.0.3", "TARGETURI": "/victim.cgi" },
+            { "RHOSTS": "10.10.0.4", "TARGETURI": "/victim.cgi" },
+            { "RHOSTS": "10.10.0.5", "TARGETURI": "/victim.cgi" },
+            { "RHOSTS": "10.10.0.6", "TARGETURI": "/victim.cgi" },
+            { "RHOSTS": "10.10.0.7", "TARGETURI": "/victim.cgi" }
         ],
         "scanner/ssh/libssh_auth_bypass": [
-            [["RHOSTS", "10.10.0.3"], ["CMD", "id"], ["ACTION", "Execute"]],
-            [["RHOSTS", "10.10.0.4"], ["CMD", "id"], ["ACTION", "Execute"]],
-            [["RHOSTS", "10.10.0.5"], ["CMD", "id"], ["ACTION", "Execute"]],
-            [["RHOSTS", "10.10.0.6"], ["CMD", "id"], ["ACTION", "Execute"]],
-            [["RHOSTS", "10.10.0.7"], ["CMD", "id"], ["ACTION", "Execute"]]
+            { "RHOSTS": "10.10.0.3", "CMD": "id", "ACTION": "Execute" },
+            { "RHOSTS": "10.10.0.4", "CMD": "id", "ACTION": "Execute" },
+            { "RHOSTS": "10.10.0.5", "CMD": "id", "ACTION": "Execute" },
+            { "RHOSTS": "10.10.0.6", "CMD": "id", "ACTION": "Execute" },
+            { "RHOSTS": "10.10.0.7", "CMD": "id", "ACTION": "Execute" }
         ]
     }
 }

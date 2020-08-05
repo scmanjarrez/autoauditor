@@ -4,12 +4,11 @@ aa="../autoauditor/autoauditor.py"
 venv="virtualenv"
 aa_venv="autoauditor_venv"
 wallet="wallet-test"
-tmp_msfrpc="backup/msfrpc.py"
 tmp_hfc="backup/channel.py"
 dc="docker-compose"
 dcyml="docker-compose.yml"
 d="docker"
-vpnf="client.ovpn"
+vpnf="client.example.ovpn"
 red="\033[0;91m[!] "
 green="\033[0;92m[+] "
 blue="\033[94m[*] "
@@ -116,10 +115,34 @@ EOF
     fi
 }
 
-chk_venv_pkg()
+chk_req_pkgs()
 {
+    echo -e "${blue}Checking git package.$nc"
+    command -v git > /dev/null
+
+    if [ $? -ne 0 ]; then
+        echo -e "${red}Install git package.$nc"
+        exit 1
+    fi
+
+    echo -e "${blue}Checking docker package.$nc"
+    command -v docker > /dev/null
+
+    if [ $? -ne 0 ]; then
+        echo -e "${red}Install docker package.$nc"
+        exit 1
+    fi
+
+    echo -e "${blue}Checking docker-compose package.$nc"
+    command -v docker-compose > /dev/null
+
+    if [ $? -ne 0 ]; then
+        echo -e "${red}Install docker-compose package.$nc"
+        exit 1
+    fi
+
     echo -e "${blue}Checking virtualenv package.$nc"
-    which virtualenv > /dev/null
+    command -v virtualenv > /dev/null
 
     if [ $? -ne 0 ]; then
         echo -e "${red}Install virtualenv package.$nc"
@@ -142,7 +165,7 @@ gen_venv()
     git submodule foreach git reset --hard origin/master > /dev/null
     git submodule update --remote > /dev/null
     cp -r $(pwd)/$hfc_sdk_py/hfc $aa_venv/lib/python3.*/site-packages
-    
+
     echo -e "${blue}Using backup/channel.py backup until fabric-sdk-py gets updated.$nc"
     cp $tmp_hfc $aa_venv/lib/python3.*/site-packages/hfc/util/
 
@@ -180,7 +203,7 @@ while getopts ":sh" opt; do
 done
 
 if [ $OPTIND -eq 1 ]; then
+    chk_req_pkgs
     start
-    chk_venv_pkg
     gen_venv
 fi

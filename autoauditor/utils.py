@@ -223,19 +223,19 @@ KEY_CONSOLE = 'console'
 KEY_CONSOLE_CB = 'console_cb'
 KEY_MODULE_TYPE = 'module_type'
 KEY_MODULE_NAME = 'module_name'
-KEY_MT_I_B = 'mt_i_b'
-KEY_MN_I_B = 'mn_i_b'
+KEY_MT_I_B = 'mtype_i_b'
+KEY_MN_I_B = 'mname_i_b'
 KEY_WIZARD_OPTS_T = 'wizard_options_t'
 KEY_WIZARD_OPTS = 'wizard_options'
 KEY_WIZARD_EXIT = 'wizard_exit'
 KEY_WIZARD_GEN = 'wizard_gen'
-KEY_MOD_COL = 'wizard_mod_col'
-KEY_MOD_ADD = 'wizard_mod_add'
-KEY_MOD_EDIT = 'wizard_mod_edit_'
-KEY_MOD_REM = 'wizard_mod_remove_'
-KEY_MOD_FRAME = 'wizard_mod_frame_'
-KEY_MOD_NAME = 'wizard_mod_name_'
-KEY_OPT = 'option_name_'
+KEY_MOD_COL = 'module_col'
+KEY_MOD_ADD = 'module_add'
+KEY_MOD_EDIT = 'module_edit_'
+KEY_MOD_REM = 'module_rem_'
+KEY_MOD_FRAME = 'module_frame_'
+KEY_MOD_NAME = 'module_name_'
+KEY_OPT = 'option_'
 KEY_OPT_VAL = 'option_value_'
 KEY_OPT_HELP = 'option_help_'
 KEY_OPT_ACCEPT = 'option_accept'
@@ -352,10 +352,11 @@ def print_options(exploit, adv=False):
 
 
 def correct_type(value):
-    if value.isdigit():
-        return int(value)
-    if value.lower() in ('true', 'false'):
-        return bool(strtobool(value))
+    if isinstance(value, str):
+        if value.isdigit():
+            return int(value)
+        if value.lower() in ('true', 'false'):
+            return bool(strtobool(value))
     return value
 
 

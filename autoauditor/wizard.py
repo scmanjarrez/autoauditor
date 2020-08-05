@@ -40,7 +40,7 @@ def generate_resources_file(client, rc_out):
                     "[*] Module type ({}): ".format("|".join(utils.MODULE_TYPES)))
                 mname = input("[*] Module: ")
                 try:
-                    mod = client.modules.use(mtype, mname)
+                    mod = _get_module(client, mtype, mname)
                 except MsfRpcError:
                     utils.log('error', "Invalid module type: {}.".format(mtype))
                 except TypeError:
@@ -59,7 +59,7 @@ def generate_resources_file(client, rc_out):
 
             eof = False
             modify = str.lower(input("[*] Modify [y/N]: ")) in yes_ans
-            opt_l = []
+            opt_d = {}
             while modify:
                 try:
                     utils.log('succb', "Finish with EOF (Ctrl+D)")
@@ -73,7 +73,7 @@ def generate_resources_file(client, rc_out):
                             utils.log(
                                 'error', "Invalid option: {}".format(opt))
                         else:
-                            opt_l.append((opt, val))
+                            opt_d[opt] = val
                         eof = False
                 except EOFError:
                     print()
@@ -86,7 +86,7 @@ def generate_resources_file(client, rc_out):
                 modify = str.lower(input("[*] Modify [y/N]: ")) in yes_ans
                 eof = False
 
-            rc_file[mtype][mname].append(opt_l)
+            rc_file[mtype][mname].append(opt_d)
 
             if str.lower(input("[*] More modules [y/N]: ")) not in yes_ans:
                 more_mod = False
@@ -110,6 +110,8 @@ def _get_modules(client, mtype):
 
 
 def _get_option_info(module, option):
+    if option == 'ACTION':
+        return module.actions
     return module.optioninfo(option)
 
 
@@ -121,8 +123,8 @@ def _get_option_desc(module, option):
 
 
 def _get_module_options(module):
-    opts = [(opt, module[opt] if module[opt] is not None else '')
-            for opt in module.options]
+    opts = {opt: module[opt] if module[opt] is not None else ''
+            for opt in module.options}
     ropts = module.required
     return opts, ropts
 
