@@ -14,7 +14,10 @@ green="\033[0;92m[+] "
 blue="\033[94m[*] "
 yellow="\033[0;33m[-] "
 nc="\033[0m"
+inst="\033[0;92m installed$nc"
+not_inst="\033[0;91m not installed$nc"
 hfc_sdk_py="fabric-sdk-py"
+no_ansi=""
 
 check_privileges()
 {
@@ -99,7 +102,7 @@ EOF
 
     echo -e "${blue}Starting docker containers.$nc"
 
-    $dc up -d > /dev/null
+    $dc $no_ansi up -d > /dev/null
     wd=$(pwd)
     wd=$(echo ${wd##*/} | tr '[:upper:]' '[:lower:]')
     vpns=${wd}_vpn_server_1
@@ -117,35 +120,39 @@ EOF
 
 chk_req_pkgs()
 {
-    echo -e "${blue}Checking git package.$nc"
+    echo -e "${blue}Checking packages.$nc"
+    all_pk=1
+
+    echo -n "git            ... "
     command -v git > /dev/null
 
-    if [ $? -ne 0 ]; then
-        echo -e "${red}Install git package.$nc"
-        exit 1
-    fi
+    [[ $? -eq 0 ]] \
+        && echo -e $inst  \
+            || { echo -e $not_inst; all_pk=0; }
 
-    echo -e "${blue}Checking docker package.$nc"
+    echo -n "docker         ... "
     command -v docker > /dev/null
 
-    if [ $? -ne 0 ]; then
-        echo -e "${red}Install docker package.$nc"
-        exit 1
-    fi
+    [[ $? -eq 0 ]] \
+        && echo -e $inst  \
+            || { echo -e $not_inst; all_pk=0; }
 
-    echo -e "${blue}Checking docker-compose package.$nc"
+    echo -n "docker-compose ... "
     command -v docker-compose > /dev/null
 
-    if [ $? -ne 0 ]; then
-        echo -e "${red}Install docker-compose package.$nc"
-        exit 1
-    fi
+    [[ $? -eq 0 ]] \
+        && echo -e $inst  \
+            || { echo -e $not_inst; all_pk=0; }
 
-    echo -e "${blue}Checking virtualenv package.$nc"
+    echo -n "virtualenv     ... "
     command -v virtualenv > /dev/null
 
-    if [ $? -ne 0 ]; then
-        echo -e "${red}Install virtualenv package.$nc"
+    [[ $? -eq 0 ]] \
+        && echo -e $inst  \
+            || { echo -e $not_inst; all_pk=0; }
+
+    if [ $all_pk -eq 0 ]; then
+        echo -e "${red} Mandatory package is missing."
         exit 1
     fi
 }
@@ -175,14 +182,15 @@ gen_venv()
 stop()
 {
     echo -e "${blue}Stopping docker containers.$nc"
-    $dc stop > /dev/null
-    $dc down -v > /dev/null
+    $dc $no_ansi down -v > /dev/null
     $d stop vpncl msfrpc > /dev/null
 
     echo -e "${blue}Removing temporary files.$nc"
     rm $dcyml
     rm -rf $aa_venv
     rm -rf $wallet
+
+    exit
 }
 
 usage()
@@ -190,20 +198,41 @@ usage()
     echo "Usage:"
     echo "    $0          Set up test environment."
     echo "    $0 -s       Clean up environment."
+    echo "    $0 -n       No ANSI colors."
     echo "    $0 -h       Show this help."
+
+    exit
 }
 
-check_privileges
+disable_ansi_color()
+{
+    no_ansi="--no-ansi"
+    red="[!] "
+    green="[+] "
+    blue="[*] "
+    yellow="[-] "
+    nc=""
+    inst=" installed"
+    not_inst=" not installed"
+}
 
-while getopts ":sh" opt; do
+while getopts ":shn" opt; do
   case ${opt} in
-      s) stop;;
-      h) usage;;
+      s) ax_stop="yes" ;;
+      n) disable_ansi_color ;;
+      h) ax_usage="yes" ;;
   esac
 done
 
-if [ $OPTIND -eq 1 ]; then
-    chk_req_pkgs
-    start
-    gen_venv
+if [ -n "$ax_stop" ]; then
+   stop
 fi
+
+if [ -n "$ax_usage" ]; then
+   usage
+fi
+
+check_privileges
+chk_req_pkgs
+start
+gen_venv

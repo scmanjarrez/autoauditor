@@ -26,6 +26,8 @@ import metasploit
 import wizard
 import sys
 import re
+import vpn
+import blockchain
 
 sg.theme('Reddit')  # Add a touch of color
 # All the stuff inside your window.
@@ -395,58 +397,91 @@ while True:
         switch(sc_cb, KEY_SC_CB_T, KEY_SC_CB_T)
 
     if event == KEY_START_B or event == KEY_START_T:
-        cmd = [
-            window[KEY_INPUT_PY].Get(),
-            window[KEY_INPUT_AA].Get(),
-            '-r', window[KEY_INPUT_RC].Get(),
-            '-o', window[KEY_INPUT_LF].Get(),
-            '-d', window[KEY_INPUT_LD].Get(),
-            '--no-color'
-        ]
-        if vpn_cb.enabled:
-            cmd.extend(
-                [
-                    '-v', window[KEY_INPUT_VPN_CF].Get()
-                ]
-            )
-        if bc_cb.enabled:
-            cmd.extend(
-                [
-                    '-hc', window[KEY_INPUT_BC_CF].Get(),
-                    '-ho', window[KEY_INPUT_BC_LF].Get()
-                ]
-            )
-        if not sc_cb.enabled:
-            cmd.extend(
-                [
-                    '-b'
-                ]
-            )
         if not console_cb.enabled:
             shrink_enlarge_window()
-        run_command(console, cmd=" ".join(cmd), window=window)
+        console_log(window, console)
+
+        vpncont = msfcont = None
+
+        if vpn_cb.enabled:
+            vpncf = window[KEY_INPUT_VPN_CF].Get()
+            if not os.path.isfile(vpncf):
+                sg.Window('Error', [
+                    [sg.Text('File {}'.format(vpncf), font=FONT)],
+                    [sg.Text('does not exist.', font=FONT)],
+                    [sg.Text(NO_TEXT, font=FONTPAD)],
+                    [sg.OK(button_color=BUTTON_COLOR_ERR)]
+                ], element_justification=CENTER, auto_close=True).read(close=True)
+            else:
+                vpncont = vpn.setup_vpn(vpncf)
+
+        lf = window[KEY_INPUT_LF].Get()
+        ld = window[KEY_INPUT_LD].Get()
+
+        errcode = check_file_dir(lf, ld)
+        if errcode is not None:
+            sg.Window('Error', [
+                [sg.Text('Log file/Log directory', font=FONT)],
+                [sg.Text('does not exist.', font=FONT)],
+                [sg.Text(NO_TEXT, font=FONTPAD)],
+                [sg.OK(button_color=BUTTON_COLOR_ERR)]
+            ], element_justification=CENTER, auto_close=True).read(close=True)
+        else:
+            msfcont = metasploit.start_msfrpcd(ld, ovpn=vpn_cb.enabled)
+
+        msfclient = metasploit.get_msf_connection(DEFAULT_MSFRPC_PASSWD)
+
+        rc = window[KEY_INPUT_RC].Get()
+        if not os.path.isfile(rc):
+            sg.Window('Error', [
+                [sg.Text('File {}'.format(rc), font=FONT)],
+                [sg.Text('does not exist.', font=FONT)],
+                [sg.Text(NO_TEXT, font=FONTPAD)],
+                [sg.OK(button_color=BUTTON_COLOR_ERR)]
+            ], element_justification=CENTER, auto_close=True).read(close=True)
+        else:
+            metasploit.launch_metasploit(msfclient, rc, lf)
+
+        if bc_cb.enabled:
+            hc = window[KEY_INPUT_BC_CF].Get()
+            ho = window[KEY_INPUT_BC_LF].Get()
+            if not os.path.isfile(hc):
+                sg.Window('Error', [
+                    [sg.Text('File {}'.format(rc), font=FONT)],
+                    [sg.Text('does not exist.', font=FONT)],
+                    [sg.Text(NO_TEXT, font=FONTPAD)],
+                    [sg.OK(button_color=BUTTON_COLOR_ERR)]
+                ], element_justification=CENTER, auto_close=True).read(close=True)
+            else:
+                info = blockchain.load_config(hc)
+                errcode = check_file_dir(ho)
+                if errcode is not None:
+                    sg.Window('Error', [
+                        [sg.Text('Blockchain log file', font=FONT)],
+                        [sg.Text('does not exist.', font=FONT)],
+                        [sg.Text(NO_TEXT, font=FONTPAD)],
+                        [sg.OK(button_color=BUTTON_COLOR_ERR)]
+                    ], element_justification=CENTER, auto_close=True).read(close=True)
+                else:
+                    blockchain.store_report(info, lf, ho)
+        if sc_cb.enabled:
+            shutdown(msfcont, vpncont)
 
     if event == KEY_STOP_B or event == KEY_STOP_T:
-        cmd = [
-            window[KEY_INPUT_PY].Get(),
-            window[KEY_INPUT_AA].Get(),
-            '-s',
-            '--no-color'
-        ]
-        if vpn_cb.enabled:
-            cmd.extend(
-                [
-                    '-v', window[KEY_INPUT_VPN_CF].Get()
-                ]
-            )
         if not console_cb.enabled:
             shrink_enlarge_window()
-        errcode = run_command(console, cmd=" ".join(cmd), window=window)
-        if errcode == 0:
-            sg.Popup('AutoAuditor finished without errors.', title='Success')
+        console_log(window, console)
+
+        if vpn_cb.enabled:
+            vpncont = vpn.setup_vpn(window[KEY_INPUT_VPN_CF].Get(), stop=True)
+
+        msfcont = metasploit.start_msfrpcd(
+                    window[KEY_INPUT_LD].Get(), ovpn=vpn_cb.enabled, stop=True)
+
+        shutdown(msfcont, vpncont)
 
     if event == KEY_PY_I_B:
-        help_layout = [
+        sg.Window(TEXT_PY, [
             [sg.Text('Absolute or relative path to python executable.', font=FONT)],
             [sg.Text(
                 'A virtual environment can be generated using gen_venv.sh script.', font=FONT)],
@@ -455,92 +490,76 @@ while True:
             [sg.InputText(DEFAULT_PY, font=FONT, disabled=True,
                           justification=CENTER)],
             [sg.OK()]
-        ]
-        sg.Window(TEXT_PY, help_layout,
-                  element_justification=CENTER).read(close=True)
+        ], element_justification=CENTER).read(close=True)
 
     if event == KEY_AA_I_B:
-        help_layout = [
+        sg.Window(TEXT_AA, [
             [sg.Text('Absolute or relative path to autoauditor script.', font=FONT)],
             [sg.Text('Autoauditor script is under autoauditor directory:', font=FONT)],
             [sg.InputText(DEFAULT_AA, font=FONT, disabled=True,
                           justification=CENTER)],
             [sg.OK()]
-        ]
-        sg.Window(TEXT_AA, help_layout,
-                  element_justification=CENTER).read(close=True)
+        ], element_justification=CENTER).read(close=True)
 
     if event == KEY_LF_I_B:
-        help_layout = [
+        sg.Window(TEXT_LF, [
             [sg.Text(
                 'Absolute or relative path where output should be logged.', font=FONT)],
             [sg.Text('By default, output/msf.log will be used:', font=FONT)],
             [sg.InputText(DEFAULT_LF, font=FONT, disabled=True,
                           justification=CENTER)],
             [sg.OK()]
-        ]
-        sg.Window(TEXT_LF, help_layout,
-                  element_justification=CENTER).read(close=True)
+        ], element_justification=CENTER).read(close=True)
 
     if event == KEY_LD_I_B:
-        help_layout = [
+        sg.Window(TEXT_LD, [
             [sg.Text(
                 'Absolute or relative path to directory where gathered data should be stored.', font=FONT)],
             [sg.Text('By default, output will be used:', font=FONT)],
             [sg.InputText(DEFAULT_LD, font=FONT, disabled=True,
                           justification=CENTER)],
             [sg.OK()]
-        ]
-        sg.Window(TEXT_LD, help_layout,
-                  element_justification=CENTER).read(close=True)
+        ], element_justification=CENTER).read(close=True)
 
     if event == KEY_RC_I_B:
-        help_layout = [
+        sg.Window(TEXT_RC, [
             [sg.Text('Absolute or relative path to resource script file.', font=FONT)],
             [sg.Text(
                 'Under config, a template and few examples can be found:', font=FONT)],
             [sg.InputText(DEFAULT_RC, font=FONT, disabled=True,
                           justification=CENTER)],
             [sg.OK()]
-        ]
-        sg.Window(TEXT_RC, help_layout,
-                  element_justification=CENTER).read(close=True)
+        ], element_justification=CENTER).read(close=True)
 
     if event == KEY_VPN_CF_I_B:
-        help_layout = [
+        sg.Window(TEXT_VPN_CF, [
             [sg.Text(
                 'Absolute or relative path to openvpn configuration file.', font=FONT)],
             [sg.Text('Under config, a template and an example can be found:', font=FONT)],
             [sg.InputText(DEFAULT_VPN_CF, font=FONT,
                           disabled=True, justification=CENTER)],
             [sg.OK()]
-        ]
-        sg.Window(TEXT_VPN_CF, help_layout,
-                  element_justification=CENTER).read(close=True)
+        ], element_justification=CENTER).read(close=True)
 
     if event == KEY_BC_CF_I_B:
-        help_layout = [
+        sg.Window(TEXT_BC_CF, [
             [sg.Text(
                 'Absolute or relative path to blockchain network configuration.', font=FONT)],
             [sg.Text('Under config, a template and an example can be found:', font=FONT)],
             [sg.InputText(DEFAULT_BC_CF, font=FONT,
                           disabled=True, justification=CENTER)],
             [sg.OK()]
-        ]
-        sg.Window(TEXT_BC_CF, help_layout,
-                  element_justification=CENTER).read(close=True)
+        ], element_justification=CENTER).read(close=True)
 
     if event == KEY_BC_LF_I_B:
-        help_layout = [
+        sg.Window(TEXT_BC_LF, [
             [sg.Text(
                 'Absolute or relative path to blockchain log file of uploaded reports.', font=FONT)],
             [sg.Text('By default, output/blockchain.log will be used:', font=FONT)],
             [sg.InputText(DEFAULT_BC_LF, font=FONT,
                           disabled=True, justification=CENTER)],
             [sg.OK()]
-        ]
-        sg.Window(TEXT_BC_LF, help_layout,
-                  element_justification=CENTER).read(close=True)
+        ], element_justification=CENTER).read(close=True)
 
     if event == sg.WIN_CLOSED:
         break
@@ -553,7 +572,7 @@ while True:
             shrink_enlarge_window()
         console_log(window, console)
 
-        msfcont = metasploit.start_msfrpcd(KEY_INPUT_LD)
+        msfcont = metasploit.start_msfrpcd(window[KEY_INPUT_LD].Get())
         msfclient = metasploit.get_msf_connection(DEFAULT_MSFRPC_PASSWD)
         mtype = None
         mname = None
@@ -565,7 +584,7 @@ while True:
                         BUTTON_COLOR, NO_BORDER, TOOLTIP_MN)
 
         mod_layout = [[sg.Frame(NO_TEXT, [[
-            sg.InputText(str(i), size=TEXT_DESC_SIZE_L, pad=PAD_NO, disabled_readonly_background_color=COLOR_IT_AS_T,
+            sg.InputText(str(i), size=TEXT_DESC_SIZE_L, pad=PAD_NO_TBR, disabled_readonly_background_color=COLOR_IT_AS_T,
                          readonly=True, border_width=NO_BORDER, font=FONT, key=KEY_MOD_NAME+str(i)),
             button(NO_TEXT, KEY_MOD_EDIT+str(i), EDIT, BUTTON_M_SIZE,
                    BUTTON_COLOR, NO_BORDER, TOOLTIP_MOD_EDIT, pad=PAD_MOD),
@@ -586,8 +605,8 @@ while True:
             [button(NO_TEXT, KEY_MOD_ADD, ADD, BUTTON_L_SIZE,
                     BUTTON_COLOR, NO_BORDER, TOOLTIP_MOD_ADD)],
             [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
-            [sg.Button(TEXT_WIZARD_GEN, key=KEY_WIZARD_GEN),
-             sg.Button(TEXT_WIZARD_EXIT, key=KEY_WIZARD_EXIT)],
+            [sg.Button(TEXT_WIZARD_GEN, key=KEY_WIZARD_GEN, font=FONT),
+             sg.Button(TEXT_WIZARD_EXIT, key=KEY_WIZARD_EXIT, font=FONT)],
             [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)]
         ]
         wwindow = sg.Window('Helper', wizard_layout,
@@ -595,10 +614,10 @@ while True:
 
         edit_regex = re.compile(KEY_MOD_EDIT+'\d+')
         rem_regex = re.compile(KEY_MOD_REM+'\d+')
-        mod_idx = [idx for idx in range(MAX_MODULES-1, -1, -1)]  # (MAX_MODULES-1) ... 0
+        # (MAX_MODULES-1) ... 0
+        mod_idx = [idx for idx in range(MAX_MODULES-1, -1, -1)]
         mod_list = {}
         while True:
-            print(mod_list)
             wevent, wvalues = wwindow.read()
             if wevent == KEY_MODULE_TYPE:
                 mtype = wvalues[KEY_MODULE_TYPE]
@@ -636,14 +655,15 @@ while True:
                 aux_mt, aux_mn = wwindow[KEY_MOD_NAME +
                                          str(aux_mod_idx)].Get().split(': ')
                 opt_window(
-                            msfclient, aux_mt, aux_mn, aux_mod_idx, mod_list[aux_mt][aux_mn][aux_mod_idx])
+                    msfclient, aux_mt, aux_mn, aux_mod_idx, mod_list[aux_mt][aux_mn][aux_mod_idx])
 
             if wevent is not None and rem_regex.match(wevent):
                 aux_mod_idx = int(wevent.split("_")[2])  # module_rem_xxx
                 aux_mt, aux_mn = wwindow[KEY_MOD_NAME +
                                          str(aux_mod_idx)].Get().split(': ')
                 wwindow[KEY_MOD_FRAME+str(aux_mod_idx)](visible=False)
-                wwindow[KEY_MOD_FRAME+str(aux_mod_idx)].ParentRowFrame.config(width=0, height=1)
+                wwindow[KEY_MOD_FRAME+str(aux_mod_idx)
+                        ].ParentRowFrame.config(width=0, height=1)
                 del mod_list[aux_mt][aux_mn][aux_mod_idx]
                 mod_idx.insert(0, aux_mod_idx)  # reuse removed item
 
@@ -653,17 +673,22 @@ while True:
 
             if wevent == KEY_WIZARD_GEN:
                 ev, val = sg.Window('Are you sure?', [
-                    [sg.Text('Are you sure you want to', justification=CENTER, font=FONT, pad=PAD_NO_R), sg.Text('overwrite', justification=CENTER, font=FONTB, pad=PAD_NO_L)],
-                    [sg.Text('{}?'.format(window[KEY_INPUT_RC].Get()), justification=CENTER, font=FONT)],
+                    [sg.Text('Are you sure you want to', justification=CENTER, font=FONT, pad=PAD_NO_R), sg.Text(
+                        'overwrite', justification=CENTER, font=FONTB, pad=PAD_NO_L)],
+                    [sg.Text('{}?'.format(window[KEY_INPUT_RC].Get()),
+                             justification=CENTER, font=FONT)],
                     [sg.Text(NO_TEXT, justification=CENTER, font=FONTPAD)],
-                    [sg.Yes(font=FONT, button_color=BUTTON_COLOR_ERR), sg.No(font=FONT)]
+                    [sg.Yes(font=FONT, button_color=BUTTON_COLOR_ERR),
+                     sg.No(font=FONT)]
                 ], element_justification=CENTER).read(close=True)
                 if ev == 'Yes':
                     for mlt in mod_list:
                         for mln in mod_list[mlt]:
-                            mod_list[mlt][mln] = list(mod_list[mlt][mln].values())
+                            mod_list[mlt][mln] = list(
+                                mod_list[mlt][mln].values())
                     with open(window[KEY_INPUT_RC].Get(), 'w') as f:
                         json.dump(rc_file, f, indent=2)
-                        utils.log('succg', "Resource script file generated at {}".format(rc_out))
+                        utils.log(
+                            'succg', "Resource script file generated at {}".format(rc_out))
         wwindow.close()
 window.close()

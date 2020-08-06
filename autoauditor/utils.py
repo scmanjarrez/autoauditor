@@ -126,7 +126,7 @@ TEXT_REQ_SIZE = (8, 1)
 TEXT_DESC_SIZE = (30, 1)
 TEXT_DESC_SIZE_2 = (28, 1)
 TEXT_DESC_SIZE_M = (52, 1)
-TEXT_DESC_SIZE_L = (84, 1)
+TEXT_DESC_SIZE_L = (83, 1)
 TEXT_DESC_SIZE_XL = (553, 1)
 TEXT_DESC_SIZE_XL2 = (566, 1)
 TEXT_OPT_NAME_SIZE = (26, 1)
@@ -263,7 +263,8 @@ PAD_NO = ((0, 0), (0, 0))
 PAD_NO_L = ((0, 5), (5, 5))
 PAD_NO_R = ((5, 0), (5, 5))
 PAD_NO_TB = ((5, 5), (0, 0))
-PAD_MOD = ((30, 0), (0, 0))
+PAD_NO_TBR = ((10, 0), (0, 0))
+PAD_MOD = ((28, 0), (0, 0))
 CONSOLE_PAD = ((0, 0), (10, 20))
 CONSOLE_SIZE = (80, 8)
 EXEC_TEXT_SIZE_S = (10, 1)
@@ -324,7 +325,8 @@ def log(color, string, end='\n', errcode=None):
         print(level.get(color) + string, end=end, flush=True)
 
     if errcode is not None and errcode != NOERROR:
-        sys.exit(errcode)
+        if not CONSOLE:
+            sys.exit(errcode)
 
 
 def check_privileges():
@@ -403,6 +405,7 @@ def check_file_dir(outf, outd=None):
         except PermissionError:
             log('error', "Insufficient permission to create file path {}.".format(
                 outf), errcode=EACCESS)
+            return EACCESS
 
     if outd is not None:
         try:
@@ -410,6 +413,7 @@ def check_file_dir(outf, outd=None):
         except PermissionError:
             log('error', "Insufficient permission to create directory {}.".format(
                 outd), errcode=EACCESS)
+            return EACCESS
 
 
 if __name__ == '__main__':

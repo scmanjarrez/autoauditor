@@ -22,7 +22,7 @@ import docker
 import os
 
 
-def setup_vpn(ovpn_file, stop):
+def setup_vpn(ovpn_file, stop=False):
     client = docker.from_env()
     vpncont = None
 

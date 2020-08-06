@@ -80,8 +80,7 @@ This is free software, and you are welcome to redistribute it
 under certain conditions; check file LICENSE for details.
 """)
 
-    vpncont = None
-    msfcont = None
+    vpncont = msfcont = None
 
     if args.no_color:
         utils.disable_ansi_colors()

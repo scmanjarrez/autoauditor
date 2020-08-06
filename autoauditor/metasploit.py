@@ -28,7 +28,6 @@ import sys
 import docker
 import time
 
-_loot_dir = None
 
 def get_msf_connection(passwd):
     try:
@@ -42,9 +41,6 @@ def get_msf_connection(passwd):
 
 
 def start_msfrpcd(loot_dir, ovpn=False, stop=False):
-    global _loot_dir
-    _loot_dir = loot_dir
-
     dockercl = docker.from_env()
     msfcont = None
 
@@ -99,7 +95,6 @@ def start_msfrpcd(loot_dir, ovpn=False, stop=False):
 
 
 def launch_metasploit(msfcl, rc_file, log_file):
-    print(_loot_dir)
     with open(rc_file, 'r') as f:
         try:
             rc = json.load(f)
