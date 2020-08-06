@@ -637,6 +637,7 @@ while True:
                                          str(aux_mod_idx)].Get().split(': ')
                 opt_window(
                             msfclient, aux_mt, aux_mn, aux_mod_idx, mod_list[aux_mt][aux_mn][aux_mod_idx])
+
             if wevent is not None and rem_regex.match(wevent):
                 aux_mod_idx = int(wevent.split("_")[2])  # module_rem_xxx
                 aux_mt, aux_mn = wwindow[KEY_MOD_NAME +
@@ -645,22 +646,24 @@ while True:
                 wwindow[KEY_MOD_FRAME+str(aux_mod_idx)].ParentRowFrame.config(width=0, height=1)
                 del mod_list[aux_mt][aux_mn][aux_mod_idx]
                 mod_idx.insert(0, aux_mod_idx)  # reuse removed item
-            if wevent == KEY_WIZARD_EXIT:
+
+            if wevent in (KEY_WIZARD_EXIT, sg.WIN_CLOSED):
                 shutdown(msfcont)
-                break
-            if wevent == sg.WIN_CLOSED:
                 break
 
             if wevent == KEY_WIZARD_GEN:
-                print(window[KEY_INPUT_RC].Get())
-                # for mlt in mod_list:
-                #     for mln in mod_list[mlt]:
-                #         mod_list[mlt][mln] = list(mod_list[mlt][mln].values())
-                # with open(window[KEY_INPUT_RC].Get(), 'w') as f:
-                #     json.dump(rc_file, f, indent=2)
-                #     utils.log('succg', "Resource script file generated at {}".format(rc_out))
-                # shutdown(msfcont)
-                # break
-        break
+                ev, val = sg.Window('Are you sure?', [
+                    [sg.Text('Are you sure you want to', justification=CENTER, font=FONT, pad=PAD_NO_R), sg.Text('overwrite', justification=CENTER, font=FONTB, pad=PAD_NO_L)],
+                    [sg.Text('{}?'.format(window[KEY_INPUT_RC].Get()), justification=CENTER, font=FONT)],
+                    [sg.Text(NO_TEXT, justification=CENTER, font=FONTPAD)],
+                    [sg.Yes(font=FONT, button_color=BUTTON_COLOR_ERR), sg.No(font=FONT)]
+                ], element_justification=CENTER).read(close=True)
+                if ev == 'Yes':
+                    for mlt in mod_list:
+                        for mln in mod_list[mlt]:
+                            mod_list[mlt][mln] = list(mod_list[mlt][mln].values())
+                    with open(window[KEY_INPUT_RC].Get(), 'w') as f:
+                        json.dump(rc_file, f, indent=2)
+                        utils.log('succg', "Resource script file generated at {}".format(rc_out))
         wwindow.close()
 window.close()
