@@ -291,8 +291,8 @@ def opt_window(msfclient, mtype, mname, mod_idx, current_opts=[]):
                         BUTTON_COLOR, NO_BORDER, wizard._get_option_desc(mod, opt)),
                  sg.InputText(str(opts[opt]), size=TEXT_DESC_SIZE_M, key=KEY_OPT_VAL+str(idx), pad=PAD_IT_T, font=FONT)]], border_width=NO_BORDER, pad=PAD_NO)] for idx, opt in enumerate(opts)], size=OPT_MOD_COLUMN_SIZE, scrollable=scrollable, vertical_scroll_only=True)],
         [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
-        [sg.Button('Accept', key=KEY_OPT_ACCEPT),
-         sg.Button('Cancel', key=KEY_OPT_CANCEL)]
+        [sg.Button('Accept', key=KEY_OPT_ACCEPT, font=FONT),
+         sg.Button('Cancel', key=KEY_OPT_CANCEL, font=FONT)]
     ]
 
     owindow = sg.Window(
@@ -377,7 +377,7 @@ while True:
                     [sg.Text('File {}'.format(vpncf), font=FONT)],
                     [sg.Text('does not exist.', font=FONT)],
                     [sg.Text(NO_TEXT, font=FONTPAD)],
-                    [sg.OK(button_color=BUTTON_COLOR_ERR)]
+                    [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
                 ], element_justification=CENTER, auto_close=True).read(close=True)
             else:
                 vpncont = vpn.setup_vpn(vpncf)
@@ -391,7 +391,7 @@ while True:
                 [sg.Text('Log file/Log directory', font=FONT)],
                 [sg.Text('does not exist.', font=FONT)],
                 [sg.Text(NO_TEXT, font=FONTPAD)],
-                [sg.OK(button_color=BUTTON_COLOR_ERR)]
+                [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
             ], element_justification=CENTER, auto_close=True).read(close=True)
         else:
             msfcont = metasploit.start_msfrpcd(ld, ovpn=vpn_cb.enabled)
@@ -404,7 +404,7 @@ while True:
                 [sg.Text('File {}'.format(rc), font=FONT)],
                 [sg.Text('does not exist.', font=FONT)],
                 [sg.Text(NO_TEXT, font=FONTPAD)],
-                [sg.OK(button_color=BUTTON_COLOR_ERR)]
+                [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
             ], element_justification=CENTER, auto_close=True).read(close=True)
         else:
             metasploit.launch_metasploit(msfclient, rc, lf)
@@ -417,7 +417,7 @@ while True:
                     [sg.Text('File {}'.format(rc), font=FONT)],
                     [sg.Text('does not exist.', font=FONT)],
                     [sg.Text(NO_TEXT, font=FONTPAD)],
-                    [sg.OK(button_color=BUTTON_COLOR_ERR)]
+                    [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
                 ], element_justification=CENTER, auto_close=True).read(close=True)
             else:
                 info = blockchain.load_config(hc)
@@ -427,7 +427,7 @@ while True:
                         [sg.Text('Blockchain log file', font=FONT)],
                         [sg.Text('does not exist.', font=FONT)],
                         [sg.Text(NO_TEXT, font=FONTPAD)],
-                        [sg.OK(button_color=BUTTON_COLOR_ERR)]
+                        [sg.OK(button_color=BUTTON_COLOR_ERR, font=FONT)]
                     ], element_justification=CENTER, auto_close=True).read(close=True)
                 else:
                     blockchain.store_report(info, lf, ho)
