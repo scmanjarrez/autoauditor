@@ -120,6 +120,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     verify_arguments(args)
 
+    utils.log('normal',
+              """
+AutoAuditor  Copyright (C) 2020  Sergio Chica Manjarrez
+This program comes with ABSOLUTELY NO WARRANTY; for details check file LICENSE.
+This is free software, and you are welcome to redistribute it
+under certain conditions; check file LICENSE for details.
+""")
+
     assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(
         args.netconfigfile)
 

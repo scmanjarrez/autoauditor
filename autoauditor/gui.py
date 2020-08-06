@@ -21,7 +21,6 @@
 
 from utils import *
 import PySimpleGUI as sg
-import subprocess
 import metasploit
 import wizard
 import sys
@@ -93,27 +92,6 @@ def switch(button, *elems):
     button.switch()
 
 
-def run_command(console, cmd, timeout=None, window=None):
-    nop = None
-    p = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    for line in p.stdout:
-        line = line.decode(errors='replace' if (sys.version_info) < (
-            3, 5) else 'backslashreplace').replace('\r', '\n').rstrip()
-        console.print(line)
-        window.refresh() if window else nop        # yes, a 1-line if, so shoot me
-    exitcode = p.wait(timeout)
-    return exitcode
-
-
-py_fb = browse(NO_TEXT, KEY_PY_FB, KEY_INPUT_PY, FILEPNG, BUTTON_M_SIZE,
-               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
-py_i_b = button(NO_TEXT, KEY_PY_I_B, INFO, BUTTON_S_SIZE,
-                BUTTON_COLOR, NO_BORDER, TOOLTIP_PY)
-aa_fb = browse(NO_TEXT, KEY_AA_FB, KEY_INPUT_AA, FILEPNG, BUTTON_M_SIZE,
-               BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
-aa_i_b = button(NO_TEXT, KEY_AA_I_B, INFO, BUTTON_S_SIZE,
-                BUTTON_COLOR, NO_BORDER, TOOLTIP_AA)
 lf_fb = browse(NO_TEXT, KEY_LF_FB, KEY_INPUT_LF, FILEPNG, BUTTON_M_SIZE,
                BUTTON_COLOR, NO_BORDER, tooltip=TOOLTIP_FILE_BROWSER, pad=PAD_NO_TB)
 lf_i_b = button(NO_TEXT, KEY_LF_I_B, INFO, BUTTON_S_SIZE,
@@ -160,19 +138,14 @@ console = sg.Multiline(NO_TEXT, key=KEY_CONSOLE, size=CONSOLE_SIZE,
                        pad=CONSOLE_PAD, visible=False, font=FONT, autoscroll=True)
 
 mandatory_layout = [
-    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
-    [sg.Text(TEXT_PY, key=KEY_PY_T, size=TEXT_DESC_SIZE, font=FONTB), py_i_b,
-     input_text(DEFAULT_PY, KEY_INPUT_PY, font=FONT, pad=PAD_IT_T), py_fb],
-    [sg.Text(TEXT_AA, key=KEY_AA_T, size=TEXT_DESC_SIZE, font=FONTB), aa_i_b,
-     input_text(DEFAULT_AA, KEY_INPUT_AA, font=FONT, pad=PAD_IT_T), aa_fb],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
     [sg.Text(TEXT_LF, key=KEY_LF_T, size=TEXT_DESC_SIZE, font=FONTB), lf_i_b,
      input_text(DEFAULT_LF, KEY_INPUT_LF, font=FONT, pad=PAD_IT_T), lf_fb],
     [sg.Text(TEXT_LD, key=KEY_LD_T, size=TEXT_DESC_SIZE, font=FONTB), ld_i_b,
      input_text(DEFAULT_LD, KEY_INPUT_LD, font=FONT, pad=PAD_IT_T), ld_fb],
     [sg.Text(TEXT_RC, key=KEY_RC_T, size=TEXT_DESC_SIZE, font=FONTB), rc_i_b,
      input_text(DEFAULT_RC, KEY_INPUT_RC, font=FONT, pad=PAD_IT_T), rc_fb],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TB)]
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)]
 ]
 
 vpn_layout = [
@@ -180,7 +153,7 @@ vpn_layout = [
                      text_color=COLOR_DISABLED, font=FONTB, enable_events=True)],
     [sg.Text(TEXT_VPN_CF, key=KEY_VPN_CF_T, size=TEXT_DESC_SIZE, font=FONTB,
              text_color=COLOR_DISABLED), vpn_cf_i_b, vpn_cf_it, vpn_cf_fb],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TB)]
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)]
 ]
 
 blockchain_layout = [
@@ -190,7 +163,7 @@ blockchain_layout = [
              text_color=COLOR_DISABLED), bc_cf_i_b, bc_cf_it, bc_cf_fb],
     [sg.Text(TEXT_BC_LF, key=KEY_BC_LF_T, size=TEXT_DESC_SIZE, font=FONTB,
              text_color=COLOR_DISABLED), bc_lf_i_b, bc_lf_it, bc_lf_fb],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
 
     [sc_cb, sg.Text(TEXT_SC_CB, key=KEY_SC_CB_T,
                     text_color=COLOR_ENABLED, font=FONTB,  enable_events=True)]
@@ -215,7 +188,7 @@ button_layout = [
         sg.Text(TEXT_STOP, key=KEY_STOP_T, font=FONTB,
                 size=EXEC_TEXT_SIZE_S, pad=PAD_EXEC_TEXT, justification=CENTER, enable_events=True)
     ],
-    [sg.Frame(NO_TEXT, [[sg.Text(NO_TEXT, size=(110, 1), pad=PAD_NO),
+    [sg.Frame(NO_TEXT, [[sg.Text(NO_TEXT, size=CONSOLE_CB_SIZE, pad=PAD_NO),
                          console_cb]], border_width=NO_BORDER)],
     [console]
 ]
@@ -228,22 +201,18 @@ autoauditor_layout = [
 ]
 
 about_layout = [
-    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
-    [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
+    [sg.Text(NO_TEXT, pad=PAD_NO_TB, font=FONTPAD)],
     [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
     [sg.Text(ABOUT_NAME, font=FONTB)],
     [sg.Text(ABOUT_VERSION, font=FONTB)],
-    [sg.Text(NO_TEXT)],
     [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
     [sg.Text(ABOUT_AUTHOR, font=FONT)],
     [sg.Text(ABOUT_LAB, font=FONT)],
     [sg.Text(ABOUT_DEPARTMENT, font=FONT)],
     [sg.Text(ABOUT_UC3M, font=FONT)],
     [sg.Text(ABOUT_LOCATION, font=FONT)],
-    [sg.Text(NO_TEXT)],
     [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
     [sg.Text(ABOUT_ACKNOWLEDGEMENT, font=FONT, justification=CENTER)],
-    [sg.Text(NO_TEXT)],
     [sg.Text(NO_TEXT, pad=PAD_NO_TB)],
     [sg.Text(ABOUT_YEAR, font=FONT)],
 ]
@@ -282,6 +251,7 @@ layout = [
         font=FONT
     )]
 ]
+
 
 # Create the Window
 window = sg.Window('AutoAuditor', layout, element_justification=CENTER)
@@ -359,16 +329,13 @@ def opt_window(msfclient, mtype, mname, mod_idx, current_opts=[]):
 
             wwindow[KEY_MOD_NAME +
                     str(mod_idx)](value=": ".join([mtype, mname]))
-
-            # wwindow[KEY_MOD_FRAME +
-            #         str(mod_idx)].unhide_row()
             wwindow[KEY_MOD_FRAME +
                     str(mod_idx)](visible=True)
             wwindow.refresh()  # trick to show last element inmediately
             wwindow[KEY_MOD_COL].Widget.canvas.config(
                 scrollregion=wwindow[KEY_MOD_COL].Widget.canvas.bbox('all'))
             wwindow[KEY_MOD_COL].Widget.canvas.yview_moveto(
-                999)
+                999)  # workaround to update column scrollbar
             added = True
             break
         if oevent == KEY_OPT_CANCEL:
@@ -465,7 +432,12 @@ while True:
                 else:
                     blockchain.store_report(info, lf, ho)
         if sc_cb.enabled:
-            shutdown(msfcont, vpncont)
+            errcode = shutdown(msfcont, vpncont)
+            if errcode:
+                sg.Window('Success', [
+                    [sg.Text('AutoAuditor finished successfully.', font=FONT)],
+                    [sg.OK(font=FONT)]
+                ], element_justification=CENTER, auto_close=True).read(close=True)
 
     if event == KEY_STOP_B or event == KEY_STOP_T:
         if not console_cb.enabled:
@@ -476,30 +448,14 @@ while True:
             vpncont = vpn.setup_vpn(window[KEY_INPUT_VPN_CF].Get(), stop=True)
 
         msfcont = metasploit.start_msfrpcd(
-                    window[KEY_INPUT_LD].Get(), ovpn=vpn_cb.enabled, stop=True)
+            window[KEY_INPUT_LD].Get(), ovpn=vpn_cb.enabled, stop=True)
 
-        shutdown(msfcont, vpncont)
-
-    if event == KEY_PY_I_B:
-        sg.Window(TEXT_PY, [
-            [sg.Text('Absolute or relative path to python executable.', font=FONT)],
-            [sg.Text(
-                'A virtual environment can be generated using gen_venv.sh script.', font=FONT)],
-            [sg.Text(
-                'After the generation, the python executable is located in:', font=FONT)],
-            [sg.InputText(DEFAULT_PY, font=FONT, disabled=True,
-                          justification=CENTER)],
-            [sg.OK()]
-        ], element_justification=CENTER).read(close=True)
-
-    if event == KEY_AA_I_B:
-        sg.Window(TEXT_AA, [
-            [sg.Text('Absolute or relative path to autoauditor script.', font=FONT)],
-            [sg.Text('Autoauditor script is under autoauditor directory:', font=FONT)],
-            [sg.InputText(DEFAULT_AA, font=FONT, disabled=True,
-                          justification=CENTER)],
-            [sg.OK()]
-        ], element_justification=CENTER).read(close=True)
+        errcode = shutdown(msfcont, vpncont)
+        if errcode:
+            sg.Window('Success', [
+                [sg.Text('Containers stopped successfully.', font=FONT)],
+                [sg.OK(font=FONT)]
+            ], element_justification=CENTER, auto_close=True).read(close=True)
 
     if event == KEY_LF_I_B:
         sg.Window(TEXT_LF, [
@@ -663,12 +619,17 @@ while True:
                                          str(aux_mod_idx)].Get().split(': ')
                 wwindow[KEY_MOD_FRAME+str(aux_mod_idx)](visible=False)
                 wwindow[KEY_MOD_FRAME+str(aux_mod_idx)
-                        ].ParentRowFrame.config(width=0, height=1)
+                        ].ParentRowFrame.config(width=0, height=1)  # workaround to hide row after removal
                 del mod_list[aux_mt][aux_mn][aux_mod_idx]
                 mod_idx.insert(0, aux_mod_idx)  # reuse removed item
 
             if wevent in (KEY_WIZARD_EXIT, sg.WIN_CLOSED):
-                shutdown(msfcont)
+                errcode = shutdown(msfcont)
+                if errcode:
+                    sg.Window('Success', [
+                        [sg.Text('Wizard finished successfully.', font=FONT)],
+                        [sg.OK(font=FONT)]
+                    ], element_justification=CENTER, auto_close=True).read(close=True)
                 break
 
             if wevent == KEY_WIZARD_GEN:

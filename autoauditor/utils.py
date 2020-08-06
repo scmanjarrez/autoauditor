@@ -28,7 +28,7 @@ import os
 
 ############### AutoAuditor Variables ###############
 
-NOERROR = 0
+NOERROR = 240
 EBUILD = 241
 ENOBRDGNET = 242
 EACCESS = 243
@@ -115,24 +115,13 @@ ADD = b'iVBORw0KGgoAAAANSUhEUgAAACoAAAAwCAYAAABnjuimAAAABHNCSVQICAgIfAhkiAAAAAlw
 EDIT = b'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAABLQAAAS0B1sg7IAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADkSURBVFiF7dcxCsIwFMbx/6DHcnB1dfIGnV0LpW528ByC6OgVvIRb0UlxEUFE0CEGSqltWl8ShDx4UGjp70vS0gZC2asIOAIXIAP6LvEZ8Cr1xlWIKtxZiLgG1722GWII3AxCZNJwAoxbhDhL4nrNHy1C5NK4btMQkQSefrn5E5h8rhkA19L5uU28KYQIXvee1y1HLIGnhnjVTPxcpiMvd+ITd7rmAQ/4/+OjjvhMAgeYdsBFRq5r4RMHWPnEAXY+cVC/Sd5wgHsDLva0F6tXOF6ivt0n1GwcUFurHNgDWxsBQr0BZ6w2bYtcY1sAAAAASUVORK5CYII='
 REMOVE = b'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAABDAAAAQwBlqf4UAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAD6SURBVFiF7ZYxEoIwEEWf2nkJ9B5AgTbewBvoUbimvYUzDLZYmMyog8luXEnDn0lFNu+RkBCYkzmrwLMaOABX4JY4/hY4AmvgoilsgcG1DmgS4I2r9eO0KXDfeqVE42o+x4lK1CNFWolvcN/KUPE5UCiRiMEH4BQSKHhfN42EBN45RjCVQOIO7F9qaqH4LgZPkTCH+0imtBf2SdnGgGwmzN/cSsIEniphCtdKqOBLhcBC0U/aVxzJVgudE5PCTSVS4SYSWQ8izfGa8u8wg/uYSWyE8L/9jrNfSKof4FKJ4JUMMl9KxyQmv5b7lDzXK/jRRFK4MaLTPidbHqpgYJKLVQy1AAAAAElFTkSuQmCC'
 
-
 FONT = ('../autoauditor/gui_files/font/Hack-Regular.ttf', 12)
 FONT_S = ('../autoauditor/gui_files/font/Hack-Regular.ttf', 11)
 FONTB = ('../autoauditor/gui_files/font/Hack-Regular.ttf', 12, 'bold')
 FONTPAD = 'Any 2'
+
 TEXT_REQ_Y = 'Yes'
 TEXT_REQ_N = 'No'
-TEXT_REQ_SIZE = (8, 1)
-TEXT_DESC_SIZE = (30, 1)
-TEXT_DESC_SIZE_2 = (28, 1)
-TEXT_DESC_SIZE_M = (52, 1)
-TEXT_DESC_SIZE_L = (83, 1)
-TEXT_DESC_SIZE_XL = (553, 1)
-TEXT_DESC_SIZE_XL2 = (566, 1)
-TEXT_OPT_NAME_SIZE = (26, 1)
-TEXT_OPT_VAL_SIZE = (40, 1)
-TEXT_PY = 'Python Executable Path'
-TEXT_AA = 'AutoAuditor Path'
 TEXT_LF = 'Log File'
 TEXT_LD = 'Log Directory'
 TEXT_RC = 'Resources Script File'
@@ -155,8 +144,17 @@ TEXT_OPT_REQ = 'Required'
 TEXT_OPT_VAL = 'Current Setting'
 TEXT_WIZARD_GEN = 'Generate Resources Script'
 TEXT_WIZARD_EXIT = 'Exit Wizard'
-TOOLTIP_PY = 'Absolute path to python executable present in autoauditor_venv. Click for more details.'
-TOOLTIP_AA = 'Absolute path to autoauditor tool. Click for more details.'
+
+TEXT_REQ_SIZE = (8, 1)
+TEXT_DESC_SIZE = (30, 1)
+TEXT_DESC_SIZE_2 = (28, 1)
+TEXT_DESC_SIZE_M = (52, 1)
+TEXT_DESC_SIZE_L = (83, 1)
+TEXT_DESC_SIZE_XL = (553, 1)
+TEXT_DESC_SIZE_XL2 = (566, 1)
+TEXT_OPT_NAME_SIZE = (26, 1)
+TEXT_OPT_VAL_SIZE = (40, 1)
+
 TOOLTIP_LF = 'Absolute path to log file where output should be written. Click for more details.'
 TOOLTIP_LD = 'Absolute path to directory where gathered data should be collected. Click for more details.'
 TOOLTIP_RC = 'Absolute path to resources script file. Click for more details.'
@@ -175,12 +173,6 @@ TOOLTIP_MOD_ADD = 'Add module'
 TOOLTIP_MOD_EDIT = 'Edit module'
 TOOLTIP_MOD_REMOVE = 'Remove module'
 
-KEY_PY_I_B = 'py_i_b'
-KEY_PY_T = 'py_t'
-KEY_PY_FB = 'py_fb'
-KEY_AA_I_B = 'aa_i_b'
-KEY_AA_T = 'aa_t'
-KEY_AA_FB = 'aa_fb'
 KEY_LF_I_B = 'lf_i_b'
 KEY_LF_T = 'lf_t'
 KEY_LF_FB = 'lf_fb'
@@ -205,8 +197,6 @@ KEY_BC_LF_T = 'bc_lf_t'
 KEY_BC_LF_FB = 'bc_lf_fb'
 KEY_SC_CB = 'sc_cb'
 KEY_SC_CB_T = 'sc_cb_t'
-KEY_INPUT_PY = 'input_py'
-KEY_INPUT_AA = 'input_aa'
 KEY_INPUT_LF = 'input_lf'
 KEY_INPUT_LD = 'input_ld'
 KEY_INPUT_RC = 'input_rc'
@@ -254,7 +244,7 @@ BUTTON_S_SIZE = (24, 24)
 BUTTON_M_SIZE = (32, 32)
 BUTTON_L_SIZE = (48, 48)
 PAD_EXEC_TEXT = ((10, 10), (10, 0))
-PAD_T = ((5, 5), (20, 0))
+PAD_T = ((5, 5), (10, 0))
 PAD_IT_T = ((5, 5), (2, 0))
 PAD_OPT_HEAD = ((3, 1), (0, 0))
 PAD_OPT_HEAD2 = ((5, 5), (0, 0))
@@ -267,6 +257,7 @@ PAD_NO_TBR = ((10, 0), (0, 0))
 PAD_MOD = ((28, 0), (0, 0))
 CONSOLE_PAD = ((0, 0), (10, 20))
 CONSOLE_SIZE = (80, 8)
+CONSOLE_CB_SIZE = (110, 1)
 EXEC_TEXT_SIZE_S = (10, 1)
 EXEC_TEXT_SIZE_XS = (20, 1)
 EXEC_TEXT_SIZE_M = (30, 1)
@@ -276,11 +267,9 @@ NO_BORDER = 0
 CENTER = 'center'
 NO_TEXT = ''
 LICENSE_TEXT_SIZE = (105, 675)
-LICENSE_COLUMN_SIZE = (950, 500)
+LICENSE_COLUMN_SIZE = (950, 330)
 
 
-DEFAULT_PY = os.path.abspath('../config/autoauditor_venv/bin/python')
-DEFAULT_AA = os.path.abspath('../autoauditor/autoauditor.py')
 DEFAULT_LF = os.path.abspath('output/msf.log')
 DEFAULT_LD = os.path.abspath('output')
 DEFAULT_RC = os.path.abspath('../config/rc.example.5vuln.json')
@@ -309,6 +298,7 @@ def console_log(window, console):
     CONSOLE = console
     WINDOW = window
     disable_ansi_colors()
+
 
 def log(color, string, end='\n', errcode=None):
     level = {
@@ -395,6 +385,7 @@ def shutdown(msfcont, vpncont=None):
             log('succg', ATNETRM)
 
     log('succg', 'Exiting autoauditor.', errcode=NOERROR)
+    return NOERROR
 
 
 def check_file_dir(outf, outd=None):
