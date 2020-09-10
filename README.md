@@ -55,7 +55,8 @@ con la API.
 
 # Posibles problemas, causas y soluciones
 - Missing 'proposalResponses' parameter in transaction request.
-> Error que se obtiene al tratar de realizar una transacción en la blockchain.
+- status = StatusCode.UNKNOWN<br>details = "error validating proposal: access denied: channel [mychannel] creator org [Org1MSP]" 
+> Errores que se obtienen al usar credenciales inválidas a la hora de realizar alguna petición contra la blockchain..
 <!-- -->
 > **Solución:** Borrar la carpeta wallet-test del directorio desde el que se ejecuta autoauditor.
 

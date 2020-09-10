@@ -79,15 +79,15 @@ def query(info, pretty, qtype, rid=None, org=None, date=None, db=None):
 def verify_arguments(args):
     if args.query == 'id':
         if not args.reportid:
-            utils.log('error', "Missing argument: reportid.",
+            utils.log('error', "Missing argument: reportid (-i).",
                       errcode=utils.EMISSINGARG)
     elif args.query == 'org':
         if not args.orgname:
-            utils.log('error', "Missing argument: orgname.",
+            utils.log('error', "Missing argument: orgname (-o).",
                       errcode=utils.EMISSINGARG)
     else:
         if not args.date:
-            utils.log('error', "Missing argument: date.",
+            utils.log('error', "Missing argument: date (-t).",
                       errcode=utils.EMISSINGARG)
 
 
