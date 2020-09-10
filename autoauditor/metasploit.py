@@ -29,6 +29,16 @@ import docker
 import time
 
 
+
+def ispayloadoption(opt, check=True):
+    if isinstance(opt, str):
+        pay = opt.split('.')
+        if len(pay) == 2 and pay[0] == 'PAYLOAD' and pay[1]:
+            if check:
+                return True
+            else:
+                return pay[1]
+
 def get_msf_connection(passwd):
     try:
         return MsfRpcClient(passwd, ssl=True)
@@ -124,21 +134,30 @@ def launch_metasploit(msfcl, rc_file, log_file):
                     continue
 
                 for expl in rc[mtype][mname]:
+                    payload = None
                     for opt in expl:
                         try:
                             if opt == "ACTION":
                                 mod.action = expl[opt]
+                            elif opt == "PAYLOAD":
+                                payload = msfcl.modules.use('payload', expl[opt])
+                            elif ispayloadoption(opt):
+                                if payload is None:
+                                    utils.log('error', "Payload must be placed before payload options in {}.".format(
+                                        opt, rc_file))
+                                else:
+                                    payload[ispayloadoption(opt, check=False)] = expl[opt]
                             else:
                                 mod[opt] = expl[opt]
                         except KeyError:
                             utils.log('error', "Invalid option: {}. Check {}.".format(
-                                opt[0], rc_file))
+                                opt, rc_file))
                     cid = msfcl.consoles.console().cid
                     exp = "{}/{}".format(mtype, mname)
                     utils.log('succg', "Logging output: {}".format(exp))
                     f.write("##### {} #####\n\n".format(exp))
                     f.write(msfcl.consoles.console(
-                        cid).run_module_with_output(mod))
+                        cid).run_module_with_output(mod, payload=payload))
                     f.write("\n######{}######\n\n".format("#"*len(exp)))
                     msfcl.consoles.destroy(cid)
 

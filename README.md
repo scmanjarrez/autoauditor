@@ -52,3 +52,21 @@ de los demás contenedores.
 La ejecución se realiza en un entorno virtual, sin embargo, es necesario que la cuenta de usuario desde
 la que se ejecuta la herramienta pertenezca al grupo **docker** para que se pueda comunicar
 con la API.
+
+# Posibles problemas, causas y soluciones
+- Missing 'proposalResponses' parameter in transaction request.
+> Error que se obtiene al tratar de realizar una transacción en la blockchain.
+<!-- -->
+> **Solución:** Borrar la carpeta wallet-test del directorio desde el que se ejecuta autoauditor.
+
+- FileNotFoundError: [Errno 2] No such file or directory:
+> Error obtenido justo al ejecutar autoauditor.
+<!-- -->
+> **Solución:** Comprueba que la blockchain esté correctamente instanciada, si es así, comprueba que el fichero
+de configuración de la blockchain tiene los path bien definidos.
+
+- status = StatusCode.UNAVAILABLE<br>details = "DNS resolution failed"
+> Error al tratar de realizar cualquier petición contra la blockchain.
+<!-- -->
+> **Solución:** Comprueba que tienes conexión a los nodos (peer) de la blockchain. Si estás usando el entorno de pruebas,
+entonces comprueba que el contenedor docker-resolver está ejecutándose.

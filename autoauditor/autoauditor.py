@@ -29,7 +29,7 @@ import utils
 import blockchain
 
 
-if __name__ == '__main__':
+def main():
     utils.check_privileges()
 
     parser = argparse.ArgumentParser(
@@ -116,3 +116,16 @@ under certain conditions; check file LICENSE for details.
 
         if not args.background:
             utils.shutdown(msfcont, vpncont)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        utils.log('normal', '\n')
+        utils.log(
+            'error', 'Interrupted, exiting program. Containers will keep running ...')
+        try:
+            sys.exit(1)
+        except SystemExit:
+            os._exit(1)

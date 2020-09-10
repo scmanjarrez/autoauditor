@@ -38,6 +38,7 @@ import base64
 import sys
 import asyncio
 import logging
+import sqlite3
 
 
 RAPID7 = "https://www.rapid7.com/db/modules/"
@@ -48,16 +49,106 @@ NEWREPORTFUNC = "NewReport"
 NEWREPKEYWORD = "report"
 
 cveregex = re.compile(r'^CVE-\d+-\d+')
-modregex = re.compile(r'^#{5} (?P<modname>[a-zA-Z/_]+) #{5}$')
+modregex = re.compile(r'^\#{5}\s(?P<modname>[\w\d_\/]+)\s#{5}$')
 modendregex = re.compile(r'^#{10,}$')
 rprtdateregex = re.compile(r'^#{14}\s(?P<date>[\d:\-\s\+\.]+)\s#{14}$')
 rhostregex = re.compile(r'^RHOSTS?\s+=>\s+(?P<ip>[\d\.]+)$')
 affected1 = re.compile(r'^\[\+\].*$')
-affected2 = re.compile(r'session\s\d+\sopened')
+affected2 = re.compile(r'^((?=.*\bmeterpreter\b)|(?=.*\bsession\b))(?=.*\bopen(ed)?\b).*$', re.IGNORECASE)
 affected3 = re.compile(
-    r'uid=\d+\([a-z_][a-z0-9_-]*\)\s+gid=\d+\([a-z_][a-z0-9_-]*\)\s+groups=\d+\([a-z_][a-z0-9_-]*\)(?:,\d+\([a-z_][a-z0-9_-]*\))*')
+    r'uid=\d+\([a-z_][a-z0-9_-]*\)\s+gid=\d+\([a-z_][a-z0-9_-]*\)\s+groups=\d+\([a-z_][a-z0-9_-]*\)(?:,\d+\([a-z_][a-z0-9_-]*\))*', re.IGNORECASE)
+affected4 = re.compile(r'stor(ed|ing)|sav(ed|ing)|succe(ed|ss)|extract(ed|ing)|writt?(en|ing)|retriev(ed|ing)|logg(ed|ing)|download(ed|ing)|st(ea|o)l(en|ing)|add(ed|ing)|captur(ed|ing)|keylogg(ed|ing)|migrat(ed|ing)|obtain(ed|ing)|dump(ed|ing)?[^_]', re.IGNORECASE)
+affected5 = re.compile(r'^(?=.*\b(credentials?|users?|account)\b)(?=.*\bfound\b).*$', re.IGNORECASE)
 
 loop = asyncio.get_event_loop()
+
+con = sqlite3.connect('autoauditor.db')
+cur = con.cursor()
+
+
+def set_up_cache():
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS vulnerability (
+            vuln_id TEXT PRIMARY KEY,
+            score REAL
+        )'''
+                )
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS module (
+            mod_id TEXT,
+            vuln_id TEXT,
+            PRIMARY KEY (mod_id, vuln_id),
+            FOREIGN KEY (vuln_id) REFERENCES vulnerability (vuln_id)
+        )'''
+                )
+    cur.execute('PRAGMA foreign_keys = ON;')
+
+
+def is_cached(mod):
+    cur.execute(
+        'SELECT EXISTS(SELECT 1 FROM module WHERE mod_id = ?)',
+        [mod]
+    )
+    return cur.fetchone()[0]  # (1,) if exists, (0,) otherwise
+
+
+def get_cached(mod):
+    cur.execute(
+        "SELECT V.vuln_id, V.score FROM module M INNER JOIN vulnerability V ON M.vuln_id = V.vuln_id WHERE mod_id = ?",
+        [mod]
+    )
+    return cur.fetchall()
+
+
+def cache(mod, data, update_cache):
+    if not update_cache:
+        for vuln in data:
+            cve, cve_sc = vuln
+            cur.execute(
+                "INSERT INTO vulnerability VALUES (?, ?)",
+                [cve, cve_sc]
+            )
+            con.commit()
+
+            cur.execute(
+                "INSERT INTO module VALUES (?, ?)",
+                [mod, cve]
+            )
+            con.commit()
+    else:
+        cached = get_cached(mod)
+        if cached != data.sort():
+            cur.execute(
+                "DELETE FROM module WHERE mod_id=?",
+                [mod]
+            )
+            con.commit()
+
+            for vuln in data:
+                cve, cve_sc = vuln
+                cur.execute(
+                    "SELECT EXISTS(SELECT 1 FROM vulnerability WHERE vuln_id = ?)",
+                    [cve]
+                )
+                aux = cur.fetchone()[0]
+                if aux:
+                    cur.execute(
+                        "UPDATE vulnerability SET score = ? WHERE vuln_id = ?",
+                        [cve_sc, cve]
+                    )
+                    con.commit()
+                else:
+                    cur.execute(
+                        "INSERT INTO vulnerability VALUES (?, ?)",
+                        [cve, cve_sc]
+                    )
+                    con.commit()
+
+                cur.execute(
+                    "INSERT INTO module VALUES (?, ?)",
+                    [mod, cve]
+                )
+                con.commit()
 
 
 def get_cve(exploit):
@@ -112,7 +203,9 @@ def parse_report(rep_file):
 
             if affected1.search(line) is not None or \
                affected2.search(line) is not None or \
-               affected3.search(line) is not None:
+               affected3.search(line) is not None or \
+               affected4.search(line) is not None or \
+               affected5.search(line) is not None:
                 affected = True
 
             endrm = modendregex.match(line)
@@ -124,8 +217,11 @@ def parse_report(rep_file):
     return mod
 
 
-def generate_reports(rep):
+def generate_reports(rep, update_cache):
     info = parse_report(rep)
+
+    set_up_cache()
+
     report = {}
     report['privrep'] = {}
     report['pubrep'] = {}
@@ -138,7 +234,12 @@ def generate_reports(rep):
 
     nvuln = 0
     for mod in info:
-        cve_sc = [(cve, get_score(cve)) for cve in get_cve(mod)]
+        if is_cached(mod) and not update_cache:
+            cve_sc = get_cached(mod)
+        else:
+            cve_sc = [(cve, get_score(cve)) for cve in get_cve(mod)]
+            cache(mod, cve_sc, update_cache)
+
         nvuln += len(cve_sc)
         for elem in cve_sc:
             cve, score = elem
@@ -154,11 +255,11 @@ def generate_reports(rep):
     return report
 
 
-def store_report(info, rep_file, out_file):
+def store_report(info, rep_file, out_file, update_cache):
     user, client, peer, channel_name = info
 
     utils.log('succb', utils.GENREP, end='\r')
-    report = generate_reports(rep_file)
+    report = generate_reports(rep_file, update_cache)
     utils.log('succg', utils.GENREPDONE)
 
     privdate = report.pop('date')  # yyyy-mm-dd hh:mm:ss.ffffff+tt:zz
@@ -282,7 +383,7 @@ def load_config(config):
     return (user, client_discovery, peer, channel_name)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(
         description="Autoauditor submodule to store reports in blockchain.")
 
@@ -295,6 +396,9 @@ if __name__ == '__main__':
 
     parser.add_argument('-hc', '--hyperledgercfg', metavar='hyperledger_config_file', required=True,
                         help="Blockchain network configuration file.")
+
+    parser.add_argument('--force-update-cache', action='store_true',
+                        help="Force cache update. Data will be downloaded again.")
 
     args = parser.parse_args()
 
@@ -315,4 +419,18 @@ under certain conditions; check file LICENSE for details.
 
     utils.check_file_dir(args.hyperledgerout)
 
-    store_report(info, args.reportfile, args.hyperledgerout)
+    store_report(info, args.reportfile, args.hyperledgerout,
+                 args.force_update_cache)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        utils.log('normal', '\n')
+        utils.log(
+            'error', 'Interrupted, exiting program. Containers will keep running ...')
+        try:
+            sys.exit(1)
+        except SystemExit:
+            os._exit(1)

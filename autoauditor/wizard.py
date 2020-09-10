@@ -25,6 +25,8 @@ import json
 import argparse
 import metasploit
 import readline
+import sys
+import os
 
 
 def generate_resources_file(client, rc_out):
@@ -129,7 +131,7 @@ def _get_module_options(module):
     return opts, ropts
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(
         description="Tool to run metasploit automatically given a resource script.")
 
@@ -159,3 +161,16 @@ under certain conditions; check file LICENSE for details.
     generate_resources_file(msfclient, args.genrc)
 
     utils.shutdown(msfcont)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        utils.log('normal', '\n')
+        utils.log(
+            'error', 'Interrupted, exiting program. Containers will keep running ...')
+        try:
+            sys.exit(1)
+        except SystemExit:
+            os._exit(1)
