@@ -62,11 +62,13 @@ affected5 = re.compile(r'^(?=.*\b(credentials?|users?|account)\b)(?=.*\bfound\b)
 
 loop = asyncio.get_event_loop()
 
-con = sqlite3.connect('autoauditor.db')
-cur = con.cursor()
+
 
 
 def set_up_cache():
+    db = sqlite3.connect('autoauditor.db')
+    cur = db.cursor()
+
     cur.execute('''
         CREATE TABLE IF NOT EXISTS vulnerability (
             vuln_id TEXT PRIMARY KEY,
@@ -83,8 +85,11 @@ def set_up_cache():
                 )
     cur.execute('PRAGMA foreign_keys = ON;')
 
+    return db
 
-def is_cached(mod):
+
+def is_cached(db, mod):
+    cur = db.cursor()
     cur.execute(
         'SELECT EXISTS(SELECT 1 FROM module WHERE mod_id = ?)',
         [mod]
@@ -92,7 +97,8 @@ def is_cached(mod):
     return cur.fetchone()[0]  # (1,) if exists, (0,) otherwise
 
 
-def get_cached(mod):
+def get_cached(db, mod):
+    cur = db.cursor()
     cur.execute(
         "SELECT V.vuln_id, V.score FROM module M INNER JOIN vulnerability V ON M.vuln_id = V.vuln_id WHERE mod_id = ?",
         [mod]
@@ -100,7 +106,8 @@ def get_cached(mod):
     return cur.fetchall()
 
 
-def cache(mod, data, update_cache):
+def cache(db, mod, data, update_cache):
+    cur = db.cursor()
     if not update_cache:
         for vuln in data:
             cve, cve_sc = vuln
@@ -108,13 +115,13 @@ def cache(mod, data, update_cache):
                 "INSERT INTO vulnerability VALUES (?, ?)",
                 [cve, cve_sc]
             )
-            con.commit()
+            db.commit()
 
             cur.execute(
                 "INSERT INTO module VALUES (?, ?)",
                 [mod, cve]
             )
-            con.commit()
+            db.commit()
     else:
         cached = get_cached(mod)
         if cached != data.sort():
@@ -122,7 +129,7 @@ def cache(mod, data, update_cache):
                 "DELETE FROM module WHERE mod_id=?",
                 [mod]
             )
-            con.commit()
+            db.commit()
 
             for vuln in data:
                 cve, cve_sc = vuln
@@ -136,19 +143,19 @@ def cache(mod, data, update_cache):
                         "UPDATE vulnerability SET score = ? WHERE vuln_id = ?",
                         [cve_sc, cve]
                     )
-                    con.commit()
+                    db.commit()
                 else:
                     cur.execute(
                         "INSERT INTO vulnerability VALUES (?, ?)",
                         [cve, cve_sc]
                     )
-                    con.commit()
+                    db.commit()
 
                 cur.execute(
                     "INSERT INTO module VALUES (?, ?)",
                     [mod, cve]
                 )
-                con.commit()
+                db.commit()
 
 
 def get_cve(exploit):
@@ -220,7 +227,7 @@ def parse_report(rep_file):
 def generate_reports(rep, update_cache):
     info = parse_report(rep)
 
-    set_up_cache()
+    db = set_up_cache()
 
     report = {}
     report['privrep'] = {}
@@ -234,11 +241,11 @@ def generate_reports(rep, update_cache):
 
     nvuln = 0
     for mod in info:
-        if is_cached(mod) and not update_cache:
-            cve_sc = get_cached(mod)
+        if is_cached(db, mod) and not update_cache:
+            cve_sc = get_cached(db, mod)
         else:
             cve_sc = [(cve, get_score(cve)) for cve in get_cve(mod)]
-            cache(mod, cve_sc, update_cache)
+            cache(db, mod, cve_sc, update_cache)
 
         nvuln += len(cve_sc)
         for elem in cve_sc:
