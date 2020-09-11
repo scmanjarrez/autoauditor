@@ -2,7 +2,8 @@
 
 # autoauditor - Main program.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez.
+# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es 
+# Universidad Carlos III de Madrid 
 
 # This file is part of AutoAuditor.
 
