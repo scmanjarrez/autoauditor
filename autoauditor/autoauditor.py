@@ -2,8 +2,8 @@
 
 # autoauditor - Main program.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es 
-# Universidad Carlos III de Madrid 
+# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
 
@@ -73,13 +73,7 @@ def main():
 
     args = parser.parse_args()
 
-    utils.log('normal',
-              """
-AutoAuditor  Copyright (C) 2020  Sergio Chica Manjarrez
-This program comes with ABSOLUTELY NO WARRANTY; for details check file LICENSE.
-This is free software, and you are welcome to redistribute it
-under certain conditions; check file LICENSE for details.
-""")
+    utils.copyright()
 
     vpncont = msfcont = None
 

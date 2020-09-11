@@ -2,7 +2,8 @@
 
 # gui - Graphic User Interface module.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez.
+# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
 
@@ -217,13 +218,6 @@ about_layout = [
     [sg.Text(ABOUT_YEAR, font=FONT)],
 ]
 
-gplv3 = """
-AutoAuditor  Copyright (C) 2020  Sergio Chica Manjarrez
-This program comes with ABSOLUTELY NO WARRANTY; for details check below.
-This is free software, and you are welcome to redistribute it
-under certain conditions; check below for details.
-"""
-
 with open(DEFAULT_LICENSE, 'r') as f:
     gplv3_full = f.read().replace('.  ', '. ').replace('  ', '')
 
@@ -232,7 +226,7 @@ gplv3_full_layout = [
              background_color=COLOR_TAB_DISABLED)]
 ]
 license_layout = [
-    [sg.Text(gplv3, font=FONT, justification=CENTER)],
+    [sg.Text(COPYRIGHT, font=FONT, justification=CENTER)],
     [sg.Column(gplv3_full_layout,
                scrollable=True, size=LICENSE_COLUMN_SIZE, vertical_scroll_only=True, justification=CENTER, background_color=COLOR_TAB_DISABLED, pad=PAD_T)]
 ]

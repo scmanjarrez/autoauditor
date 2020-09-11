@@ -1,6 +1,7 @@
 # utils - Utilities module.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez.
+# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
 
@@ -41,6 +42,14 @@ ECONN = 249
 EBADNETFMT = 250
 EMISSINGARG = 251
 EBADRCFMT = 252
+
+COPYRIGHT = """
+AutoAuditor  Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+Universidad Carlos III de Madrid.
+This program comes with ABSOLUTELY NO WARRANTY; for details check below.
+This is free software, and you are welcome to redistribute it
+under certain conditions; check below for details.
+"""
 
 DEFAULT_MSFRPC_PASSWD = 'dummypass'
 
@@ -250,9 +259,9 @@ PAD_OPT_HEAD = ((3, 1), (0, 0))
 PAD_OPT_HEAD2 = ((5, 5), (0, 0))
 PAD_OPT_HEAD3 = ((34, 5), (0, 0))
 PAD_NO = ((0, 0), (0, 0))
+PAD_NO_TB = ((5, 5), (0, 0))
 PAD_NO_L = ((0, 5), (5, 5))
 PAD_NO_R = ((5, 0), (5, 5))
-PAD_NO_TB = ((5, 5), (0, 0))
 PAD_NO_TBR = ((10, 0), (0, 0))
 PAD_MOD = ((28, 0), (0, 0))
 CONSOLE_PAD = ((0, 0), (10, 20))
@@ -317,6 +326,10 @@ def log(color, string, end='\n', errcode=None):
     if errcode is not None and errcode != NOERROR:
         if not CONSOLE:
             sys.exit(errcode)
+
+
+def copyright():
+    log('normal', COPYRIGHT)
 
 
 def check_privileges():
