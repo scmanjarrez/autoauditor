@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
-from pymetasploit3.msfrpc import MsfRpcError
+from pymetasploit3.msfrpc import MsfRpcError, PayloadModule
 import utils
 import json
 import argparse
@@ -30,76 +30,7 @@ import sys
 import os
 
 
-def generate_resources_file(client, rc_out):
-    more_mod = True
-    rc_file = {}
-    yes_ans = ['y', 'yes']
-
-    while more_mod:
-        try:
-            mod = None
-            while mod is None:
-                mtype = input(
-                    "[*] Module type ({}): ".format("|".join(utils.MODULE_TYPES)))
-                mname = input("[*] Module: ")
-                try:
-                    mod = _get_module(client, mtype, mname)
-                except MsfRpcError:
-                    utils.log('error', "Invalid module type: {}.".format(mtype))
-                except TypeError:
-                    utils.log('error', "Invalid module: {}.".format(mname))
-                else:
-                    if mtype not in rc_file:
-                        rc_file[mtype] = {}
-                    if mname not in rc_file[mtype]:
-                        rc_file[mtype][mname] = []
-
-            adv = str.lower(input("[*] Advanced options [y/N]: ")) in yes_ans
-
-            utils.log(
-                'succg', "Current options: required=yellow mark, missing=red mark")
-            utils.print_options(mod, adv)
-
-            eof = False
-            modify = str.lower(input("[*] Modify [y/N]: ")) in yes_ans
-            opt_d = {}
-            while modify:
-                try:
-                    utils.log('succb', "Finish with EOF (Ctrl+D)")
-                    while True:
-                        opt = input("[*] Option (case sensitive): ")
-                        val = utils.correct_type(
-                            input("[*] {} value: ".format(opt)))
-                        try:
-                            mod[opt] = val
-                        except KeyError:
-                            utils.log(
-                                'error', "Invalid option: {}".format(opt))
-                        else:
-                            opt_d[opt] = val
-                        eof = False
-                except EOFError:
-                    print()
-                    if eof:  # avoid infinite loop if consecutives Ctrl+D
-                        break
-                    utils.log('succb', "Final options:")
-                    utils.print_options(mod, adv)
-                    eof = True
-
-                modify = str.lower(input("[*] Modify [y/N]: ")) in yes_ans
-                eof = False
-
-            rc_file[mtype][mname].append(opt_d)
-
-            if str.lower(input("[*] More modules [y/N]: ")) not in yes_ans:
-                more_mod = False
-        except EOFError:
-            print()
-            break
-
-    with open(rc_out, 'w') as f:
-        json.dump(rc_file, f, indent=2)
-        utils.log('succg', "Resource script file generated at {}".format(rc_out))
+YES = ['y', 'yes']
 
 
 def _get_module(client, mtype, mname):
@@ -130,6 +61,100 @@ def _get_module_options(module):
             for opt in module.options}
     ropts = module.required
     return opts, ropts
+
+
+def set_options(mod, opt_d={}):
+    ispayload = isinstance(mod, PayloadModule)
+
+    adv = str.lower(input("[*] Advanced options [y/N]: ")) in YES
+
+    utils.log(
+        'succg', "Current options: missing and required => red, required => yellow")
+    utils.print_options(mod, adv)
+
+    eof = False
+    modify = str.lower(input("[*] Modify [y/N]: ")) in YES
+
+    while modify:
+        try:
+            utils.log('succb', "Finish with EOF (Ctrl+D)")
+            while True:
+                opt = input("[*] Option (case sensitive): ")
+                val = utils.correct_type(
+                    input("[*] {} value: ".format(opt)))
+                try:
+                    mod[opt] = val
+                except KeyError:
+                    utils.log(
+                        'error', "Invalid option: {}".format(opt))
+                else:
+                    if ispayload:
+                        opt_d['PAYLOAD.' + opt] = val
+                    else:
+                        opt_d[opt] = val
+                eof = False
+        except EOFError:
+            print()
+            if eof:  # avoid infinite loop if consecutives Ctrl+D
+                break
+            utils.log('succb', "Final options: missing and required => red, required => yellow")
+            utils.print_options(mod, adv)
+            eof = True
+
+        modify = str.lower(input("[*] Modify [y/N]: ")) in YES
+        eof = False
+
+    return opt_d
+
+
+def generate_resources_file(client, rc_out):
+    more_mod = True
+    rc_file = {}
+
+    while more_mod:
+        try:
+            mod = None
+            while mod is None:
+                mtype = input(
+                    "[*] Module type ({}): ".format("|".join(utils.MODULE_TYPES)))
+                mname = input("[*] Module: ")
+                try:
+                    mod = _get_module(client, mtype, mname)
+                except MsfRpcError:
+                    utils.log('error', "Invalid module type: {}.".format(mtype))
+                except TypeError:
+                    utils.log('error', "Invalid module: {}.".format(mname))
+                else:
+                    if mtype not in rc_file:
+                        rc_file[mtype] = {}
+                    if mname not in rc_file[mtype]:
+                        rc_file[mtype][mname] = []
+
+            opt_d = set_options(mod)
+
+            if str.lower(input("[*] Add payload [y/N]: ")) in YES:
+                payload = None
+                while payload is None:
+                    pname = input("[*] Payload: ")
+                    try:
+                        payload = _get_module(client, 'payload', pname)
+                    except TypeError:
+                        utils.log(
+                            'error', "Invalid payload: {}".format(pname))
+                opt_d['PAYLOAD'] = pname
+                opt_d = set_options(payload, opt_d)
+
+            rc_file[mtype][mname].append(opt_d)
+
+            if str.lower(input("[*] More modules [y/N]: ")) not in YES:
+                more_mod = False
+        except EOFError:
+            print()
+            break
+
+    with open(rc_out, 'w') as f:
+        json.dump(rc_file, f, indent=2)
+        utils.log('succg', "Resource script file generated at {}".format(rc_out))
 
 
 def main():
