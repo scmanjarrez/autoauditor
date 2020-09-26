@@ -20,6 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
+import constants as const
 import sys
 import os
 import argparse
@@ -93,7 +94,7 @@ def main():
     if args.stop:
         utils.shutdown(msfcont, vpncont)
     else:
-        msfclient = metasploit.get_msf_connection(utils.DEFAULT_MSFRPC_PASSWD)
+        msfclient = metasploit.get_msf_connection(const.DEFAULT_MSFRPC_PASSWD)
 
         if args.genrc:
             utils.check_file_dir(args.genrc)

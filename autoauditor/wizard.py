@@ -20,7 +20,8 @@
 # You should have received a copy of the GNU General Public License
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
-from pymetasploit3.msfrpc import MsfRpcError, PayloadModule
+from pymetasploit3.msfrpc import MsfRpcError, PayloadModule, ExploitModule
+import constants as const
 import utils
 import json
 import argparse
@@ -62,6 +63,16 @@ def _get_module_options(module):
     ropts = module.required
     return opts, ropts
 
+def _has_payloads(module):
+    return isinstance(module, ExploitModule) and len(module.payloads) > 0
+
+
+def _get_module_payloads(module):
+    return module.payloads
+
+def _get_payload(client, payload):
+    return client.modules.use('payload', payload)
+
 
 def set_options(mod, opt_d={}):
     ispayload = isinstance(mod, PayloadModule)
@@ -97,7 +108,8 @@ def set_options(mod, opt_d={}):
             print()
             if eof:  # avoid infinite loop if consecutives Ctrl+D
                 break
-            utils.log('succb', "Final options: missing and required => red, required => yellow")
+            utils.log(
+                'succb', "Final options: missing and required => red, required => yellow")
             utils.print_options(mod, adv)
             eof = True
 
@@ -116,7 +128,7 @@ def generate_resources_file(client, rc_out):
             mod = None
             while mod is None:
                 mtype = input(
-                    "[*] Module type ({}): ".format("|".join(utils.MODULE_TYPES)))
+                    "[*] Module type ({}): ".format("|".join(const.MODULE_TYPES)))
                 mname = input("[*] Module: ")
                 try:
                     mod = _get_module(client, mtype, mname)
@@ -154,7 +166,7 @@ def generate_resources_file(client, rc_out):
 
     with open(rc_out, 'w') as f:
         json.dump(rc_file, f, indent=2)
-        utils.log('succg', "Resource script file generated at {}".format(rc_out))
+        utils.log('succg', "Resource script correctly generated in {}".format(rc_out))
 
 
 def main():
@@ -174,7 +186,7 @@ def main():
     utils.copyright()
 
     msfcont = metasploit.start_msfrpcd(args.outdir)
-    msfclient = metasploit.get_msf_connection(utils.DEFAULT_MSFRPC_PASSWD)
+    msfclient = metasploit.get_msf_connection(const.DEFAULT_MSFRPC_PASSWD)
 
     utils.check_file_dir(args.genrc)
 

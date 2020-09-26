@@ -21,6 +21,7 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 from blockchain import load_config
+import constants as const
 import argparse
 import utils
 import os
@@ -81,15 +82,15 @@ def verify_arguments(args):
     if args.query == 'id':
         if not args.reportid:
             utils.log('error', "Missing argument: reportid (-i).",
-                      errcode=utils.EMISSINGARG)
+                      errcode=const.EMISSINGARG)
     elif args.query == 'org':
         if not args.orgname:
             utils.log('error', "Missing argument: orgname (-o).",
-                      errcode=utils.EMISSINGARG)
+                      errcode=const.EMISSINGARG)
     else:
         if not args.date:
             utils.log('error', "Missing argument: date (-t).",
-                      errcode=utils.EMISSINGARG)
+                      errcode=const.EMISSINGARG)
 
 
 if __name__ == '__main__':

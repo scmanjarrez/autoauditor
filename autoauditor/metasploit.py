@@ -22,6 +22,7 @@ from pymetasploit3.msfrpc import MsfRpcClient, MsfRpcError, MsfAuthError
 from requests.exceptions import ConnectionError
 from datetime import datetime
 from io import BytesIO
+import constants as const
 import utils
 import json
 import os
@@ -45,23 +46,23 @@ def get_msf_connection(passwd):
         return MsfRpcClient(passwd, ssl=True)
     except ConnectionError:
         utils.log(
-            'error', "Metasploit container connection error. Check container is running.", errcode=utils.EMSCONN)
+            'error', "Metasploit container connection error. Check container is running.", errcode=const.EMSCONN)
     except MsfAuthError:
         utils.log(
-            'error', "Metasploit container authentication error. Check password.", errcode=utils.EMSPASS)
+            'error', "Metasploit container authentication error. Check password.", errcode=const.EMSPASS)
 
 
 def start_msfrpcd(loot_dir, ovpn=False, stop=False):
     dockercl = docker.from_env()
     msfcont = None
 
-    utils.log('succb', utils.MSSTAT, end='\r')
+    utils.log('succb', const.MSSTAT, end='\r')
 
     try:
         image = dockercl.images.get('msfrpci')
-        utils.log('succg', utils.MSEXIST)
+        utils.log('succg', const.MSEXIST)
     except docker.errors.ImageNotFound:
-        utils.log('warn', utils.MSDOWN, end='\r')
+        utils.log('warn', const.MSDOWN, end='\r')
 
         dckf = BytesIO(b'FROM phocean/msf\n'
                        b'RUN apt update && apt install -y iproute2 iputils-ping traceroute\n'
@@ -69,21 +70,21 @@ def start_msfrpcd(loot_dir, ovpn=False, stop=False):
         try:
             image, _ = dockercl.images.build(fileobj=dckf, tag='msfrpci')
         except docker.errors.BuildError:
-            utils.log('error', "Building error.", errcode=utils.EBUILD)
+            utils.log('error', "Building error.", errcode=const.EBUILD)
 
-        utils.log('succg', utils.MSDONE)
+        utils.log('succg', const.MSDONE)
 
-    utils.log('succb', utils.MSCSTAT, end='\r')
+    utils.log('succb', const.MSCSTAT, end='\r')
 
     cont_l = dockercl.containers.list(filters={'name': 'msfrpc'})
     if cont_l:
-        utils.log('succg', utils.MSCR)
+        utils.log('succg', const.MSCR)
         msfcont = cont_l[0]
     else:
         if stop:  # if want to stop but already stopped, don't start again
-            utils.log('succg', utils.MSCNR)
+            utils.log('succg', const.MSCNR)
         else:
-            utils.log('warn', utils.MSCSTART, end='\r')
+            utils.log('warn', const.MSCSTART, end='\r')
 
             loot = os.path.join(os.getcwd(), loot_dir)
             if ovpn:
@@ -101,7 +102,7 @@ def start_msfrpcd(loot_dir, ovpn=False, stop=False):
                                                       loot: {'bind': '/root/.msf4/loot'}},
                                                   ports={55553: 55553})
             time.sleep(10)
-            utils.log('succg', utils.MSCDONE)
+            utils.log('succg', const.MSCDONE)
     return msfcont
 
 
@@ -111,7 +112,7 @@ def launch_metasploit(msfcl, rc_file, log_file):
             rc = json.load(f)
         except json.JSONDecodeError:
             utils.log('error', "Wrong resources script file format. Check {}.".format(
-                utils.RC_TEMPLATE), errcode=utils.EBADRCFMT)
+                utils.RC_TEMPLATE), errcode=const.EBADRCFMT)
 
     with open(log_file, 'w') as f:
         header = "#" * 62
@@ -165,4 +166,4 @@ def launch_metasploit(msfcl, rc_file, log_file):
 
 if __name__ == '__main__':
     utils.log('error', "Not standalone module. Run again from autoauditor.py.",
-              errcode=utils.EMODNR)
+              errcode=const.EMODNR)
