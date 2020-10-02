@@ -2,8 +2,9 @@
 
 venv="virtualenv"
 aa_venv="autoauditor_venv"
-tmp_msfrpc="backup/msfrpc.py"
 tmp_hfc="backup/channel.py"
+tmp_pysg="backup/PySimpleGUI.py"
+tmp_pym3="backup/msfrpc.py"
 green="\033[0;92m[+] "
 blue="\033[94m[*] "
 nc="\033[0m"
@@ -22,7 +23,13 @@ pip install -r requirements.txt > /dev/null
 echo -e "${blue}Installing fabric-sdk-py library.$nc"
 cp -r $(pwd)/$hfc_sdk_py/hfc $aa_venv/lib/python3.*/site-packages
 
-echo -e "${yellow}Using backup/channel.py backup until fabric-sdk-py gets updated.$nc"
+echo -e "${yellow}Using $tmp_hfc backup until fabric-sdk-py gets fixed.$nc"
 cp $tmp_hfc $aa_venv/lib/python3.*/site-packages/hfc/util/
+
+echo -e "${yellow}Using $tmp_pysg backup until PySimpleGUI.py gets fixed.$nc"
+cp $tmp_pysg $aa_venv/lib/python3.*/site-packages/PySimpleGUI/
+
+echo -e "${yellow}Using $tmp_pym3 backup until pymetasploit3 gets fixed.$nc"
+cp $tmp_pym3 $aa_venv/lib/python3.*/site-packages/pymetasploit3/
 
 echo -e "${green}Virtual environment ready. Enable $aa_venv and execute $aa.$nc"

@@ -38,6 +38,12 @@ def _get_module(client, mtype, mname):
     return client.modules.use(mtype, mname)
 
 
+def _get_module_info(module):
+    info = module._info
+    del info['options']
+    return info
+
+
 def _get_modules(client, mtype):
     if mtype in ['encoder', 'exploit', 'payload', 'nop']:
         mtype = mtype + 's'
@@ -63,12 +69,14 @@ def _get_module_options(module):
     ropts = module.required
     return opts, ropts
 
+
 def _has_payloads(module):
     return isinstance(module, ExploitModule) and len(module.payloads) > 0
 
 
 def _get_module_payloads(module):
     return module.payloads
+
 
 def _get_payload(client, payload):
     return client.modules.use('payload', payload)
@@ -166,7 +174,8 @@ def generate_resources_file(client, rc_out):
 
     with open(rc_out, 'w') as f:
         json.dump(rc_file, f, indent=2)
-        utils.log('succg', "Resource script correctly generated in {}".format(rc_out))
+        utils.log(
+            'succg', "Resource script correctly generated in {}".format(rc_out))
 
 
 def main():

@@ -15,4 +15,4 @@ protobuf >= 3.6.0
 couchdb >= 1.2
 beautifulsoup4 >= 4.9.1
 soupsieve >= 2.0.1
-PySimpleGUI >= 4.24.0
+PySimpleGUI >= 4.29.0

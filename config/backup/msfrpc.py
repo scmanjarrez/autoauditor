@@ -7,7 +7,9 @@ import uuid
 import time
 import re
 import random
+import msgpack
 import requests.packages.urllib3
+from retry import retry
 requests.packages.urllib3.disable_warnings()
 
 __all__ = [
@@ -125,6 +127,7 @@ class MsfRpcMethod(object):
     ModulePayloads = 'module.payloads'
     ModuleEncoders = 'module.encoders'
     ModuleNops = 'module.nops'
+    ModulePlatforms = 'module.platforms'
     ModulePost = 'module.post'
     ModuleInfo = 'module.info'
     ModuleCompatiblePayloads = 'module.compatible_payloads'
@@ -187,10 +190,13 @@ class MsfRpcClient(object):
         self.host = kwargs.get('server', '127.0.0.1')
         self.ssl = kwargs.get('ssl', False)
         self.token = kwargs.get('token')
+        self.encoding = kwargs.get('encoding', 'utf-8')
         self.headers = {"Content-type": "binary/message-pack"}
         self.login(kwargs.get('username', 'msf'), password)
 
-    def call(self, method, opts=[]):
+    def call(self, method, opts=None, is_raw=False):
+        if not isinstance(opts, list):
+            opts = []
         if method != 'auth.login':
             if self.token is None:
                 raise MsfAuthError("MsfRPC: Not Authenticated")
@@ -206,11 +212,18 @@ class MsfRpcClient(object):
         opts.insert(0, method)
         payload = encode(opts)
 
-        r = requests.post(url, data=payload, headers=self.headers, verify=False)
+        r = self.post_request(url, payload)
 
         opts[:] = []  # Clear opts list
 
-        return convert(decode(r.content))  # convert all keys/vals to utf8
+        if is_raw:
+            return r.content
+
+        return convert(decode(r.content), self.encoding)  # convert all keys/vals to utf8
+
+    @retry(tries=3, delay=1, backoff=2)
+    def post_request(self, url, payload):
+        return requests.post(url, data=payload, headers=self.headers, verify=False)
 
     def login(self, user, password):
         auth = self.call(MsfRpcMethod.AuthLogin, [user, password])
@@ -1370,6 +1383,20 @@ class MsfModule(object):
         for k in d:
             self[k] = d[k]
 
+    def payload_generate(self, **kwargs):
+        runopts = self.runoptions.copy()
+        if not isinstance(self, PayloadModule):
+            return None
+        data = self.rpc.call(MsfRpcMethod.ModuleExecute, [self.moduletype, self.modulename, runopts], True)
+        payload = decode(data)[str.encode('payload')]
+        if isinstance(payload, str):
+            return payload
+        try:
+            payload = decode(payload)
+        except (msgpack.exceptions.ExtraData, UnicodeDecodeError):
+            return payload
+        return payload
+
     def execute(self, **kwargs):
         """
         Executes the module with its run options as parameters.
@@ -1618,6 +1645,13 @@ class ModuleManager(MsfManager):
         """
         return self.rpc.call(MsfRpcMethod.ModuleNops)['modules']
 
+    @property
+    def platforms(self):
+        """
+        A list of nop modules.
+        """
+        return self.rpc.call(MsfRpcMethod.ModulePlatforms)
+
     def use(self, mtype, mname):
         """
         Returns a module object.
@@ -1784,7 +1818,7 @@ class MeterpreterSession(MsfSession):
         else:
             out = self.runsingle(cmd)
         time.sleep(1)
-        out += self.gather_output(cmd, out, end_strs, timeout, timeout_exception) # gather last of data buffer
+        out += self.gather_output(cmd, out, end_strs, timeout, timeout_exception)  # gather last of data buffer
         return out
 
     def gather_output(self, cmd, out, end_strs, timeout, timeout_exception):
@@ -1821,7 +1855,7 @@ class MeterpreterSession(MsfSession):
         self.start_shell()
         out = self.run_with_output(cmd, end_strs)
         if exit_shell == True:
-            self.read() # Clear buffer
+            self.read()  # Clear buffer
             res = self.detach()
             if 'result' in res:
                 if res['result'] != 'success':
@@ -1984,7 +2018,7 @@ class SessionManager(MsfManager):
         """
         A list of active sessions.
         """
-        return {str(k): v for k, v in self.rpc.call(MsfRpcMethod.SessionList).items()} # Convert int id to str
+        return {str(k): v for k, v in self.rpc.call(MsfRpcMethod.SessionList).items()}  # Convert int id to str
 
     def session(self, sid):
         """
@@ -2082,7 +2116,7 @@ class MsfConsole(object):
             if c['id'] == self.cid:
                 return c['busy']
 
-    def run_module_with_output(self, mod, payload=None):
+    def run_module_with_output(self, mod, payload=None, run_as_job=False):
         """
         Execute a module and wait for the returned data
 
@@ -2095,14 +2129,18 @@ class MsfConsole(object):
         options_str = 'use {}/{}\n'.format(mod.moduletype, mod.modulename)
         if self.rpc.consoles.console(self.cid).is_busy():
             raise MsfError('Console {} is busy'.format(self.cid))
-        self.rpc.consoles.console(self.cid).read() # clear data buffer
-        opts = mod.runoptions
+        self.rpc.consoles.console(self.cid).read()  # clear data buffer
+        opts = mod.runoptions.copy()
         if payload is None:
             opts['DisablePayloadHandler'] = True
+
+        # Set module params
         for k in opts.keys():
             options_str += 'set {} {}\n'.format(k, opts[k])
+
         # Set payload params
         if mod.moduletype == 'exploit':
+            opts['TARGET'] = mod.target
             if 'DisablePayloadHandler' in opts and opts['DisablePayloadHandler']:
                 pass
             elif isinstance(payload, PayloadModule):
@@ -2116,8 +2154,11 @@ class MsfConsole(object):
                     options_str += 'set {} {}\n'.format(k, v)
             else:
                 raise ValueError('No valid PayloadModule provided for exploit execution.')
+
         # Run the module without directly opening a command line
         options_str += 'run -z'
+        if run_as_job:
+            options_str += " -j"
         self.rpc.consoles.console(self.cid).write(options_str)
         data = ''
         while data == '' or self.rpc.consoles.console(self.cid).is_busy():

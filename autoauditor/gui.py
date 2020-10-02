@@ -31,6 +31,7 @@ import re
 import vpn
 import json
 import blockchain
+import textwrap
 
 sg.theme('Reddit')  # Add a touch of color
 # All the stuff inside your window.
@@ -99,20 +100,20 @@ def switch(button, *elems):
 lf_fb = browse(const.NO_TEXT, const.KEY_LF_FB, const.KEY_INPUT_LF, const.FILEPNG, const.BUTTON_M_SIZE,
                const.BUTTON_COLOR, const.NO_BORDER, tooltip=const.TOOLTIP_FILE_BROWSER, pad=const.PAD_NO_TB)
 lf_i_b = button(const.NO_TEXT, const.KEY_LF_I_B, const.INFO, const.BUTTON_S_SIZE,
-                const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_LF)
+                const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_LF, pad=const.PAD_NO_TBR)
 ld_fb = browse(const.NO_TEXT, const.KEY_LD_FB, const.KEY_INPUT_LD, const.FOLDERPNG, const.BUTTON_M_SIZE, const.BUTTON_COLOR,
                const.NO_BORDER, tooltip=const.TOOLTIP_FOLDER_BROWSER, filetype=False, pad=const.PAD_NO_TB)
 ld_i_b = button(const.NO_TEXT, const.KEY_LD_I_B, const.INFO, const.BUTTON_S_SIZE,
-                const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_LD)
+                const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_LD, pad=const.PAD_NO_TBR)
 rc_fb = browse(const.NO_TEXT, const.KEY_RC_FB, const.KEY_INPUT_RC, const.FILEPNG, const.BUTTON_M_SIZE,
                const.BUTTON_COLOR, const.NO_BORDER, tooltip=const.TOOLTIP_FILE_BROWSER, pad=const.PAD_NO_TB)
 rc_i_b = button(const.NO_TEXT, const.KEY_RC_I_B, const.INFO, const.BUTTON_S_SIZE,
-                const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_RC)
+                const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_RC, pad=const.PAD_NO_TBR)
 
 vpn_cb = ImageCheckBox(image_on=const.CBON, image_off=const.CBOFF, image_size=const.BUTTON_S_SIZE,
                        key=const.KEY_VPN_CB, button_color=const.BUTTON_COLOR, border_width=const.NO_BORDER, enabled=False)
 vpn_cf_i_b = button(const.NO_TEXT, const.KEY_VPN_CF_I_B, const.INFO, const.BUTTON_S_SIZE,
-                    const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_VPN_CF, disabled=True)
+                    const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_VPN_CF, disabled=True, pad=const.PAD_NO_TBR)
 vpn_cf_it = input_text(const.DEFAULT_VPN_CF, const.KEY_INPUT_VPN_CF,
                        disabled=True, font=const.FONT, pad=const.PAD_IT_T)
 vpn_cf_fb = browse(const.NO_TEXT, const.KEY_VPN_CF_FB, const.KEY_INPUT_VPN_CF, const.FILEPNG, const.BUTTON_M_SIZE,
@@ -121,13 +122,13 @@ vpn_cf_fb = browse(const.NO_TEXT, const.KEY_VPN_CF_FB, const.KEY_INPUT_VPN_CF, c
 bc_cb = ImageCheckBox(image_on=const.CBON, image_off=const.CBOFF, image_size=const.BUTTON_S_SIZE,
                       key=const.KEY_BC_CB, button_color=const.BUTTON_COLOR, border_width=const.NO_BORDER, enabled=False)
 bc_cf_i_b = button(const.NO_TEXT, const.KEY_BC_CF_I_B, const.INFO, const.BUTTON_S_SIZE,
-                   const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_BC_CF, disabled=True)
+                   const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_BC_CF, disabled=True, pad=const.PAD_NO_TBR)
 bc_cf_it = input_text(const.DEFAULT_BC_CF, const.KEY_INPUT_BC_CF,
                       disabled=True, font=const.FONT, pad=const.PAD_IT_T)
 bc_cf_fb = browse(const.NO_TEXT, const.KEY_BC_CF_FB, const.KEY_INPUT_BC_CF, const.FILEPNG, const.BUTTON_M_SIZE,
                   const.BUTTON_COLOR, const.NO_BORDER, disabled=True, tooltip=const.TOOLTIP_FILE_BROWSER, pad=const.PAD_NO_TB)
 bc_lf_i_b = button(const.NO_TEXT, const.KEY_BC_LF_I_B, const.INFO, const.BUTTON_S_SIZE,
-                   const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_BC_LF, disabled=True)
+                   const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_BC_LF, disabled=True, pad=const.PAD_NO_TBR)
 bc_lf_it = input_text(const.DEFAULT_BC_LF, const.KEY_INPUT_BC_LF,
                       disabled=True, font=const.FONT, pad=const.PAD_IT_T)
 bc_lf_fb = browse(const.NO_TEXT, const.KEY_BC_LF_FB, const.KEY_INPUT_BC_LF, const.FILEPNG, const.BUTTON_M_SIZE,
@@ -143,12 +144,12 @@ console = sg.Multiline(const.NO_TEXT, key=const.KEY_CONSOLE, size=const.CONSOLE_
 
 mandatory_layout = [
     [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
-    [sg.Text(const.TEXT_LF, key=const.KEY_LF_T, size=const.TEXT_DESC_SIZE, font=const.FONTB), lf_i_b,
-     input_text(const.DEFAULT_LF, const.KEY_INPUT_LF, font=const.FONT, pad=const.PAD_IT_T), lf_fb],
-    [sg.Text(const.TEXT_LD, key=const.KEY_LD_T, size=const.TEXT_DESC_SIZE, font=const.FONTB), ld_i_b,
-     input_text(const.DEFAULT_LD, const.KEY_INPUT_LD, font=const.FONT, pad=const.PAD_IT_T), ld_fb],
-    [sg.Text(const.TEXT_RC, key=const.KEY_RC_T, size=const.TEXT_DESC_SIZE, font=const.FONTB), rc_i_b,
-     input_text(const.DEFAULT_RC, const.KEY_INPUT_RC, font=const.FONT, pad=const.PAD_IT_T), rc_fb],
+    [sg.Text(const.TEXT_LF, key=const.KEY_LF_T, size=const.TEXT_DESC_SIZE, font=const.FONTB),
+     input_text(const.DEFAULT_LF, const.KEY_INPUT_LF, font=const.FONT, pad=const.PAD_IT_T), lf_fb, lf_i_b],
+    [sg.Text(const.TEXT_LD, key=const.KEY_LD_T, size=const.TEXT_DESC_SIZE, font=const.FONTB),
+     input_text(const.DEFAULT_LD, const.KEY_INPUT_LD, font=const.FONT, pad=const.PAD_IT_T), ld_fb, ld_i_b],
+    [sg.Text(const.TEXT_RC, key=const.KEY_RC_T, size=const.TEXT_DESC_SIZE, font=const.FONTB),
+     input_text(const.DEFAULT_RC, const.KEY_INPUT_RC, font=const.FONT, pad=const.PAD_IT_T), rc_fb, rc_i_b],
     [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)]
 ]
 
@@ -156,7 +157,7 @@ vpn_layout = [
     [vpn_cb, sg.Text(const.TEXT_VPN_CB, key=const.KEY_VPN_CB_T,
                      text_color=const.COLOR_DISABLED, font=const.FONTB, enable_events=True)],
     [sg.Text(const.TEXT_VPN_CF, key=const.KEY_VPN_CF_T, size=const.TEXT_DESC_SIZE, font=const.FONTB,
-             text_color=const.COLOR_DISABLED), vpn_cf_i_b, vpn_cf_it, vpn_cf_fb],
+             text_color=const.COLOR_DISABLED), vpn_cf_it, vpn_cf_fb, vpn_cf_i_b],
     [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)]
 ]
 
@@ -164,9 +165,9 @@ blockchain_layout = [
     [bc_cb, sg.Text(const.TEXT_BC_CB, key=const.KEY_BC_CB_T,
                     text_color=const.COLOR_DISABLED, font=const.FONTB, enable_events=True)],
     [sg.Text(const.TEXT_BC_CF, key=const.KEY_BC_CF_T, size=const.TEXT_DESC_SIZE, font=const.FONTB,
-             text_color=const.COLOR_DISABLED), bc_cf_i_b, bc_cf_it, bc_cf_fb],
+             text_color=const.COLOR_DISABLED), bc_cf_it, bc_cf_fb, bc_cf_i_b],
     [sg.Text(const.TEXT_BC_LF, key=const.KEY_BC_LF_T, size=const.TEXT_DESC_SIZE, font=const.FONTB,
-             text_color=const.COLOR_DISABLED), bc_lf_i_b, bc_lf_it, bc_lf_fb],
+             text_color=const.COLOR_DISABLED), bc_lf_it, bc_lf_fb, bc_lf_i_b],
     [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
 
     [sc_cb, sg.Text(const.TEXT_SC_CB, key=const.KEY_SC_CB_T,
@@ -236,27 +237,6 @@ license_layout = [
 ]
 
 
-layout = [
-    [sg.TabGroup(
-        [
-            [sg.Tab('AutoAuditor', autoauditor_layout,
-                    element_justification=const.CENTER)],
-            [sg.Tab('About', about_layout, element_justification=const.CENTER)],
-            [sg.Tab('License', license_layout, element_justification=const.CENTER)]
-        ],
-        border_width=const.NO_BORDER,
-        tab_background_color=const.COLOR_TAB_DISABLED,
-        font=const.FONT
-    )]
-]
-
-
-window = sg.Window('AutoAuditor', layout,
-                   element_justification=const.CENTER)  # main window
-window_no_console_size = None
-window_console_size = None
-
-
 def shrink_enlarge_window():
     console(visible=not console_cb.enabled)
     console_cb.switch()
@@ -267,27 +247,35 @@ def shrink_enlarge_window():
     window.visibility_changed()
 
 
-def payload_window(client, mod_list, payload):
-    pay = wizard._get_payload(client, payload)
+def pay_window(client, parent_window, current_payload):
+    pay_name = parent_window[const.KEY_PAY_DD].Get()
+    pay = wizard._get_payload(client, pay_name)
     popts, propts = wizard._get_module_options(pay)
-    scrollable = len(popts) > 15
+    popts_default = popts.copy()
 
-    popt_l = {}
+    for popt in current_payload['OPTIONS']:
+        popts[popt] = current_payload['OPTIONS'][popt]
+
+    scrollable = len(popts) > 15
 
     popt_layout = [
         [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
-        [sg.Text(payload, font=const.FONTB)],
+        [sg.Text(pay_name, font=const.FONTB)],
         [sg.Frame(const.NO_TEXT, [
-            [sg.Text(const.NO_TEXT, font=const.FONTPAD, pad=const.PAD_NO, size=const.TEXT_DESC_SIZE_XL2 if scrollable else const.TEXT_DESC_SIZE_XL3)],
+            [sg.Text(const.NO_TEXT, font=const.FONTPAD, pad=const.PAD_NO,
+                     size=const.TEXT_DESC_SIZE_XL2 if scrollable else const.TEXT_DESC_SIZE_XL3)],
             [sg.Text(const.TEXT_OPT_NAME, font=const.FONTB, size=const.TEXT_OPT_NAME_SIZE, pad=const.PAD_OPT_HEAD_NAME),
-             sg.Text(const.TEXT_OPT_VAL, font=const.FONTB, size=const.TEXT_OPT_VAL_SIZE, pad=const.PAD_OPT_HEAD_VAL),
-             sg.Text(const.TEXT_OPT_REQ, font=const.FONTB, pad=const.PAD_OPT_HEAD_REQ if scrollable else const.PAD_OPT_HEAD_REQ2, size=const.TEXT_REQ_SIZE),
+             sg.Text(const.TEXT_OPT_VAL, font=const.FONTB,
+                     size=const.TEXT_OPT_VAL_SIZE, pad=const.PAD_OPT_HEAD_VAL),
+             sg.Text(const.TEXT_OPT_REQ, font=const.FONTB,
+                     pad=const.PAD_OPT_HEAD_REQ if scrollable else const.PAD_OPT_HEAD_REQ2, size=const.TEXT_REQ_SIZE),
              sg.Text(const.TEXT_OPT_INFO, font=const.FONTB, pad=const.PAD_OPT_HEAD_INFO)]
         ], border_width=const.NO_BORDER, pad=const.PAD_NO_L)],
         [sg.Column(
             [[sg.Frame(const.NO_TEXT, [
                 [sg.InputText(popt, size=const.TEXT_DESC_SIZE_2, key=const.KEY_PAY_OPT+str(idx), pad=const.PAD_IT_T2, font=const.FONT, disabled_readonly_background_color=const.COLOR_IT_AS_T, readonly=True, border_width=const.NO_BORDER),
-                 sg.InputText(str(popts[popt]), size=const.TEXT_DESC_SIZE_M, key=const.KEY_PAY_OPT_VAL+str(idx), pad=const.PAD_IT_T2, font=const.FONT),
+                 sg.InputText(str(popts[popt]), size=const.TEXT_DESC_SIZE_M,
+                              key=const.KEY_PAY_OPT_VAL+str(idx), pad=const.PAD_IT_T2, font=const.FONT),
                  sg.Text(const.TEXT_REQ_Y if popt in propts else const.TEXT_REQ_N,
                          size=const.TEXT_REQ_SIZE, font=const.FONT, pad=const.PAD_IT_T_TR if scrollable else const.PAD_IT_T_TR2),
                  button(const.NO_TEXT, const.KEY_PAY_OPT_HELP+str(idx), const.INFO, const.BUTTON_S_SIZE,
@@ -318,21 +306,24 @@ def payload_window(client, mod_list, payload):
                       element_justification=const.CENTER).read(close=True)
 
         if pevent == const.KEY_PAY_OPT_ACCEPT:
-            popt_l = {popt: utils.correct_type(pwindow[const.KEY_PAY_OPT_VAL+str(idx)].Get())
-                     for idx, popt in enumerate(popts)
-                     if popts[popt] != utils.correct_type(pwindow[const.KEY_PAY_OPT_VAL+str(idx)].Get())}
-            added = True
+            current_payload['NAME'] = pay_name
+            for idx, popt in enumerate(popts):
+                if popts_default[popt] != utils.correct_type(pwindow[const.KEY_PAY_OPT_VAL+str(idx)].Get()):
+                    current_payload['OPTIONS'][popt] = utils.correct_type(pwindow[const.KEY_PAY_OPT_VAL+str(idx)].Get())
+
+            parent_window[const.KEY_PAY_ADD](disabled=True)
+            parent_window[const.KEY_PAY_EDIT](disabled=False)
+            parent_window[const.KEY_PAY_REM](disabled=False)
             break
         if pevent in (sg.WIN_CLOSED, const.KEY_PAY_OPT_CANCEL):
             break
     pwindow.close()
-    return added, payload, popt_l
 
 
 def opt_window(msfclient, mod_list, mtype, mname, mod_idx, edit=False):
     added = False
-    pay_added = False
     mod = None
+    tmp_pay_opt = {'NAME': '', 'OPTIONS': {}}
 
     try:
         mod = wizard._get_module(msfclient, mtype, mname)
@@ -344,40 +335,61 @@ def opt_window(msfclient, mod_list, mtype, mname, mod_idx, edit=False):
         ], element_justification=const.CENTER, auto_close=True).read(close=True)
         return added
     opts, ropts = wizard._get_module_options(mod)
+    opts_default = opts.copy()
     if edit:
         current_opts = mod_list[mtype][mname][mod_idx]
-        for cp in current_opts:
-            opts[cp] = current_opts[cp]
+        for copt in current_opts:
+            if copt == 'PAYLOAD':
+                continue
+            opts[copt] = current_opts[copt]
+        try:
+            tmp_pay_opt = mod_list[mtype][mname][mod_idx]['PAYLOAD']
+        except KeyError:
+            pass
     scrollable = len(opts) > 15
     opt_layout = [
         [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
         [sg.Text("/".join([mtype, mname]), font=const.FONTB)],
         [sg.Frame(const.NO_TEXT, [
-            [sg.Text(const.NO_TEXT, font=const.FONTPAD, pad=const.PAD_NO, size=const.TEXT_DESC_SIZE_XL2 if scrollable else const.TEXT_DESC_SIZE_XL3)],
+            [sg.Text(const.NO_TEXT, font=const.FONTPAD, pad=const.PAD_NO,
+                     size=const.TEXT_DESC_SIZE_XL2 if scrollable else const.TEXT_DESC_SIZE_XL3)],
             [sg.Text(const.TEXT_OPT_NAME, font=const.FONTB, size=const.TEXT_OPT_NAME_SIZE, pad=const.PAD_OPT_HEAD_NAME),
-             sg.Text(const.TEXT_OPT_VAL, font=const.FONTB, size=const.TEXT_OPT_VAL_SIZE, pad=const.PAD_OPT_HEAD_VAL),
-             sg.Text(const.TEXT_OPT_REQ, font=const.FONTB, pad=const.PAD_OPT_HEAD_REQ if scrollable else const.PAD_OPT_HEAD_REQ2, size=const.TEXT_REQ_SIZE),
+             sg.Text(const.TEXT_OPT_VAL, font=const.FONTB,
+                     size=const.TEXT_OPT_VAL_SIZE, pad=const.PAD_OPT_HEAD_VAL),
+             sg.Text(const.TEXT_OPT_REQ, font=const.FONTB,
+                     pad=const.PAD_OPT_HEAD_REQ if scrollable else const.PAD_OPT_HEAD_REQ2, size=const.TEXT_REQ_SIZE),
              sg.Text(const.TEXT_OPT_INFO, font=const.FONTB, pad=const.PAD_OPT_HEAD_INFO)]
         ], border_width=const.NO_BORDER, pad=const.PAD_NO_L)],
         [sg.Column(
             [[sg.Frame(const.NO_TEXT, [
                 [sg.InputText(opt, size=const.TEXT_DESC_SIZE_2, key=const.KEY_OPT+str(idx), pad=const.PAD_IT_T2, font=const.FONT, disabled_readonly_background_color=const.COLOR_IT_AS_T, readonly=True, border_width=const.NO_BORDER),
-                 sg.InputText(str(opts[opt]), size=const.TEXT_DESC_SIZE_M, key=const.KEY_OPT_VAL+str(idx), pad=const.PAD_IT_T2, font=const.FONT),
+                 sg.InputText(str(opts[opt]), size=const.TEXT_DESC_SIZE_M,
+                              key=const.KEY_OPT_VAL+str(idx), pad=const.PAD_IT_T2, font=const.FONT),
                  sg.Text(const.TEXT_REQ_Y if opt in ropts else const.TEXT_REQ_N,
                          size=const.TEXT_REQ_SIZE, font=const.FONT, pad=const.PAD_IT_T_TR if scrollable else const.PAD_IT_T_TR2),
                  button(const.NO_TEXT, const.KEY_OPT_HELP+str(idx), const.INFO, const.BUTTON_S_SIZE,
-                        const.BUTTON_COLOR, const.NO_BORDER, wizard._get_option_desc(mod, opt))]], border_width=const.NO_BORDER, pad=const.PAD_NO)] for idx, opt in enumerate(opts)], size=const.OPT_MOD_COLUMN_SIZE if scrollable else const._get_exact_column_size(len(opts)), scrollable=scrollable, vertical_scroll_only=True),
+                        const.BUTTON_COLOR, const.NO_BORDER, wizard._get_option_desc(mod, opt))]
+            ], border_width=const.NO_BORDER, pad=const.PAD_NO)] for idx, opt in enumerate(opts)], size=const.OPT_MOD_COLUMN_SIZE if scrollable else const._get_exact_column_size(len(opts)), scrollable=scrollable, vertical_scroll_only=True),
          ]]
 
     if wizard._has_payloads(mod):
+        disable = not tmp_pay_opt['OPTIONS']
         opt_layout.extend(
             [
                 [sg.Frame(const.NO_TEXT, [
-                    [button(const.NO_TEXT, const.KEY_PAYLOAD_B, const.ADD24, const.BUTTON_S_SIZE,
-                            const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_PAYLOAD, pad=const.PAD_IT_T3),
-                     sg.Text(const.TEXT_PAYLOAD, key=const.KEY_PAYLOAD_T, size=const.TEXT_DESC_SIZE_3, pad=const.PAD_IT_T3, font=const.FONT, enable_events=True),
-                     sg.DropDown(wizard._get_module_payloads(mod), size=const.EXEC_TEXT_SIZE_L2, font=const.FONT, key=const.KEY_PAYLOAD_DD, readonly=True, pad=const.PAD_IT_T4)]
-                ], border_width=const.NO_BORDER, pad=const.PAD_NO_RB)]])
+                    [sg.Text(const.TEXT_PAYLOAD, key=const.KEY_PAY_T, size=const.TEXT_DESC_SIZE_2,
+                             pad=const.PAD_IT_T3, font=const.FONT),
+                     sg.DropDown(wizard._get_module_payloads(mod), size=const.EXEC_TEXT_SIZE_L2,
+                                 font=const.FONT, key=const.KEY_PAY_DD, readonly=True, pad=const.PAD_IT_T4, default_value=mod_list[mtype][mname][mod_idx]['PAYLOAD']['NAME'] if edit and 'PAYLOAD' in mod_list[mtype][mname][mod_idx] else ''),
+                     button(const.NO_TEXT, const.KEY_PAY_ADD, const.ADD24, const.BUTTON_S_SIZE,
+                            const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_PAY_ADD, pad=const.PAD_IT_T5, disabled=not disable),
+                     button(const.NO_TEXT, const.KEY_PAY_EDIT, const.EDIT, const.BUTTON_M_SIZE,
+                            const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_PAY_EDIT, pad=const.PAD_IT_T6, disabled=disable),
+                     button(const.NO_TEXT, const.KEY_PAY_REM, const.REMOVE, const.BUTTON_M_SIZE,
+                            const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_PAY_REMOVE, pad=const.PAD_IT_T6, disabled=disable),
+                     button(const.NO_TEXT, const.KEY_PAY_INFO, const.INFO, const.BUTTON_S_SIZE,
+                            const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_PAY_INFO, pad=const.PAD_IT_T7 if scrollable else const.PAD_IT_T7_NS)]
+                ], border_width=const.NO_BORDER, pad=const.PAD_NO_LB if scrollable else const.PAD_NO_LB_NS)]])
 
     opt_layout.extend(
         [
@@ -387,6 +399,7 @@ def opt_window(msfclient, mod_list, mtype, mname, mod_idx, edit=False):
 
     owindow = sg.Window(
         const.TEXT_OPTIONS, opt_layout, element_justification=const.CENTER, finalize=True)  # options window
+
     help_regex = re.compile(const.KEY_OPT_HELP+'\d+')
     while True:
         oevent, ovalue = owindow.read()
@@ -394,19 +407,66 @@ def opt_window(msfclient, mod_list, mtype, mname, mod_idx, edit=False):
             opt_n = int(oevent.split('_')[2])  # option_help_xxx
             opt = owindow[const.KEY_OPT+str(opt_n)].Get()
             opt_info = wizard._get_option_info(mod, opt)
+            # todo: wrap text when too large
             info_layout = [
                 [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
                 [sg.Text(opt, font=const.FONTB)],
                 [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)]] +\
-                [[sg.Frame(const.NO_TEXT, [[sg.Text(el, font=const.FONTB, size=const.EXEC_TEXT_SIZE_S), sg.Text(opt_info[el], font=const.FONT)]
+                [[sg.Frame(const.NO_TEXT, [[sg.Text(el, font=const.FONTB, size=const.EXEC_TEXT_SIZE_XS), sg.Text(opt_info[el], font=const.FONT)]
                                            for el in opt_info], border_width=const.NO_BORDER)]] +\
                 [[sg.OK(font=const.FONT)]]
 
             sg.Window(const.TEXT_OPTION_INFO, info_layout,
                       element_justification=const.CENTER).read(close=True)
 
-        if oevent in (const.KEY_PAYLOAD_B, const.KEY_PAYLOAD_T):
-            pay_added, pname, popt_l = payload_window(msfclient, mod_list, owindow[const.KEY_PAYLOAD_DD].Get())
+        if oevent == const.KEY_PAY_ADD:
+            if not owindow[const.KEY_PAY_DD].Get():
+                sg.Window('Error', [
+                    [sg.Text(
+                        'Payload not selected.', font=const.FONT)],
+                    [sg.Text(
+                        'Choose a payload from the dropdown.', font=const.FONT)],
+                    [sg.OK(button_color=const.BUTTON_COLOR_ERR, font=const.FONT)]
+                ], element_justification=const.CENTER, auto_close=True).read(close=True)
+            else:
+                if tmp_pay_opt['OPTIONS']:
+                    sg.Window('Error', [
+                        [sg.Text(
+                            'Payload already exists.', font=const.FONT)],
+                        [sg.Text(
+                            'Delete current payload before adding new one.', font=const.FONT)],
+                        [sg.OK(button_color=const.BUTTON_COLOR_ERR, font=const.FONT)]
+                    ], element_justification=const.CENTER, auto_close=True).read(close=True)
+                else:
+                    pay_window(
+                        msfclient, owindow, tmp_pay_opt)
+
+        if oevent == const.KEY_PAY_EDIT:
+            pay_window(
+                msfclient, owindow, tmp_pay_opt)
+
+        if oevent == const.KEY_PAY_REM:
+            tmp_pay_opt = {'NAME': '', 'OPTIONS': {}}
+            owindow[const.KEY_PAY_DD](value='')
+            owindow[const.KEY_PAY_ADD](disabled=False)
+            owindow[const.KEY_PAY_EDIT](disabled=True)
+            owindow[const.KEY_PAY_REM](disabled=True)
+
+        if oevent == const.KEY_PAY_INFO:
+            if owindow[const.KEY_PAY_DD].Get():
+                pay_n = owindow[const.KEY_PAY_DD].Get()
+                pay = wizard._get_payload(msfclient, pay_n)
+                pay_info = wizard._get_module_info(pay)
+                pay_info_layout = [
+                    [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
+                    [sg.Text(pay_n, font=const.FONTB)],
+                    [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)]] +\
+                    [[sg.Frame(const.NO_TEXT, [[sg.Text(el, font=const.FONTB, size=const.EXEC_TEXT_SIZE_XS), sg.Text(textwrap.TextWrapper(width=const.WRAP_TEXT_SIZE).fill(str(pay_info[el])), font=const.FONT)]
+                                               for el in pay_info], border_width=const.NO_BORDER)]] +\
+                    [[sg.OK(font=const.FONT)]]
+
+                sg.Window(const.TEXT_PAYLOAD_INFO, pay_info_layout,
+                          element_justification=const.CENTER).read(close=True)
 
         if oevent == const.KEY_OPT_ACCEPT:
             if mtype not in mod_list:
@@ -416,12 +476,10 @@ def opt_window(msfclient, mod_list, mtype, mname, mod_idx, edit=False):
 
             opt_l = {opt: utils.correct_type(owindow[const.KEY_OPT_VAL+str(idx)].Get())
                      for idx, opt in enumerate(opts)
-                     if opts[opt] != utils.correct_type(owindow[const.KEY_OPT_VAL+str(idx)].Get())}
+                     if opt != 'PAYLOAD' and opts_default[opt] != utils.correct_type(owindow[const.KEY_OPT_VAL+str(idx)].Get())}
 
-            if pay_added:
-                opt_l['PAYLOAD'] = pname
-                for popt in popt_l:
-                    opt_l['PAYLOAD.' + popt] = popt_l[popt]
+            if tmp_pay_opt['OPTIONS']:
+                opt_l['PAYLOAD'] = tmp_pay_opt
 
             mod_list[mtype][mname][mod_idx] = opt_l
 
@@ -442,7 +500,27 @@ def opt_window(msfclient, mod_list, mtype, mname, mod_idx, edit=False):
     return added
 
 
+layout = [
+    [sg.TabGroup(
+        [
+            [sg.Tab('AutoAuditor', autoauditor_layout,
+                    element_justification=const.CENTER)],
+            [sg.Tab('About', about_layout, element_justification=const.CENTER)],
+            [sg.Tab('License', license_layout, element_justification=const.CENTER)]
+        ],
+        border_width=const.NO_BORDER,
+        tab_background_color=const.COLOR_TAB_DISABLED,
+        font=const.FONT
+    )]
+]
+
 # Event Loop to process "events" and get the "values" of the inputs
+window = sg.Window('AutoAuditor', layout,
+                   element_justification=const.CENTER)  # main window
+window_no_console_size = None
+window_console_size = None
+
+
 while True:
     event, values = window.read()
     if event is not None and window_no_console_size is None:
@@ -649,7 +727,9 @@ while True:
             button(const.NO_TEXT, const.KEY_MOD_EDIT+str(i), const.EDIT, const.BUTTON_M_SIZE,
                    const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_MOD_EDIT, pad=const.PAD_MOD),
             button(const.NO_TEXT, const.KEY_MOD_REM+str(i), const.REMOVE, const.BUTTON_M_SIZE,
-                   const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_MOD_REMOVE)
+                   const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_MOD_REMOVE),
+            button(const.NO_TEXT, const.KEY_MOD_INFO+str(i), const.INFO, const.BUTTON_S_SIZE,
+                   const.BUTTON_COLOR, const.NO_BORDER, const.TOOLTIP_MOD_INFO, pad=const.PAD_MOD)
         ]], visible=False, pad=const.PAD_NO, border_width=const.NO_BORDER, key=const.KEY_MOD_FRAME+str(i), element_justification=const.CENTER)] for i in range(const.MAX_MODULES)]
 
         wizard_layout = [
@@ -674,6 +754,7 @@ while True:
 
         edit_regex = re.compile(const.KEY_MOD_EDIT+'\d+')
         rem_regex = re.compile(const.KEY_MOD_REM+'\d+')
+        info_regex = re.compile(const.KEY_MOD_INFO+'\d+')
         # (const.MAX_MODULES-1) ... 0
         mod_idx = [idx for idx in range(const.MAX_MODULES-1, -1, -1)]
         mod_list = {}
@@ -707,7 +788,7 @@ while True:
                 else:
                     sg.Window('Error', [
                         [sg.Text(
-                            'Module type or module name not selected.'.format(const.MAX_MODULES), font=const.FONT)],
+                            'Module type or module name not selected.', font=const.FONT)],
                         [sg.Text(
                             'Choose a module type and module name from the dropdown.', font=const.FONT)],
                         [sg.OK(button_color=const.BUTTON_COLOR_ERR, font=const.FONT)]
@@ -733,8 +814,25 @@ while True:
                 wwindow.visibility_changed()
                 wwindow[const.KEY_MOD_COL].contents_changed()
 
+            if wevent is not None and info_regex.match(wevent):
+                aux_mod_idx = int(wevent.split("_")[2])  # module_info_xxx
+                aux_mt, aux_mn = wwindow[const.KEY_MOD_NAME +
+                                         str(aux_mod_idx)].Get().split(': ')
+                mod = wizard._get_module(msfclient, aux_mt, aux_mn)
+                mod_info = wizard._get_module_info(mod)
+                mod_info_layout = [
+                    [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
+                    [sg.Text("/".join([aux_mt, aux_mn]), font=const.FONTB)],
+                    [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)]] +\
+                    [[sg.Frame(const.NO_TEXT, [[sg.Text(el, font=const.FONTB, size=const.EXEC_TEXT_SIZE_XS), sg.Text(textwrap.TextWrapper(width=const.WRAP_TEXT_SIZE).fill(str(mod_info[el])), font=const.FONT)]
+                                               for el in mod_info], border_width=const.NO_BORDER)]] +\
+                    [[sg.OK(font=const.FONT)]]
+
+                sg.Window(const.TEXT_PAYLOAD_INFO, mod_info_layout,
+                          element_justification=const.CENTER).read(close=True)
+
             if wevent in (const.KEY_WIZARD_EXIT, sg.WIN_CLOSED):
-                # errcode = utils.shutdown(msfcont)
+                errcode = utils.shutdown(msfcont)
                 if errcode:
                     sg.Window('Success', [
                         [sg.Text('Wizard finished successfully.',
