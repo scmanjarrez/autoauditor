@@ -211,7 +211,7 @@ EOF
         sed -i "s/remote.*1194 udp/remote "$ip" 1194 udp/" $vpnf
     fi
 
-    echo -e "${yellow}Due to problems in this simulated architecture, it's neccesary to add route to redirect to vpn server.$nc\nThe following route will be added: ip route add 10.10.20.0/25 via 10.10.0.2."
+    echo -e "${yellow}Due to problems in this simulated architecture, it's neccesary to add route to redirect traffic through vpn server.$nc\nThe following route will be added: ip route add 10.10.20.0/25 via 10.10.0.2."
     sudo ip route add 10.10.20.0/25 via 10.10.0.2
 }
 

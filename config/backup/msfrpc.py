@@ -1282,6 +1282,13 @@ class MsfModule(object):
                 self._runopts[act] = self._moptions[act]['default']
 
     @property
+    def info(self):
+        """
+        Get information about the module
+        """
+        return self._info
+
+    @property
     def options(self):
         """
         All the module options.

@@ -34,26 +34,26 @@ CHAINCODENAME = "autoauditor"
 loop = asyncio.get_event_loop()
 
 
-def query(info, pretty, qtype, rid=None, org=None, date=None, db=None):
-    user, client, peer, channel_name = info
+def query(qinfo, pretty, qtype, rid=None, org=None, date=None, db=None):
+    user, client, peer, channel_name = qinfo
 
     if qtype == 'id':
         fcn = 'GetReportById'
-        args = [rid]
+        cli_args = [rid]
         if db:
-            args.append(db)
+            cli_args.append(db)
     elif qtype == 'org':
         fcn = 'GetReportsByOrganization'
-        args = [org]
+        cli_args = [org]
         if db:
-            args.append(db)
+            cli_args.append(db)
     else:
         fcn = 'GetReportsByDate'
-        args = [date]
+        cli_args = [date]
         if org:
-            args.append(org)
+            cli_args.append(org)
         if db:
-            args.append(db)
+            cli_args.append(db)
 
     try:
         response = loop.run_until_complete(client.chaincode_query(
@@ -61,7 +61,7 @@ def query(info, pretty, qtype, rid=None, org=None, date=None, db=None):
             channel_name=channel_name,
             peers=[peer],
             fcn=fcn,
-            args=args,
+            args=cli_args,
             cc_name=CHAINCODENAME
         ))
     except Exception as e:
@@ -78,17 +78,17 @@ def query(info, pretty, qtype, rid=None, org=None, date=None, db=None):
             print(json.dumps(rep_list, indent=4))
 
 
-def verify_arguments(args):
-    if args.query == 'id':
-        if not args.reportid:
+def verify_arguments(cli_args):
+    if cli_args.query == 'id':
+        if not cli_args.reportid:
             utils.log('error', "Missing argument: reportid (-i).",
                       errcode=const.EMISSINGARG)
-    elif args.query == 'org':
-        if not args.orgname:
+    elif cli_args.query == 'org':
+        if not cli_args.orgname:
             utils.log('error', "Missing argument: orgname (-o).",
                       errcode=const.EMISSINGARG)
     else:
-        if not args.date:
+        if not cli_args.date:
             utils.log('error', "Missing argument: date (-t).",
                       errcode=const.EMISSINGARG)
 
@@ -111,12 +111,14 @@ if __name__ == '__main__':
                         help="Date filter. Use the format YYYY-MM.")
 
     parser.add_argument('-d', '--database', choices=['public', 'private'],
-                        help="Database filter. Choose between public or private.")
+                        help=("Database filter. "
+                              "Choose between public or private."))
 
     parser.add_argument('-p', '--pretty', action='store_true',
                         help="Prettify JSON output.")
 
-    parser.add_argument('-c', '--netconfigfile', metavar='network_cfg_file', required=True,
+    parser.add_argument('-c', '--netconfigfile',
+                        metavar='network_cfg_file', required=True,
                         help="Network configuration file.")
 
     args = parser.parse_args()
@@ -124,8 +126,13 @@ if __name__ == '__main__':
 
     utils.copyright()
 
-    assert os.path.isfile(args.netconfigfile), "File {} does not exist.".format(
-        args.netconfigfile)
+    if not os.path.isfile(args.netconfigfile):
+        utils.log(
+            'error',
+            "File {} does not exist."
+            .format(args.netconfigfile),
+            errcode=const.ENOENT
+        )
 
     info = load_config(args.netconfigfile)
     query(info, args.pretty, args.query, args.reportid,

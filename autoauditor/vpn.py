@@ -59,18 +59,30 @@ def setup_vpn(ovpn_file, stop=False):
                 net = client.networks.create(
                     'attacker_network', driver='bridge', ipam=ipam_config)
 
-            vpncont = client.containers.run(image, 'sh -c "sleep 5 && /sbin/tini -- /usr/bin/openvpn.sh"',
+            vpncont = client.containers.run(image, ('sh -c "sleep 5 && '
+                                                    '/sbin/tini -- '
+                                                    '/usr/bin/openvpn.sh"'),
                                             auto_remove=True,
                                             stdin_open=True, tty=True,
                                             detach=True, cap_add='NET_ADMIN',
                                             security_opt=['label:disable'],
-                                            tmpfs={'/run': '', '/tmp': ''},
+                                            tmpfs={
+                                                '/run': '',
+                                                '/tmp': ''},
                                             name='vpncl',
                                             network='attacker_network',
-                                            volumes={'/dev/net': {'bind': '/dev/net', 'mode': 'z'},
-                                                     of: {'bind': '/vpn/vpn.ovpn'}},
-                                            environment={'DEFAULT_GATEWAY': 'false',
-                                                         'ROUTE': '10.10.20.0/24'})
+                                            volumes={
+                                                '/dev/net': {
+                                                    'bind': '/dev/net',
+                                                    'mode': 'z'
+                                                },
+                                                of: {
+                                                    'bind': '/vpn/vpn.ovpn'
+                                                }
+                                            },
+                                            environment={
+                                                'DEFAULT_GATEWAY': 'false',
+                                                'ROUTE': '10.10.20.0/24'})
             try:
                 net = client.networks.get('bridge')
             except docker.errors.NotFound:

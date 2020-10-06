@@ -79,8 +79,11 @@ def check_privileges():
               if user in group.gr_mem]
 
     if 'docker' not in groups:
-        log('error', "User '{}' must belong to 'docker' group to communicate with docker API.".format(
-            user), errcode=const.ENOPERM)
+        log('error',
+            ("User '{}' must belong to 'docker' group "
+             "to communicate with docker API.")
+            .format(user),
+            errcode=const.ENOPERM)
 
 
 def print_options(exploit, adv=False):
@@ -113,30 +116,65 @@ def shutdown(msfcont, vpncont=None):
 
     log('succb', const.MSSTOP, end='\r')
     if msfcont is not None:
-        msfcont.stop()
-        log('succg', const.MSSTOPPED)
+        try:
+            msfcont.stop()
+        except docker.errors.APIError:
+            log(
+                'error',
+                const.MSSTOPERR,
+                errcode=const.EDOCKER)
+        else:
+            log(
+                'succg',
+                const.MSSTOPPED)
     else:
-        log('succg', const.MSNR)
+        log(
+            'succg',
+            const.MSNR)
 
-    log('succb', const.VPNSTOP, end='\r')
+    log(
+        'succb',
+        const.VPNSTOP,
+        end='\r')
     if vpncont is not None:
-        vpncont.stop()
-        log('succg', const.VPNSTOPPED)
+        try:
+            vpncont.stop()
+        except docker.errors.APIError:
+            log(
+                'error',
+                const.VPNSTOPERR,
+                errcode=const.EDOCKER)
+        else:
+            log(
+                'succg',
+                const.VPNSTOPPED)
     else:
-        log('succg', const.VPNNR)
+        log(
+            'succg',
+            const.VPNNR)
 
-    log('succb', const.ATNET, end='\r')
+    log(
+        'succb',
+        const.ATNET,
+        end='\r')
     try:
         net = client.networks.get('attacker_network')
     except docker.errors.NotFound:
-        log('succg', const.ATNETNF)
+        log(
+            'succg',
+            const.ATNETNF)
     else:
         try:
             net.remove()
         except docker.errors.APIError:
-            log('warn', "Can not remove attacker_network. There are active endpoints.")
+            log(
+                'error',
+                const.ATNETAEND,
+                errcode=const.EDOCKER)
         else:
-            log('succg', const.ATNETRM)
+            log(
+                'succg',
+                const.ATNETRM)
 
     log('succg', 'Exiting autoauditor.', errcode=const.NOERROR)
     return const.NOERROR
@@ -148,18 +186,27 @@ def check_file_dir(outf, outd=None):
         try:
             os.makedirs(dirname, exist_ok=True)
         except PermissionError:
-            log('error', "Insufficient permission to create file path {}.".format(
-                outf), errcode=const.EACCESS)
+            log(
+                'error',
+                "Insufficient permission to create file path {}."
+                .format(outf),
+                errcode=const.EACCESS)
             return const.EACCESS
 
     if outd is not None:
         try:
             os.makedirs(outd, exist_ok=True)
         except PermissionError:
-            log('error', "Insufficient permission to create directory {}.".format(
-                outd), errcode=const.EACCESS)
+            log(
+                'error',
+                "Insufficient permission to create directory {}."
+                .format(outd),
+                errcode=const.EACCESS)
             return const.EACCESS
 
 
 if __name__ == '__main__':
-    log('error', "Not standalone module. Run again from autoauditor.py.", errcode=const.EMODNR)
+    log(
+        'error',
+        "Not standalone module. Run again from autoauditor.py.",
+        errcode=const.EMODNR)
