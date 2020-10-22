@@ -23,7 +23,11 @@ FN_DELETE="DeleteReport"
 FN_QUERY="GetReportById"
 FN_QUERYHASH="GetReportHash"
 FN_QUERYORG="GetReportsByOrganization"
+FN_QUERYTOTALORG="GetTotalReportsByOrganization"
+FN_QUERYORGIDS="GetReportsIdByOrganization"
 FN_QUERYDATE="GetReportsByDate"
+FN_QUERYTOTALDATE="GetTotalReportsByDate"
+FN_QUERYDATEIDS="GetReportsIdByDate"
 TRANS_STORE="report"
 TRANS_DELETE="report_delete"
 
@@ -62,9 +66,14 @@ execute_as ()
         query) command=query_data ;;
         queryhash) command=query_data_hash ;;
         queryorg) command=query_data_org ;;
+        querytotalorg) command=query_total_data_org ;;
+        queryorgids) command=query_data_org_ids ;;
         querydate) command=query_data_date ;;
+        querytotaldate) command=query_total_data_date ;;
+        querydateids) command=query_data_date_ids ;;
         delete) command=delete_data ;;
-        *) echo -e "${RED} Invalid command: package, install, approve, store, query, queryhash, queryorg, delete.$NC"; exit 1 ;;
+        *) echo -e "${RED} Invalid command: package, install, approve, store, query, queryhash\n" \
+                "\t   queryorg, querytotalorg, queryorgids, querydate, querytotaldate, querydateids, delete.$NC"; exit 1 ;;
     esac
 
     case "$2" in
@@ -192,8 +201,8 @@ store_data()
     org=$3
     date=$4
 
-    export REPORT=$(echo -n "{\"id\": \"$id\", \"org\": \"$org\", \"date\": \"${date:0:7}\", \"nvuln\": 5, \"report\": \"basic_report\"}" | base64 | tr -d \\n)
-    export REPORTPRIVATE=$(echo -n "{\"id\": \"$id\", \"private\": true, \"org\": \"$org\", \"date\": \"$date\", \"nvuln\": 5, \"report\": \"private_report\"}" | base64 | tr -d \\n)
+    export REPORT=$(echo -n "{\"id\": \"$id\", \"org\": \"$org\", \"date\": \"${date:0:7}\", \"nvuln\": 5, \"report\": \"dummy_basic_report\"}" | base64 | tr -d \\n)
+    export REPORTPRIVATE=$(echo -n "{\"id\": \"$id\", \"private\": true, \"org\": \"$org\", \"date\": \"$date\", \"nvuln\": 5, \"report\": \"dummy_private_report\"}" | base64 | tr -d \\n)
 
     peer chaincode invoke \
         -o $ORDERER_URL \
@@ -360,6 +369,38 @@ query_data_org()
     echo -e "${prefix} $FN_QUERYORG ($org, private) -> $1.$NC"
 }
 
+query_total_data_org()
+{
+    as_$1
+    org=$3
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYTOTALORG\", \"$org\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYTOTALORG ($org) -> $1.$NC"
+}
+
+query_data_org_ids()
+{
+    as_$1
+    org=$3
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYORGIDS\", \"$org\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYORGIDS ($org) -> $1.$NC"
+}
+
 query_data_date()
 {
     as_$1
@@ -427,60 +468,118 @@ query_data_date()
     echo -e "${prefix} $FN_QUERYDATE ($date, $org, private) -> $1.$NC"
 }
 
+query_total_data_date()
+{
+    as_$1
+    org=$3
+    date=${4:0:7}
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYTOTALDATE\", \"$date\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYTOTALDATE ($date) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYTOTALDATE\", \"$date\", \"$org\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYTOTALDATE ($date, $org) -> $1.$NC"
+}
+
+query_data_date_ids()
+{
+    as_$1
+    org=$3
+    date=${4:0:7}
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYDATEIDS\", \"$date\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYDATEIDS ($date) -> $1.$NC"
+
+    output=$(peer chaincode query \
+        -C $CHANNEL_NAME \
+        -n $CC_NAME \
+        -c "{\"Args\":[\"$FN_QUERYDATEIDS\", \"$date\", \"$org\"]}")
+
+    [[ -n "$output" ]] \
+        && echo $output && prefix=$GREEN \
+        || prefix=$RED
+    echo -e "${prefix} $FN_QUERYDATEIDS ($date, $org) -> $1.$NC"
+}
+
 usage()
 {
     echo "Usage:"
     echo "    $0 -a"
-    echo "                       Generate chaincode package, install, approve, commit and finally, store and query test data."
+    echo "                             Generate chaincode package, install, approve, commit and finally, store and query test data."
     echo ""
     echo "    $0 -r"
-    echo "                       Disable store and query execution from 'execute all' command."
+    echo "                             Disable store and query execution from 'execute all' command."
     echo ""
     echo "    $0 -c cmd -o org [-i Id]"
-    echo "                       Execute given cmd as org. Optionally, ID parameter allowed to store/query."
+    echo "                             Execute given cmd as org. Optionally, ID parameter allowed to store/query."
     echo ""
     echo "    $0 -u"
-    echo "                       Test network up."
+    echo "                             Test network up."
     echo ""
     echo "    $0 -d"
-    echo "                       Test network down."
+    echo "                             Test network down."
     echo ""
     echo "    $0 -q"
-    echo "                       Executes all query examples."
+    echo "                             Executes all query examples."
     echo ""
     echo "    $0 -n"
-    echo "                       Modify chaincode name."
+    echo "                             Modify chaincode name."
     echo ""
     echo "    $0 -p"
-    echo "                       Modify chaincode path."
+    echo "                             Modify chaincode path."
     echo ""
     echo "    $0 -g"
-    echo "                       Modify chaincode collection config path."
+    echo "                             Modify chaincode collection config path."
     echo ""
     echo "    $0 -v"
-    echo "                       Modify chaincode version."
+    echo "                             Modify chaincode version."
     echo ""
     echo "    $0 -h"
-    echo "                       Show this help."
+    echo "                             Show this help."
     echo ""
     echo "Commands:"
-    echo "       -c help         Show $CC_NAME chaincode available functions."
-    echo "       -c package      Package $CC_NAME chaincode."
-    echo "       -c installed    Query installed chaincodes in peer."
-    echo "       -c install      Install $CC_NAME chaincode."
-    echo "       -c approve      Approve $CC_NAME chaincode definition."
-    echo "       -c commit       Commit $CC_NAME chaincode definition."
-    echo "       -c store        Store test data."
-    echo "       -c query        Query test data."
-    echo "       -c queryhash    Query test data hash."
-    echo "       -c queryorg     Query test data from organization."
-    echo "       -c querydate    Query test data from date and organization."
-    echo "       -c delete       Delete test data."
+    echo "       -c help               Show $CC_NAME chaincode available functions."
+    echo "       -c package            Package $CC_NAME chaincode."
+    echo "       -c installed          Query installed chaincodes in peer."
+    echo "       -c install            Install $CC_NAME chaincode."
+    echo "       -c approve            Approve $CC_NAME chaincode definition."
+    echo "       -c commit             Commit $CC_NAME chaincode definition."
+    echo "       -c store              Store test report."
+    echo "       -c query              Query test report."
+    echo "       -c queryhash          Query test report hash."
+    echo "       -c queryorg           Query test reports from organization."
+    echo "       -c querytotalorg      Query total reports from organization."
+    echo "       -c queryorgids        Query all reports id from organization."
+    echo "       -c querydate          Query test reports from date [ and organization]."
+    echo "       -c querytotaldate     Query total reports from date [ and organization]."
+    echo "       -c querydateids       Query all reports id from date [ and organization]."
+    echo "       -c delete             Delete test report."
     echo ""
     echo "Organizations:"
-    echo "       -o all          Execute command as all organizations."
-    echo "       -o org1         Execute command as org1."
-    echo "       -o org2         Execute command as org2."
+    echo "       -o all                Execute command as all organizations."
+    echo "       -o org1               Execute command as org1."
+    echo "       -o org2               Execute command as org2."
     exit
 }
 
@@ -536,20 +635,28 @@ if [ -z "$date" ]; then
     date="2020-05-21 17:37:27.910352+02:00"
 fi
 
+if [ -z "$org" ]; then
+    org="all"
+fi
+
 if [ -n "$store" ]; then
     execute_as "store" "org1" "$queryid" "$companyid" "$date"
 fi
 
 if [ -n "$query" ]; then
-    execute_as "query" "all" "$queryid"
-    execute_as "queryhash" "all" "$queryid"
-    execute_as "queryorg" "all" "$queryid" "$companyid"
-    execute_as "querydate" "all" "$queryid" "$companyid" "$date"
+    execute_as "query" "$org" "$queryid"
+    execute_as "queryhash" "$org" "$queryid"
+    execute_as "queryorg" "$org" "$queryid" "$companyid"
+    execute_as "querytotalorg" "$org" "$queryid" "$companyid"
+    execute_as "queryorgids" "$org" "$queryid" "$companyid"
+    execute_as "querydate" "$org" "$queryid" "$companyid" "$date"
+    execute_as "querytotaldate" "$org" "$queryid" "$companyid" "$date"
+    execute_as "querydateids" "$org" "$queryid" "$companyid" "$date"
     exit
 fi
 
-if [ -n "$cmd" ] && [ -n "$org" ]; then
-    execute_as "$cmd" "$org" "$queryid" "$companyid" $date
+if [ -n "$cmd" ]; then
+    execute_as "$cmd" "$org" "$queryid" "$companyid" "$date"
     exit
 fi
 
@@ -570,10 +677,14 @@ if [ -n "$all" ]; then
         echo -e "${BLUE} Waiting transactions processing.$NC"; sleep 3 # wait time to process transaction
         execute_as "store" "org1" "$queryid" "$companyid" "$date"
         echo -e "${BLUE} Waiting transactions processing.$NC"; sleep 3 # wait time to process transaction
-        execute_as "query" "all" "$queryid"
-        execute_as "queryhash" "all" "$queryid"
-        execute_as "queryorg" "all" "$queryid" "$companyid"
-        execute_as "querydate" "all" "$queryid" "$companyid" "$date"
+        execute_as "query" "$org" "$queryid"
+        execute_as "queryhash" "$org" "$queryid"
+        execute_as "queryorg" "$org" "$queryid" "$companyid"
+        execute_as "querytotalorg" "$org" "$queryid" "$companyid"
+        execute_as "queryorgids" "$org" "$queryid" "$companyid"
+        execute_as "querydate" "$org" "$queryid" "$companyid" "$date"
+        execute_as "querytotaldate" "$org" "$queryid" "$companyid" "$date"
+        execute_as "querydateids" "$org" "$queryid" "$companyid" "$date"
     fi
 fi
 

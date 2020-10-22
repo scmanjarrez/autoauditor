@@ -386,6 +386,85 @@ func (s *SmartContract) GetReportsByOrganization(ctx contractapi.TransactionCont
 	return results, nil
 }
 
+func (s *SmartContract) GetTotalReportsByOrganization(ctx contractapi.TransactionContextInterface) (int, error) {
+	_, params := ctx.GetStub().GetFunctionAndParameters()
+
+	var err error
+	if len(params) != 1 {
+		return -1, fmt.Errorf("Incorrect number of arguments. Expecting: OrgName.")
+	}
+
+	org := params[0]
+
+	indexName := "organization~id"
+
+	resultsIterator, err := ctx.GetStub().GetPrivateDataByPartialCompositeKey(publicCollection, indexName, []string{org})
+
+	if err != nil {
+		return -1, fmt.Errorf("Failed to get organization reports: %s", err.Error())
+	} else if resultsIterator == nil {
+		return -1, fmt.Errorf("Organization reports do not exist: %s", err.Error())
+	}
+
+	defer resultsIterator.Close()
+
+	total := 0
+
+	for resultsIterator.HasNext() {
+		_, err := resultsIterator.Next()
+		if err != nil {
+			return -1, err
+		}
+
+		total++
+	}
+
+	return total, nil
+}
+
+func (s *SmartContract) GetReportsIdByOrganization(ctx contractapi.TransactionContextInterface) ([]string, error) {
+	_, params := ctx.GetStub().GetFunctionAndParameters()
+
+	var err error
+	if len(params) != 1 {
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting: OrgName.")
+	}
+
+	org := params[0]
+
+	indexName := "organization~id"
+
+	resultsIterator, err := ctx.GetStub().GetPrivateDataByPartialCompositeKey(publicCollection, indexName, []string{org})
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get organization reports: %s", err.Error())
+	} else if resultsIterator == nil {
+		return nil, fmt.Errorf("Organization reports do not exist: %s", err.Error())
+	}
+
+	defer resultsIterator.Close()
+
+	results := []string{}
+
+	for resultsIterator.HasNext() {
+		response, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		_, compositeKeyParts, err := ctx.GetStub().SplitCompositeKey(response.Key)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to split composite key: %s", err.Error())
+		}
+
+		id := compositeKeyParts[1]
+
+		results = append(results, id)
+	}
+
+	return results, nil
+}
+
 func (s *SmartContract) GetReportsByDate(ctx contractapi.TransactionContextInterface) ([]Report, error) {
 	_, params := ctx.GetStub().GetFunctionAndParameters()
 
@@ -467,6 +546,101 @@ func (s *SmartContract) GetReportsByDate(ctx contractapi.TransactionContextInter
 		}
 
 		results = append(results, *report)
+	}
+
+	if len(results) == 0 {
+		return nil, fmt.Errorf("No results found for such criteria. Check parameters: %+q", params)
+	}
+	return results, nil
+}
+
+func (s *SmartContract) GetTotalReportsByDate(ctx contractapi.TransactionContextInterface) (int, error) {
+	_, params := ctx.GetStub().GetFunctionAndParameters()
+
+	var err error
+
+	if len(params) < 1 || len(params) > 2 {
+		return -1, fmt.Errorf("Incorrect number of arguments. Expecting: YYYY-MM [, OrgName].")
+	}
+
+	date := params[0]
+
+	var resultsIterator shim.StateQueryIteratorInterface
+	indexName := "date~organization~id"
+	if len(params) > 1 && params[1] != "private" && params[1] != "public" {
+		org := params[1]
+		resultsIterator, err = ctx.GetStub().GetPrivateDataByPartialCompositeKey(publicCollection, indexName, []string{date, org})
+	} else {
+		resultsIterator, err = ctx.GetStub().GetPrivateDataByPartialCompositeKey(publicCollection, indexName, []string{date})
+	}
+
+	if err != nil {
+		return -1, fmt.Errorf("Failed to get reports by date: %s", err.Error())
+	} else if resultsIterator == nil {
+		return -1, fmt.Errorf("Date reports do not exist: %s", err.Error())
+	}
+
+	defer resultsIterator.Close()
+
+	total := 0
+	for resultsIterator.HasNext() {
+		_, err := resultsIterator.Next()
+		if err != nil {
+			return -1, err
+		}
+		total++
+	}
+
+	if total == 0 {
+		return -1, fmt.Errorf("No results found for such criteria. Check parameters: %+q", params)
+	}
+	return total, nil
+}
+
+func (s *SmartContract) GetReportsIdByDate(ctx contractapi.TransactionContextInterface) ([]string, error) {
+	_, params := ctx.GetStub().GetFunctionAndParameters()
+
+	var err error
+
+	if len(params) < 1 || len(params) > 2 {
+		return nil, fmt.Errorf("Incorrect number of arguments. Expecting: YYYY-MM [, OrgName].")
+	}
+
+	date := params[0]
+
+	var resultsIterator shim.StateQueryIteratorInterface
+	indexName := "date~organization~id"
+	if len(params) > 1 && params[1] != "private" && params[1] != "public" {
+		org := params[1]
+		resultsIterator, err = ctx.GetStub().GetPrivateDataByPartialCompositeKey(publicCollection, indexName, []string{date, org})
+	} else {
+		resultsIterator, err = ctx.GetStub().GetPrivateDataByPartialCompositeKey(publicCollection, indexName, []string{date})
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get reports by date: %s", err.Error())
+	} else if resultsIterator == nil {
+		return nil, fmt.Errorf("Date reports do not exist: %s", err.Error())
+	}
+
+	defer resultsIterator.Close()
+
+	results := []string{}
+
+	for resultsIterator.HasNext() {
+		response, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		_, compositeKeyParts, err := ctx.GetStub().SplitCompositeKey(response.Key)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to split composite key: %s", err.Error())
+		}
+
+		id := compositeKeyParts[2]
+
+		results = append(results, id)
 	}
 
 	if len(results) == 0 {
