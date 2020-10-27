@@ -47,6 +47,22 @@ def query(qinfo, pretty, qtype, rid=None, org=None, date=None, db=None):
         cli_args = [org]
         if db:
             cli_args.append(db)
+    elif qtype == 'totalorg':
+        fcn = 'GetTotalReportsByOrganization'
+        cli_args = [org]
+    elif qtype == 'orgids':
+        fcn = 'GetReportsIdByOrganization'
+        cli_args = [org]
+    elif qtype == 'totaldate':
+        fcn = 'GetTotalReportsByDate'
+        cli_args = [date]
+        if org:
+            cli_args.append(org)
+    elif qtype == 'dateids':
+        fcn = 'GetReportsIdByDate'
+        cli_args = [date]
+        if org:
+            cli_args.append(org)
     else:
         fcn = 'GetReportsByDate'
         cli_args = [date]
@@ -83,7 +99,7 @@ def verify_arguments(cli_args):
         if not cli_args.reportid:
             utils.log('error', "Missing argument: reportid (-i).",
                       errcode=const.EMISSINGARG)
-    elif cli_args.query == 'org':
+    elif cli_args.query in ('org', 'totalorg', 'orgids'):
         if not cli_args.orgname:
             utils.log('error', "Missing argument: orgname (-o).",
                       errcode=const.EMISSINGARG)
@@ -98,8 +114,12 @@ if __name__ == '__main__':
         description="Autoauditor submodule to store reports in blockchain.")
 
     parser.add_argument('-q', '--query', required=True,
-                        choices=['id', 'org', 'date'],
-                        help="Type of query. Choose between id, org, or date.")
+                        choices=['id',
+                                 'org', 'totalorg', 'orgids',
+                                 'date', 'totaldate', 'dateids'],
+                        help=("Type of query. Choose between id, "
+                              "org, totalorg, orgids, "
+                              "date, totaldate, dateids."))
 
     parser.add_argument('-i', '--reportid', metavar='report_id',
                         help="Report ID filter.")
@@ -117,23 +137,23 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--pretty', action='store_true',
                         help="Prettify JSON output.")
 
-    parser.add_argument('-c', '--netconfigfile',
-                        metavar='network_cfg_file', required=True,
-                        help="Network configuration file.")
+    parser.add_argument('-hc', '--hyperledgercfg',
+                        metavar='hyperledger_config_file', required=True,
+                        help="Blockchain network configuration file.")
 
     args = parser.parse_args()
     verify_arguments(args)
 
     utils.copyright()
 
-    if not os.path.isfile(args.netconfigfile):
+    if not os.path.isfile(args.hyperledgercfg):
         utils.log(
             'error',
             "File {} does not exist."
-            .format(args.netconfigfile),
+            .format(args.hyperledgercfg),
             errcode=const.ENOENT
         )
 
-    info = load_config(args.netconfigfile)
+    info = load_config(args.hyperledgercfg)
     query(info, args.pretty, args.query, args.reportid,
           args.orgname, args.date, args.database)

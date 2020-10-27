@@ -20,6 +20,7 @@ ENOENT = 252  # No such file or directory
 EBADRCFMT = 253  # Bad resources script (format)
 EINTR = 254  # Interrupted system call
 EDOCKER = 255  # Docker API error
+EHLFCONN = 256  # Hyperledger Fabric Error
 
 # Copyright
 

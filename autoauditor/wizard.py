@@ -27,6 +27,7 @@ import json
 import argparse
 import metasploit
 import sys
+import readline # noqa
 
 
 YES = ['y', 'yes']
@@ -56,8 +57,10 @@ def get_option_info(module, option):
 
 def get_option_desc(module, option):
     try:
+        if option == 'ACTION':
+            return 'Specifiy the action for this module'
         return module.optioninfo(option)['desc']
-    except AttributeError:
+    except KeyError:
         return ''
 
 
@@ -104,15 +107,30 @@ def set_options(mod):
                 "Finish with EOF (Ctrl+D)")
             while True:
                 opt = input("[*] Option (case sensitive): ")
-                val = utils.correct_type(
-                    input("[*] {} value: ".format(opt)))
                 try:
-                    mod[opt] = val
+                    opt_info = get_option_info(mod, opt)
                 except KeyError:
                     utils.log(
                         'error',
                         "Invalid option: {}"
                         .format(opt))
+                    continue
+                val = utils.correct_type(
+                    input("[*] {} value: ".format(opt)),
+                    opt_info)
+                if val in ('Invalid', 'Missing'):
+                    utils.log(
+                        'error',
+                        "Invalid or missing value, must be {}: {}"
+                        .format(opt_info['type'], opt))
+                    continue
+                try:
+                    mod[opt] = val
+                except KeyError:
+                    utils.log(
+                        'error',
+                        "Unexpected error: option = {} value = {}"
+                        .format(opt, val))
                 else:
                     mod_options[opt] = val
                 eof = False
@@ -128,6 +146,12 @@ def set_options(mod):
             eof = True
 
         modify = str.lower(input("[*] Modify [y/N]: ")) in YES
+        if not modify and mod.missing_required:
+            modify = str.lower(input(("[!] Following options missing: {}.\n"
+                                      "[*] Modify [y/N]: "
+                                      .format(", ".join(mod.missing_required)))
+                                     )
+                               ) in YES
         eof = False
 
     return mod_options

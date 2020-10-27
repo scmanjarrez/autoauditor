@@ -353,7 +353,8 @@ def store_report(info, rep_file, out_file, update_cache=False):
                 utils.log(
                     'error',
                     "Error storing report {}: {}"
-                    .format(rephash, str(e)))
+                    .format(rephash, str(e)),
+                    errcode=const.EHLFCONN)
             else:
                 if not response:
                     utils.log(
@@ -367,12 +368,14 @@ def store_report(info, rep_file, out_file, update_cache=False):
                     utils.log(
                         'error',
                         "Error storing report {}: {}"
-                        .format(rephash, response))
+                        .format(rephash, response),
+                        errcode=const.EHLFCONN)
                 else:
                     utils.log(
                         'error',
                         "Unknown error storing report {}: {}"
-                        .format(rephash, response))
+                        .format(rephash, response),
+                        errcode=const.EHLFCONN)
 
 
 def get_net_info(config, *key_path):

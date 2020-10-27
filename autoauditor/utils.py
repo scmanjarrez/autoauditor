@@ -19,6 +19,7 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 from distutils.util import strtobool
+from ipaddress import IPv4Address, AddressValueError
 import constants as const
 import sys
 import pwd
@@ -102,19 +103,52 @@ def print_options(exploit, adv=False):
             sym, opt, exploit[opt] if exploit[opt] is not None else ''))
 
 
-def correct_type(value):
-    if isinstance(value, str):
-        if value.isdigit():
-            return int(value)
-        if value.lower() in ('true', 'false'):
-            return bool(strtobool(value))
-    return value
+def correct_type(value, info):
+    try:
+        value_type = info['type']
+        value_required = info['required']
+    except KeyError:
+        pass
+    else:
+        if not value and not value_required:  # empty and not req -> ok
+            return value
+        if not value and value_required:  # empty and req -> error
+            return 'Missing'
+        if value_type == 'bool':  # if not empty, check type
+            try:
+                return bool(strtobool(value))
+            except ValueError:
+                pass
+        elif value_type in ('integer', 'port'):
+            if value.isdigit():
+                dig = int(value)
+                if value_type == 'integer':
+                    return dig
+                elif 0 < dig < 2 ** 16:
+                    return dig
+        elif value_type in ('address', 'addressrange'):
+            try:
+                IPv4Address(value)
+                return value
+            except AddressValueError:
+                pass
+        elif value_type == 'enum':
+            try:
+                if value in info['enums']:
+                    return value
+            except KeyError:
+                pass
+        elif value_type == 'string':
+            return value
+
+    return 'Invalid'
 
 
 def shutdown(msfcont, vpncont=None):
     client = docker.from_env()
-
-    log('succb', const.MSSTOP, end='\r')
+    log('succb',
+        const.MSSTOP,
+        end='\r')
     if msfcont is not None:
         try:
             msfcont.stop()
