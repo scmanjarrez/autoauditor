@@ -27,7 +27,8 @@ from hfc.fabric.peer import create_peer
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from bs4 import BeautifulSoup
-import constants as const
+import constants as cst
+import asyncio as _asyncio
 import argparse
 import requests
 import re
@@ -36,7 +37,6 @@ import utils
 import hashlib
 import json
 import sys
-import asyncio
 import logging
 import sqlite3
 
@@ -71,8 +71,6 @@ affected4 = re.compile(
 affected5 = re.compile(
     r'^(?=.*\b(credentials?|users?|account)\b)(?=.*\bfound\b).*$',
     re.IGNORECASE)
-
-loop = asyncio.get_event_loop()
 
 
 def set_up_cache():
@@ -190,7 +188,7 @@ def get_cve(exploit):
         utils.log(
             'error',
             'Connection error. Check internet connection.',
-            errcode=const.ECONN)
+            errcode=cst.ECONN)
 
     soup = BeautifulSoup(req.text, features='html.parser')
     references = soup.find(
@@ -207,7 +205,7 @@ def get_score(cve):
         utils.log(
             'error',
             'Connection error. Check internet connection.',
-            errcode=const.ECONN)
+            errcode=cst.ECONN)
 
     soup = BeautifulSoup(req.text, features='html.parser')
     score = soup.find('div', attrs={'class': 'cvssbox'}).string
@@ -267,7 +265,7 @@ def generate_reports(rep, update_cache):
     except KeyError:
         utils.log('error',
                   'Wrong report format.',
-                  errcode=const.EBADREPFMT)
+                  errcode=cst.EBADREPFMT)
 
     nvuln = 0
     for mod in info:
@@ -294,53 +292,55 @@ def generate_reports(rep, update_cache):
     return report
 
 
-def store_report(info, rep_file, out_file, update_cache=False):
+def store_report(info, rep_file, out_file, update_cache=False, loop=None):
+    if loop is None:
+        loop = _asyncio.get_event_loop()
     user, client, peer, channel_name = info
 
-    utils.log('succb', const.GENREP, end='\r')
-    report = generate_reports(rep_file, update_cache)
-    utils.log('succg', const.GENREPDONE)
+    utils.log('succb', cst.GENREP, end='\r')
+    reports = generate_reports(rep_file, update_cache)
+    utils.log('succg', cst.GENREPDONE)
 
-    privdate = report.pop('date')  # yyyy-mm-dd hh:mm:ss.ffffff+tt:zz
+    privdate = reports.pop('date')  # yyyy-mm-dd hh:mm:ss.ffffff+tt:zz
     pubdate = privdate[:7]  # yyyy-mm
 
-    nvuln = report.pop('nvuln')
+    nvuln = reports.pop('nvuln')
 
-    repid = user.org + privdate
-    rephash = hashlib.sha256(repid.encode('utf-8')).hexdigest()
+    rid = user.org + privdate
+    rhash = hashlib.sha256(rid.encode('utf-8')).hexdigest()
 
-    aarep = {'id': rephash,
-             'org': user.org,
-             'date': privdate,
-             'nvuln': nvuln}
+    rep = {'id': rhash,
+           'org': user.org,
+           'date': privdate,
+           'nvuln': nvuln}
 
     with open(out_file, 'w') as out:
         utils.log(
             'succb',
-            "Blockchain output log: {}"
-            .format(out_file))
+            f"Blockchain output log: {out_file}")
 
-        for rep in report:
-            aarep['report'] = report[rep]  # dump report to log file
+        for r in reports:
+            rep['report'] = reports[r]  # dump report to log file
+            _type = 'public'
 
-            if rep == 'privrep':
-                aarep['private'] = True
-                out.write(json.dumps(aarep, indent=4) + ',\n')
+            if r == 'privrep':
+                rep['private'] = True
+                _type = 'private'
+                out.write(json.dumps(rep, indent=4) + ',\n')
             else:
-                aarep['private'] = False
-                aarep['date'] = pubdate
-                out.write(json.dumps(aarep, indent=4) + '\n')
+                rep['private'] = False
+                rep['date'] = pubdate
+                out.write(json.dumps(rep, indent=4) + '\n')
 
-            aarep['report'] = json.dumps(report[rep])  # must be serialized
-            tmprep = json.dumps(aarep).encode()
+            rep['report'] = json.dumps(reports[r])  # must be serialized
+            tmprep = json.dumps(rep).encode()
 
             utils.log(
                 'succb',
-                "Storing {} report: {}"
-                .format("private" if aarep['private'] else "public", rephash))
+                f"Storing {_type} report: {rhash}")
 
             try:
-                response = loop.run_until_complete(client.chaincode_invoke(
+                resp = loop.run_until_complete(client.chaincode_invoke(
                     requestor=user,
                     channel_name=channel_name,
                     peers=[peer],
@@ -352,30 +352,27 @@ def store_report(info, rep_file, out_file, update_cache=False):
             except Exception as e:
                 utils.log(
                     'error',
-                    "Error storing report {}: {}"
-                    .format(rephash, str(e)),
-                    errcode=const.EHLFCONN)
+                    f"Error storing {_type} report {rhash}: {e}",
+                    errcode=cst.EHLFCONN)
             else:
-                if not response:
+                if not resp:
                     utils.log(
                         'succg',
-                        "Report stored successfully in blockchain.")
-                elif 'already' in response:
+                        f"{_type.capitalize()} report stored successfully.")
+                elif 'already' in resp:
                     utils.log(
                         'warn',
-                        "Report already stored in blockchain.")
-                elif 'failed' in response:
+                        f"{_type.capitalize()} report already in blockchain.")
+                elif 'failed' in resp:
                     utils.log(
                         'error',
-                        "Error storing report {}: {}"
-                        .format(rephash, response),
-                        errcode=const.EHLFCONN)
+                        f"Error storing {_type} report {rhash}: {resp}",
+                        errcode=cst.EHLFCONN)
                 else:
                     utils.log(
                         'error',
-                        "Unknown error storing report {}: {}"
-                        .format(rephash, response),
-                        errcode=const.EHLFCONN)
+                        "Unknown error storing {_type} report {rhash}: {resp}",
+                        errcode=cst.EHLFCONN)
 
 
 def get_net_info(config, *key_path):
@@ -387,11 +384,13 @@ def get_net_info(config, *key_path):
                 utils.log(
                     'error',
                     "No key path {key_path} exists in network info",
-                    errcode=const.EBADNETFMT)
+                    errcode=cst.EBADNETFMT)
         return config
 
 
-def load_config(config):
+def load_config(config, loop=None):
+    if loop is None:
+        loop = _asyncio.get_event_loop()
     _logger = logging.getLogger('hfc.fabric.client')
     _logger.setLevel(logging.NOTSET)
 
@@ -405,9 +404,14 @@ def load_config(config):
     opts = (('grpc.ssl_target_name_override', peer_config['server_hostname']),)
     endpoint = peer_config['grpc_request_endpoint']
 
-    peer = create_peer(endpoint=endpoint,
-                       tls_cacerts=tls_cacerts,
-                       opts=opts)
+    try:
+        peer = create_peer(endpoint=endpoint,
+                           tls_cacerts=tls_cacerts,
+                           opts=opts)
+    except FileNotFoundError:
+        utils.log('error', ("Check network configuration file. "
+                            "TLS CA certs missing."), errcode=cst.ENOENT)
+        return
 
     channel_name = get_net_info(network, 'network', 'channel')
 
@@ -476,15 +480,13 @@ def main():
     if not os.path.isfile(args.reportfile):
         utils.log(
             'error',
-            "File {} does not exist."
-            .format(args.reportfile),
-            errcode=const.ENOENT)
+            f"File {args.reportfile} does not exist.",
+            errcode=cst.ENOENT)
     if not os.path.isfile(args.hyperledgercfg):
         utils.log(
             'error',
-            "File {} does not exist."
-            .format(args.hyperledgercfg),
-            errcode=const.ENOENT)
+            f"File {args.hyperledgercfg} does not exist.",
+            errcode=cst.ENOENT)
 
     info = load_config(args.hyperledgercfg)
 
@@ -505,4 +507,4 @@ if __name__ == '__main__':
             'error',
             "Interrupted, exiting program. Containers will keep running ...")
 
-        sys.exit(const.EINTR)
+        sys.exit(cst.EINTR)

@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
-import constants as const
+import constants as cst
 import sys
 import os
 import argparse
@@ -104,9 +104,8 @@ def main():
         if not os.path.isfile(args.ovpn):
             utils.log(
                 'error',
-                "File {} does not exist."
-                .format(args.ovpn),
-                errcode=const.ENOENT)
+                f"File {args.ovpn} does not exist.",
+                errcode=cst.ENOENT)
         vpncont = vpn.setup_vpn(args.ovpn, args.stop)
 
     utils.check_file_dir(args.outfile, args.outdir)
@@ -117,7 +116,7 @@ def main():
     if args.stop:
         utils.shutdown(msfcont, vpncont)
     else:
-        msfclient = metasploit.get_msf_connection(const.DEFAULT_MSFRPC_PASSWD)
+        msfclient = metasploit.get_msf_connection(cst.DEF_MSFRPC_PWD)
 
         if args.genrc:
             utils.check_file_dir(args.genrc)
@@ -126,15 +125,16 @@ def main():
         if args.runrc:
             if not os.path.isfile(args.runrc):
                 utils.log('error',
-                          "File {} does not exist."
-                          .format(args.runrc),
-                          errcode=const.ENOENT)
+                          f"File {args.runrc} does not exist.",
+                          errcode=cst.ENOENT)
             metasploit.launch_metasploit(msfclient, args.runrc, args.outfile)
 
         if args.hyperledgercfg:
             info = blockchain.load_config(args.hyperledgercfg)
-            utils.check_file_dir(args.hyperledgerout)
-            blockchain.store_report(info, args.outfile, args.hyperledgerout)
+            if info is not None:
+                utils.check_file_dir(args.hyperledgerout)
+                blockchain.store_report(
+                    info, args.outfile, args.hyperledgerout)
 
         if not args.background:
             utils.shutdown(msfcont, vpncont)
@@ -151,4 +151,4 @@ if __name__ == '__main__':
             'error',
             "Interrupted, exiting program. Containers will keep running ...")
 
-        sys.exit(const.EINTR)
+        sys.exit(cst.EINTR)

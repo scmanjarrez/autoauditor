@@ -21,7 +21,7 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 from pymetasploit3.msfrpc import MsfRpcError, ExploitModule
-import constants as const
+import constants as cst
 import utils
 import json
 import argparse
@@ -96,9 +96,9 @@ def set_options(mod):
     eof = False
     modify = str.lower(input("[*] Modify [y/N]: ")) in YES
     if not modify and mod.missing_required:
-        modify = str.lower(input(("[!] Following options missing: {}.\n"
-                                  "[*] Modify [y/N]: "
-                                  .format(", ".join(mod.missing_required))))
+        modify = str.lower(input((f"[!] Following options missing: "
+                                  f"{', '.join(mod.missing_required)}.\n"
+                                  f"[*] Modify [y/N]: "))
                            ) in YES
     while modify:
         try:
@@ -112,25 +112,23 @@ def set_options(mod):
                 except KeyError:
                     utils.log(
                         'error',
-                        "Invalid option: {}"
-                        .format(opt))
+                        f"Invalid option: {opt}")
                     continue
                 val = utils.correct_type(
-                    input("[*] {} value: ".format(opt)),
+                    input(f"[*] {opt} value: "),
                     opt_info)
-                if val in ('Invalid', 'Missing'):
+                if val.startswith(('Invalid', 'Missing')):
                     utils.log(
                         'error',
-                        "Invalid or missing value, must be {}: {}"
-                        .format(opt_info['type'], opt))
+                        (f"Invalid or missing value, "
+                         f"must be {opt_info['type']}: {opt}"))
                     continue
                 try:
                     mod[opt] = val
                 except KeyError:
                     utils.log(
                         'error',
-                        "Unexpected error: option = {} value = {}"
-                        .format(opt, val))
+                        f"Unexpected error: option = {opt} value = {val}")
                 else:
                     mod_options[opt] = val
                 eof = False
@@ -147,9 +145,9 @@ def set_options(mod):
 
         modify = str.lower(input("[*] Modify [y/N]: ")) in YES
         if not modify and mod.missing_required:
-            modify = str.lower(input(("[!] Following options missing: {}.\n"
-                                      "[*] Modify [y/N]: "
-                                      .format(", ".join(mod.missing_required)))
+            modify = str.lower(input((f"[!] Following options missing: "
+                                      f"{', '.join(mod.missing_required)}.\n"
+                                      f"[*] Modify [y/N]: ")
                                      )
                                ) in YES
         eof = False
@@ -167,21 +165,18 @@ def generate_resources_file(client, rc_out):
             mod = None
             while mod is None:
                 mtype = input(
-                    "[*] Module type ({}): "
-                    .format("|".join(const.MODULE_TYPES)))
+                    f"[*] Module type ({'|'.join(cst.MODULE_TYPES)}): ")
                 mname = input("[*] Module: ")
                 try:
                     mod = get_module(client, mtype, mname)
                 except MsfRpcError:
                     utils.log(
                         'error',
-                        "Invalid module type: {}."
-                        .format(mtype))
+                        f"Invalid module type: {mtype}.")
                 except TypeError:
                     utils.log(
                         'error',
-                        "Invalid module: {}."
-                        .format(mname))
+                        f"Invalid module: {mname}.")
                 else:
                     if mtype not in rc_file:
                         rc_file[mtype] = {}
@@ -200,8 +195,7 @@ def generate_resources_file(client, rc_out):
                         except TypeError:
                             utils.log(
                                 'error',
-                                "Invalid payload: {}"
-                                .format(pname))
+                                f"Invalid payload: {pname}")
 
                     pay_opts = set_options(payload)
                     mod_opts['PAYLOAD'] = {'NAME': pname,
@@ -219,8 +213,7 @@ def generate_resources_file(client, rc_out):
         json.dump(rc_file, f, indent=2)
         utils.log(
             'succg',
-            "Resource script correctly generated in {}"
-            .format(rc_out))
+            f"Resource script correctly generated in {rc_out}")
 
 
 def main():
@@ -243,7 +236,7 @@ def main():
     utils.copyright()
 
     msfcont = metasploit.start_msfrpcd(args.outdir)
-    msfclient = metasploit.get_msf_connection(const.DEFAULT_MSFRPC_PASSWD)
+    msfclient = metasploit.get_msf_connection(cst.DEF_MSFRPC_PWD)
 
     utils.check_file_dir(args.genrc)
 
@@ -263,4 +256,4 @@ if __name__ == '__main__':
             'error',
             "Interrupted, exiting program. Containers will keep running ...")
 
-        sys.exit(const.EINTR)
+        sys.exit(cst.EINTR)

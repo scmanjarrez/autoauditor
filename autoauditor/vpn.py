@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
-import constants as const
+import constants as cst
 import utils
 import docker
 import os
@@ -28,27 +28,27 @@ def setup_vpn(ovpn_file, stop=False):
     client = docker.from_env()
     vpncont = None
 
-    utils.log('succb', const.VPNSTAT, end='\r')
+    utils.log('succb', cst.VPNSTAT, end='\r')
 
     try:
         image = client.images.get('dperson/openvpn-client')
-        utils.log('succg', const.VPNEXIST)
+        utils.log('succg', cst.VPNEXIST)
     except docker.errors.ImageNotFound:
-        utils.log('warn', const.VPNDOWN, end='\r')
+        utils.log('warn', cst.VPNDOWN, end='\r')
         image = client.images.pull('dperson/openvpn-client', 'latest')
-        utils.log('succg', const.VPNDONE)
+        utils.log('succg', cst.VPNDONE)
 
-    utils.log('succb', const.VPNCSTAT, end='\r')
+    utils.log('succb', cst.VPNCSTAT, end='\r')
 
     vpn_l = client.containers.list(filters={'name': 'vpncl'})
     if vpn_l:
-        utils.log('succg', const.VPNCR)
+        utils.log('succg', cst.VPNCR)
         vpncont = vpn_l[0]
     else:
         if stop:  # if want to stop but already stopped, don't start again
-            utils.log('succg', const.VPNCNR)
+            utils.log('succg', cst.VPNCNR)
         else:
-            utils.log('warn', const.VPNCSTART, end='\r')
+            utils.log('warn', cst.VPNCSTART, end='\r')
             of = os.path.abspath(ovpn_file)
 
             ipam_pool = docker.types.IPAMPool(subnet='10.10.20.0/24')
@@ -87,14 +87,14 @@ def setup_vpn(ovpn_file, stop=False):
                 net = client.networks.get('bridge')
             except docker.errors.NotFound:
                 utils.log('error', "Docker 'bridge' network not found.",
-                          errcode=const.ENOBRDGNET)
+                          errcode=cst.ENOBRDGNET)
             else:
                 net.connect('vpncl')
-            utils.log('succg', const.VPNCDONE)
+            utils.log('succg', cst.VPNCDONE)
 
     return vpncont
 
 
 if __name__ == '__main__':
     utils.log('error', "Not standalone module. Run again from autoauditor.py.",
-              errcode=const.EMODNR)
+              errcode=cst.EMODNR)

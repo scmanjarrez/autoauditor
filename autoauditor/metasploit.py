@@ -21,7 +21,7 @@
 from pymetasploit3.msfrpc import MsfRpcClient, MsfRpcError, MsfAuthError
 from datetime import datetime
 from io import BytesIO
-import constants as const
+import constants as cst
 import utils
 import json
 import os
@@ -37,25 +37,25 @@ def get_msf_connection(passwd):
         utils.log(
             'error',
             ("Metasploit container connection error. "
-             "Check container is running."), errcode=const.EMSCONN)
+             "Check container is running."), errcode=cst.EMSCONN)
     except MsfAuthError:
         utils.log(
             'error',
             "Metasploit container authentication error. Check password.",
-            errcode=const.EMSPASS)
+            errcode=cst.EMSPASS)
 
 
 def start_msfrpcd(loot_dir, ovpn=False, stop=False):
     dockercl = docker.from_env()
     msfcont = None
 
-    utils.log('succb', const.MSSTAT, end='\r')
+    utils.log('succb', cst.MSSTAT, end='\r')
 
     try:
         image = dockercl.images.get('msfrpci')
-        utils.log('succg', const.MSEXIST)
+        utils.log('succg', cst.MSEXIST)
     except docker.errors.ImageNotFound:
-        utils.log('warn', const.MSDOWN, end='\r')
+        utils.log('warn', cst.MSDOWN, end='\r')
 
         dckf = BytesIO(b'FROM phocean/msf\n'
                        b'RUN apt update && apt install -y '
@@ -65,21 +65,21 @@ def start_msfrpcd(loot_dir, ovpn=False, stop=False):
         try:
             image, _ = dockercl.images.build(fileobj=dckf, tag='msfrpci')
         except docker.errors.BuildError:
-            utils.log('error', "Building error.", errcode=const.EBUILD)
+            utils.log('error', "Building error.", errcode=cst.EBUILD)
 
-        utils.log('succg', const.MSDONE)
+        utils.log('succg', cst.MSDONE)
 
-    utils.log('succb', const.MSCSTAT, end='\r')
+    utils.log('succb', cst.MSCSTAT, end='\r')
 
     cont_l = dockercl.containers.list(filters={'name': 'msfrpc'})
     if cont_l:
-        utils.log('succg', const.MSCR)
+        utils.log('succg', cst.MSCR)
         msfcont = cont_l[0]
     else:
         if stop:  # if want to stop but already stopped, don't start again
-            utils.log('succg', const.MSCNR)
+            utils.log('succg', cst.MSCNR)
         else:
-            utils.log('warn', const.MSCSTART, end='\r')
+            utils.log('warn', cst.MSCSTART, end='\r')
 
             loot = os.path.join(os.getcwd(), loot_dir)
             if ovpn:
@@ -112,7 +112,7 @@ def start_msfrpcd(loot_dir, ovpn=False, stop=False):
                                                   },
                                                   ports={55553: 55553})
             time.sleep(10)
-            utils.log('succg', const.MSCDONE)
+            utils.log('succg', cst.MSCDONE)
     return msfcont
 
 
@@ -122,62 +122,60 @@ def launch_metasploit(msfcl, rc_file, log_file):
             rc = json.load(f)
         except json.JSONDecodeError:
             utils.log('error',
-                      "Wrong resources script file format. Check {}."
-                      .format(utils.RC_TEMPLATE), errcode=const.EBADRCFMT)
+                      (f"Wrong resources script file format. "
+                       f"Check {utils.RC_TEMPLATE}."),
+                      errcode=cst.EBADRCFMT)
 
     with open(log_file, 'w') as f:
         header = "#" * 62
         off = "#" * 14
-        f.write("{}\n".format(header))
-        f.write("{off} {repdate} {off}\n".format(
-            repdate=datetime.now().astimezone(), off=off))
-        f.write("{}\n\n".format(header))
-        utils.log('succb', "Metasploit output log: {}".format(log_file))
+        f.write(f"{header}\n")
+        f.write(f"{off} {datetime.now().astimezone()} {off}\n")
+        f.write(f"{header}\n\n")
+        utils.log('succb', f"Metasploit output log: {log_file}")
         for mtype in rc:
             for mname in rc[mtype]:
-                try:
-                    mod = msfcl.modules.use(mtype, mname)
-                except MsfRpcError:
-                    utils.log(
-                        'error',
-                        "Invalid module type: {}. Check {}."
-                        .format(mtype, rc_file))
-                    continue
-                except TypeError:
-                    utils.log(
-                        'error',
-                        "Invalid module: {}. Check {}."
-                        .format(mname, rc_file))
-                    continue
-
-                for expl in rc[mtype][mname]:
-                    payload = None
-                    for opt in expl:
-                        try:
-                            if opt == "ACTION":
-                                mod.action = expl[opt]
-                            elif opt == "PAYLOAD":
-                                payload = msfcl.modules.use(
-                                    'payload', expl[opt]['NAME'])
-                                for popt in expl[opt]['OPTIONS']:
-                                    payload[popt] = (expl[opt]
-                                                     ['OPTIONS'][popt])
-                            else:
-                                mod[opt] = expl[opt]
-                        except KeyError:
-                            utils.log('error',
-                                      "Invalid option: {}. Check {}."
-                                      .format(opt, rc_file))
-                    cid = msfcl.consoles.console().cid
-                    exp = "{}/{}".format(mtype, mname)
-                    utils.log('succg', "Logging output: {}".format(exp))
-                    f.write("##### {} #####\n\n".format(exp))
-                    f.write(msfcl.consoles.console(
-                        cid).run_module_with_output(mod, payload=payload))
-                    f.write("\n######{}######\n\n".format("#"*len(exp)))
-                    msfcl.consoles.destroy(cid)
+                for opts in rc[mtype][mname]:
+                    try:
+                        mod = msfcl.modules.use(mtype, mname)
+                    except MsfRpcError:
+                        utils.log(
+                            'error',
+                            f"Invalid module type: {mtype}. Check {rc_file}.")
+                        continue
+                    except TypeError:
+                        utils.log(
+                            'error',
+                            (f"Invalid module: {mname}. Check {rc_file}."))
+                        continue
+                    else:
+                        for opt in opts:
+                            pay = None
+                            try:
+                                if opt == "ACTION":
+                                    mod.action = opts[opt]
+                                elif opt == "PAYLOAD":
+                                    pay = msfcl.modules.use(
+                                        'payload', opts[opt]['NAME'])
+                                    for popt in opts[opt]['OPTIONS']:
+                                        pay[popt] = (
+                                            opts[opt]['OPTIONS'][popt])
+                                else:
+                                    mod[opt] = opts[opt]
+                            except KeyError:
+                                utils.log('error',
+                                          (f"Invalid option: {opt}. "
+                                           f"Check {rc_file}."))
+                        cid = msfcl.consoles.console().cid
+                        exp = f"{mtype}/{mname}"
+                        utils.log('succg', f"Logging output: {exp}")
+                        f.write(f"##### {exp} #####\n\n")
+                        f.write(msfcl.consoles.console(
+                            cid).run_module_with_output(mod, payload=pay))
+                        f.write(f"\n######{'#'*len(exp)}######\n\n")
+                        msfcl.consoles.destroy(cid)
 
 
 if __name__ == '__main__':
     utils.log('error', "Not standalone module. Run again from autoauditor.py.",
-              errcode=const.EMODNR)
+              errcode=cst.EMODNR)

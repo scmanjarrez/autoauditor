@@ -21,7 +21,7 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 from blockchain import load_config
-import constants as const
+import constants as cst
 import argparse
 import utils
 import os
@@ -81,7 +81,7 @@ def query(qinfo, pretty, qtype, rid=None, org=None, date=None, db=None):
             cc_name=CHAINCODENAME
         ))
     except Exception as e:
-        utils.log('error', "Error querying report {}: {}".format(rid, str(e)))
+        utils.log('error', f"Error querying report {rid}: {e}")
     else:
         if not pretty:
             print(response)
@@ -98,15 +98,15 @@ def verify_arguments(cli_args):
     if cli_args.query == 'id':
         if not cli_args.reportid:
             utils.log('error', "Missing argument: reportid (-i).",
-                      errcode=const.EMISSINGARG)
+                      errcode=cst.EMISSINGARG)
     elif cli_args.query in ('org', 'totalorg', 'orgids'):
         if not cli_args.orgname:
             utils.log('error', "Missing argument: orgname (-o).",
-                      errcode=const.EMISSINGARG)
+                      errcode=cst.EMISSINGARG)
     else:
         if not cli_args.date:
             utils.log('error', "Missing argument: date (-t).",
-                      errcode=const.EMISSINGARG)
+                      errcode=cst.EMISSINGARG)
 
 
 if __name__ == '__main__':
@@ -149,9 +149,8 @@ if __name__ == '__main__':
     if not os.path.isfile(args.hyperledgercfg):
         utils.log(
             'error',
-            "File {} does not exist."
-            .format(args.hyperledgercfg),
-            errcode=const.ENOENT
+            f"File {args.hyperledgercfg} does not exist.",
+            errcode=cst.ENOENT
         )
 
     info = load_config(args.hyperledgercfg)

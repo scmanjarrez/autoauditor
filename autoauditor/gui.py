@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 # gui - Graphic User Interface module.
 
 # Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
@@ -23,7 +24,8 @@
 from copy import deepcopy
 from textwrap import TextWrapper
 import PySimpleGUI as sg
-import constants as const
+import constants as cst
+import asyncio as _asyncio
 import utils
 import metasploit
 import wizard
@@ -32,62 +34,68 @@ import vpn
 import json
 import blockchain
 import os
+import queue
+import threading
 
 sg.theme('Reddit')
 
+WIN = {
+    'MAIN': None,
+    'WIZ': None,
+    'MOPTS': {},
+    'POPTS': {},
+    'POPUP': []
+}
 
-def browse(text, key, target, image, image_size, color, border,
-           disabled=False, tooltip=None, filetype=True, pad=None):
-    if filetype:
-        bt = sg.FileBrowse(button_text=text, button_color=color,
-                           target=target, key=key,
-                           tooltip=tooltip, disabled=disabled,
-                           pad=pad)
-    else:
-        bt = sg.FolderBrowse(button_text=text, button_color=color,
-                             target=target, key=key,
-                             tooltip=tooltip, disabled=disabled,
-                             pad=pad)
-    bt.ImageData = image
-    bt.ImageSize = image_size
-    bt.BorderWidth = border
-    return bt
+MN = 'MAIN'
+WZ = 'WIZ'
+MO = 'MOPTS'
+PO = 'POPTS'
+POP = 'POPUP'
+
+shared_msfcl = None
 
 
-def input_text(default, key, disabled=False, font=None,
-               pad=None, visible=True):
-    it = sg.InputText(default, key=key, disabled=disabled,
-                      font=font, pad=pad, visible=visible)
-    return it
+class Button(sg.Button):
+    def __init__(self, key, tooltip=None, image_data=cst.ICO_INFO,
+                 image_size=cst.B_SZ_S, button_color=cst.B_C,
+                 pad=cst.N_P_TBR, border_width=cst.N_WDTH, disabled=False,
+                 target=(None, None), button_type=sg.BUTTON_TYPE_READ_FORM):
+        super().__init__(key=key, tooltip=tooltip,
+                         image_data=image_data, image_size=image_size,
+                         button_color=button_color, pad=pad,
+                         border_width=border_width, disabled=disabled,
+                         target=target, button_type=button_type)
 
 
-def button(text, key, image, image_size, color, border,
-           tooltip, pad=None, disabled=False, visible=True):
-    bt = sg.Button(text, key=key, image_size=image_size,
-                   button_color=color, border_width=border,
-                   image_data=image, tooltip=tooltip,
-                   pad=pad, disabled=disabled, visible=visible)
-    return bt
+class Browser(Button):
+    def __init__(self, key, tooltip, target,
+                 folder=False, disabled=False):
+        super().__init__(key=key, tooltip=tooltip,
+                         image_data=cst.ICO_FOLDER if folder else cst.ICO_FILE,
+                         image_size=cst.B_SZ_M, pad=cst.N_P_TB,
+                         disabled=disabled, target=target,
+                         button_type=sg.BUTTON_TYPE_BROWSE_FILE if folder
+                         else sg.BUTTON_TYPE_BROWSE_FILE)
 
 
-class ImageCheckBox(sg.Button):
-    def __init__(self, image_on, image_off, image_size, key,
-                 button_color, border_width, enabled, pad=None):
+class ImageCheckBox(Button):
+    def __init__(self, key, image_on=cst.ICO_CBON, image_off=cst.ICO_CBOFF,
+                 enabled=False):
         self.enabled = enabled
         self.image_on = image_on
         self.image_off = image_off
-        super().__init__(image_data=image_on if enabled else image_off,
-                         image_size=image_size, key=key,
-                         button_color=button_color, border_width=border_width,
-                         pad=pad)
+        super().__init__(key=key,
+                         image_data=image_on if enabled else image_off,
+                         pad=cst.N_P)
 
     @property
     def enabled(self):
-        return self.__enabled
+        return self._enabled
 
     @enabled.setter
     def enabled(self, enabled):
-        self.__enabled = enabled
+        self._enabled = enabled
 
     def switch(self):
         if self.enabled:
@@ -98,1176 +106,1611 @@ class ImageCheckBox(sg.Button):
             self.enabled = True
 
 
-def pay_window(client, parent_window, current_payload):
-    pay_name = parent_window[const.KEY_PAY_DD].Get()
-    pay = wizard.get_payload(client, pay_name)
-    popts, propts = wizard.get_module_options(pay)
-    popts_default = popts.copy()
+class Module():
+    def __init__(self, client, mtype, mname, ticket):
+        self.client = client
+        self.ticket = ticket
+        self.mod = wizard.get_module(self.client, mtype, mname)
+        self._mopts = {}
+        self._payload = None
 
-    for popt in current_payload['OPTIONS']:
-        popts[popt] = current_payload['OPTIONS'][popt]
+    def ticket(self):
+        return self.ticket
 
-    scrollable = len(popts) > 15
+    def mtype(self):
+        return self.mod.moduletype
 
-    popt_layout = [
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
-        [sg.Text(pay_name, font=const.FONTB)],
-        [sg.Frame(const.NO_TEXT, [
-            [sg.Text(const.NO_TEXT, font=const.FONTPAD, pad=const.PAD_NO,
-                     size=const.TEXT_DESC_SIZE_XL2 if scrollable
-                     else const.TEXT_DESC_SIZE_XL3)],
-            [sg.Text(const.TEXT_OPT_NAME, font=const.FONTB,
-                     size=const.TEXT_OPT_NAME_SIZE,
-                     pad=const.PAD_OPT_HEAD_NAME),
-             sg.Text(const.TEXT_OPT_VAL, font=const.FONTB,
-                     size=const.TEXT_OPT_VAL_SIZE, pad=const.PAD_OPT_HEAD_VAL),
-             sg.Text(const.TEXT_OPT_REQ, font=const.FONTB,
-                     pad=const.PAD_OPT_HEAD_REQ if scrollable
-                     else const.PAD_OPT_HEAD_REQ2, size=const.TEXT_REQ_SIZE),
-             sg.Text(const.TEXT_OPT_INFO, font=const.FONTB,
-                     pad=const.PAD_OPT_HEAD_INFO)]
-        ], border_width=const.NO_BORDER, pad=const.PAD_NO_L)],
-        [sg.Column([
-            [sg.Frame(const.NO_TEXT, [
-                [sg.InputText(popt, size=const.TEXT_DESC_SIZE_2,
-                              key=const.KEY_PAY_OPT+str(idx),
-                              pad=const.PAD_IT_T2, font=const.FONT,
-                              disabled_readonly_background_color=const.COLOR_T,
-                              readonly=True, border_width=const.NO_BORDER),
-                 sg.InputText(str(popts[popt]), size=const.TEXT_DESC_SIZE_M,
-                              key=const.KEY_PAY_OPT_VAL+str(idx),
-                              pad=const.PAD_IT_T2, font=const.FONT),
-                 sg.Text(const.TEXT_REQ_Y if popt in propts
-                         else const.TEXT_REQ_N,
-                         size=const.TEXT_REQ_SIZE, font=const.FONT,
-                         pad=const.PAD_IT_T_TR if scrollable
-                         else const.PAD_IT_T_TR2),
-                 button(const.NO_TEXT, const.KEY_PAY_OPT_HELP+str(idx),
-                        const.INFO, const.BUTTON_S_SIZE,
-                        const.BUTTON_COLOR, const.NO_BORDER,
-                        wizard.get_option_desc(pay, popt))]],
-                      border_width=const.NO_BORDER, pad=const.PAD_NO)]
-            for idx, popt in enumerate(popts)],
-                   size=const.OPT_MOD_COLUMN_SIZE if scrollable
-                   else const.get_exact_column_size(len(popts)),
-                   scrollable=scrollable, vertical_scroll_only=True),
-         ],
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB)],
-        [sg.Button('Accept', key=const.KEY_PAY_OPT_ACCEPT, font=const.FONT),
-         sg.Button('Cancel', key=const.KEY_PAY_OPT_CANCEL, font=const.FONT)]]
+    def mname(self):
+        return self.mod.modulename
 
-    pwindow = sg.Window(  # payload options window
-        const.TEXT_PAYLOAD_OPTIONS, popt_layout,
-        element_justification=const.CENTER, finalize=True)
-    help_regex = re.compile(const.KEY_PAY_OPT_HELP+r'\d+')
-    while True:
-        pevent, _ = pwindow.read()
-        if pevent is not None and help_regex.match(pevent):
-            popt_n = int(pevent.split('_')[3])  # payload_option_help_xxx
-            popt = pwindow[const.KEY_PAY_OPT+str(popt_n)].Get()
-            popt_info = wizard.get_option_info(pay, popt)
-            pinfo_layout = [
-                [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                         font=const.FONTPAD)],
-                [sg.Text(popt, font=const.FONTB)],
-                [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                         font=const.FONTPAD)]
-            ] + [[sg.Frame(const.NO_TEXT,
-                           [[sg.Text(el,
-                                     font=const.FONTB,
-                                     size=const.EXEC_TEXT_SIZE_S),
-                             sg.Text(popt_info[el],
-                                     font=const.FONT)]
-                            for el in popt_info],
-                           border_width=const.NO_BORDER)]
-                 ] + [[sg.OK(font=const.FONT)]]
+    def info(self):
+        return wizard.get_module_info(self.mod)
 
-            sg.Window(const.TEXT_PAYLOAD_OPTION_INFO, pinfo_layout,
-                      element_justification=const.CENTER).read(close=True)
+    def options(self):
+        return wizard.get_module_options(self.mod)
 
-        if pevent == const.KEY_PAY_OPT_ACCEPT:
-            current_payload['NAME'] = pay_name
-            for idx, popt in enumerate(popts):
-                if popts_default[popt] != utils.correct_type(
-                        pwindow[const.KEY_PAY_OPT_VAL+str(idx)].Get(),
-                        wizard.get_option_info(
-                            pay,
-                            pwindow[const.KEY_PAY_OPT+str(idx)].Get())):
-                    current_payload['OPTIONS'][popt] = utils.correct_type(
-                        pwindow[const.KEY_PAY_OPT_VAL+str(idx)].Get(),
-                        wizard.get_option_info(
-                            pay,
-                            pwindow[const.KEY_PAY_OPT+str(idx)].Get()))
+    def mopts(self):
+        return self._mopts
 
-            invalid = []
-            missing = []
-            for cpopt in current_payload['OPTIONS']:
-                if current_payload['OPTIONS'][cpopt] == 'Invalid':
-                    invalid.append(cpopt)
-                elif current_payload['OPTIONS'][cpopt] == 'Missing':
-                    missing.append(cpopt)
-            if invalid or missing:
-                invmislayout = []
-                if invalid:
-                    invmislayout.extend([
-                        [sg.Text("Invalid value in the following options:",
-                                 font=const.FONT)],
-                        [sg.Text("{}".format(invalid),
-                                 font=const.FONT)]])
-                if invalid and missing:
-                    invmislayout.extend([
-                        [sg.Text(const.NO_TEXT, font=const.FONTPAD)]])
-                if missing:
-                    invmislayout.extend([
-                        [sg.Text("Missing value in the following options:",
-                                 font=const.FONT)],
-                        [sg.Text("{}".format(missing),
-                                 font=const.FONT)]])
-                invmislayout.extend([
-                    [sg.Text(const.NO_TEXT, font=const.FONTPAD)],
-                    [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                           font=const.FONT)]])
-                sg.Window('Error', invmislayout,
-                          element_justification=const.CENTER).read(close=True)
-                continue
+    def has_payloads(self):
+        return wizard.has_payloads(self.mod)
 
-            parent_window[const.KEY_PAY_ADD](disabled=True)
-            parent_window[const.KEY_PAY_EDIT](disabled=False)
-            parent_window[const.KEY_PAY_REM](disabled=False)
-            break
-        if pevent in (sg.WIN_CLOSED, const.KEY_PAY_OPT_CANCEL):
-            break
-    pwindow.close()
+    def payloads(self):
+        return wizard.get_module_payloads(self.mod)
+
+    def opt_info(self, opt):
+        return wizard.get_option_info(self.mod, opt)
+
+    def opt_desc(self, opt):
+        return wizard.get_option_desc(self.mod, opt)
+
+    @property
+    def payload(self):
+        return self._payload
+
+    @payload.setter
+    def payload(self, pname):
+        self._payload = Module(self.client, 'payload', pname, self.ticket)
+
+    @payload.deleter
+    def payload(self):
+        self._payload = None
+
+    def gen_dict(self):
+        axm = deepcopy(self._mopts)
+        if self.payload is not None:
+            axm['PAYLOAD'] = {}
+            axm['PAYLOAD']['NAME'] = self.payload.mname()
+            axm['PAYLOAD']['OPTIONS'] = deepcopy(self.payload.mopts())
+        return axm
 
 
-def opt_window(client, parent_window,
-               mod_list, mtype, mname, mod_idx,
-               edit=False):
-    added = False
-    mod = None
-    tmp_pay_opt = {'NAME': '', 'OPTIONS': {}}
+def dump_modules(mod_list):
+    mod_dict = {}
+    for mod in mod_list.values():
+        mtype = mod.mtype()
+        mname = mod.mname()
+        if mtype not in mod_dict:
+            mod_dict[mtype] = {}
+        if mname not in mod_dict[mtype]:
+            mod_dict[mtype][mname] = []
+        mod_dict[mtype][mname].append(mod.gen_dict())
+    return mod_dict
 
-    try:
-        mod = wizard.get_module(client, mtype, mname)
-    except TypeError:
-        sg.Window('Error', [
-            [sg.Text("Module name does not match module type.",
-                     font=const.FONT)],
-            [sg.Text(const.NO_TEXT, font=const.FONTPAD)],
-            [sg.OK(button_color=const.BUTTON_COLOR_ERR, font=const.FONT)]
-        ], element_justification=const.CENTER,
-                  auto_close=True).read(close=True)
-        return added
-    opts, ropts = wizard.get_module_options(mod)
-    opts_default = opts.copy()
-    if edit:
-        current_opts = mod_list[mtype][mname][mod_idx]
-        for copt in current_opts:
-            if copt == 'PAYLOAD':
-                continue
-            opts[copt] = current_opts[copt]
-        try:
-            tmp_pay_opt = mod_list[mtype][mname][mod_idx]['PAYLOAD']
-        except KeyError:
-            pass
-    scrollable = len(opts) > 15
-    opt_layout = [
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
-        [sg.Text("/".join([mtype, mname]), font=const.FONTB)],
-        [sg.Frame(const.NO_TEXT, [
-            [sg.Text(const.NO_TEXT, font=const.FONTPAD, pad=const.PAD_NO,
-                     size=const.TEXT_DESC_SIZE_XL2 if scrollable
-                     else const.TEXT_DESC_SIZE_XL3)],
-            [sg.Text(const.TEXT_OPT_NAME, font=const.FONTB,
-                     size=const.TEXT_OPT_NAME_SIZE,
-                     pad=const.PAD_OPT_HEAD_NAME),
-             sg.Text(const.TEXT_OPT_VAL, font=const.FONTB,
-                     size=const.TEXT_OPT_VAL_SIZE, pad=const.PAD_OPT_HEAD_VAL),
-             sg.Text(const.TEXT_OPT_REQ, font=const.FONTB,
-                     pad=const.PAD_OPT_HEAD_REQ if scrollable
-                     else const.PAD_OPT_HEAD_REQ2, size=const.TEXT_REQ_SIZE),
-             sg.Text(const.TEXT_OPT_INFO, font=const.FONTB,
-                     pad=const.PAD_OPT_HEAD_INFO)]
-        ], border_width=const.NO_BORDER, pad=const.PAD_NO_L)],
-        [sg.Column(
-            [[sg.Frame(const.NO_TEXT, [
-                [sg.InputText(opt, size=const.TEXT_DESC_SIZE_2,
-                              key=const.KEY_OPT+str(idx), pad=const.PAD_IT_T2,
-                              font=const.FONT,
-                              disabled_readonly_background_color=const.COLOR_T,
-                              readonly=True, border_width=const.NO_BORDER),
-                 sg.InputText(str(opts[opt]), size=const.TEXT_DESC_SIZE_M,
-                              key=const.KEY_OPT_VAL+str(idx),
-                              pad=const.PAD_IT_T2, font=const.FONT),
-                 sg.Text(const.TEXT_REQ_Y if opt in ropts
-                         else const.TEXT_REQ_N, size=const.TEXT_REQ_SIZE,
-                         font=const.FONT, pad=const.PAD_IT_T_TR if scrollable
-                         else const.PAD_IT_T_TR2),
-                 button(const.NO_TEXT, const.KEY_OPT_HELP+str(idx), const.INFO,
-                        const.BUTTON_S_SIZE, const.BUTTON_COLOR,
-                        const.NO_BORDER, wizard.get_option_desc(mod, opt))]
-            ], border_width=const.NO_BORDER, pad=const.PAD_NO)]
-             for idx, opt in enumerate(opts)],
-            size=const.OPT_MOD_COLUMN_SIZE if scrollable
-            else const.get_exact_column_size(len(opts)),
-            scrollable=scrollable, vertical_scroll_only=True),
-         ]]
 
-    if wizard.has_payloads(mod):
-        disable = not tmp_pay_opt['OPTIONS']
-        opt_layout.extend(
-            [
-                [sg.Frame(const.NO_TEXT, [
-                    [sg.Text(const.TEXT_PAYLOAD, key=const.KEY_PAY_T,
-                             size=const.TEXT_DESC_SIZE_2,
-                             pad=const.PAD_IT_T3, font=const.FONT),
-                     sg.DropDown(wizard.get_module_payloads(mod),
-                                 size=const.EXEC_TEXT_SIZE_L2,
-                                 font=const.FONT, key=const.KEY_PAY_DD,
-                                 readonly=True, pad=const.PAD_IT_T4,
-                                 default_value=(mod_list[mtype][mname][mod_idx]
-                                                ['PAYLOAD']['NAME'])
-                                 if edit and 'PAYLOAD' in (mod_list[mtype]
-                                                           [mname][mod_idx])
-                                 else ''),
-                     button(const.NO_TEXT, const.KEY_PAY_ADD, const.ADD24,
-                            const.BUTTON_S_SIZE, const.BUTTON_COLOR,
-                            const.NO_BORDER, const.TOOLTIP_PAY_ADD,
-                            pad=const.PAD_IT_T5, disabled=not disable),
-                     button(const.NO_TEXT, const.KEY_PAY_EDIT, const.EDIT,
-                            const.BUTTON_M_SIZE, const.BUTTON_COLOR,
-                            const.NO_BORDER, const.TOOLTIP_PAY_EDIT,
-                            pad=const.PAD_IT_T6, disabled=disable),
-                     button(const.NO_TEXT, const.KEY_PAY_REM, const.REMOVE,
-                            const.BUTTON_M_SIZE,
-                            const.BUTTON_COLOR, const.NO_BORDER,
-                            const.TOOLTIP_PAY_REMOVE, pad=const.PAD_IT_T6,
-                            disabled=disable),
-                     button(const.NO_TEXT, const.KEY_PAY_INFO, const.INFO,
-                            const.BUTTON_S_SIZE, const.BUTTON_COLOR,
-                            const.NO_BORDER, const.TOOLTIP_PAY_INFO,
-                            pad=const.PAD_IT_T7 if scrollable
-                            else const.PAD_IT_T7_NS)]
-                ], border_width=const.NO_BORDER,
-                          pad=const.PAD_NO_LB if scrollable
-                          else const.PAD_NO_LB_NS)]])
+class TicketSystem():
+    def __init__(self, total):
+        self.tickets = list(range(total))[::-1]
 
-    opt_layout.extend(
-        [
-            [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB)],
-            [sg.Button('Accept', key=const.KEY_OPT_ACCEPT, font=const.FONT),
-             sg.Button('Cancel', key=const.KEY_OPT_CANCEL, font=const.FONT)]])
+    def get_ticket(self):
+        return self.tickets.pop()
 
-    owindow = sg.Window(  # options window
-        const.TEXT_OPTIONS, opt_layout,
-        element_justification=const.CENTER, finalize=True)
+    def return_ticket(self, ticket):
+        self.tickets.append(ticket)
 
-    help_regex = re.compile(const.KEY_OPT_HELP+r'\d+')
-    while True:
-        oevent, _ = owindow.read()
-        if oevent is not None and help_regex.match(oevent):
-            opt_n = int(oevent.split('_')[2])  # option_help_xxx
-            opt = owindow[const.KEY_OPT+str(opt_n)].Get()
-            opt_info = wizard.get_option_info(mod, opt)
-            # todo: wrap text when too large
-            info_layout = [
-                [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                         font=const.FONTPAD)],
-                [sg.Text(opt, font=const.FONTB)],
-                [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                         font=const.FONTPAD)]] + [
-                             [sg.Frame(const.NO_TEXT,
-                                       [[sg.Text(el, font=const.FONTB,
-                                                 size=const.EXEC_TEXT_SIZE_XS),
-                                         sg.Text(opt_info[el],
-                                                 font=const.FONT)]
-                                        for el in opt_info],
-                                       border_width=const.NO_BORDER)]
-                         ] + [[sg.OK(font=const.FONT)]]
+    def available_ticket(self):
+        return bool(self.tickets)
 
-            sg.Window(const.TEXT_OPTION_INFO, info_layout,
-                      element_justification=const.CENTER).read(close=True)
 
-        if oevent == const.KEY_PAY_ADD:
-            if not owindow[const.KEY_PAY_DD].Get():
-                sg.Window('Error', [
-                    [sg.Text(
-                        "Payload not selected.", font=const.FONT)],
-                    [sg.Text(
-                        "Choose a payload from the dropdown.",
-                        font=const.FONT)],
-                    [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                           font=const.FONT)]
-                ], element_justification=const.CENTER,
-                          auto_close=True).read(close=True)
+class LoadingGif(sg.Window):
+    def __init__(self, starting_gif=False):
+        self.starting_gif = starting_gif
+        self.message = ('Starting\ncontainers' if starting_gif
+                        else 'Stopping\ncontainers')
+        self.layout = [
+            [sg.Image(filename=cst.LOADING,
+                      background_color=cst.C_W,
+                      key=cst.K_GIF)],
+            [sg.Text(pad=cst.N_P_LR,
+                     font=cst.FONTP)],
+            [sg.Text(self.message,
+                     background_color=cst.C_W,
+                     font=cst.FONT,
+                     justification=cst.J_C)]]
+
+        super().__init__('Loading', self.layout,
+                         element_justification=cst.J_C,
+                         element_padding=(0, 0), margins=(10, 10),
+                         finalize=True)
+
+    def update(self):
+        self[cst.K_GIF].UpdateAnimation(cst.LOADING,
+                                        time_between_frames=100)
+        self.refresh()
+
+    def stop(self):
+        self.close()
+
+
+class LoadingThread(threading.Thread):
+    def __init__(self, event, window, start_gif=False):
+        threading.Thread.__init__(self)
+        self.stopped = event
+        self.window = window
+        self.daemon = True
+        self.start_gif = start_gif
+
+    def run(self):
+        while not self.stopped.wait(0.1):
+            self.window.write_event_value('GIF', self.start_gif)
+        self.window.write_event_value('GIFSTOP', self.start_gif)
+
+
+def autoauditor_thread(stopped, queue, window):
+    vpncont = None
+    msfcont = None
+    msfclient = None
+    config = None
+    async_loop = _asyncio.new_event_loop()
+    while not stopped.is_set():
+        queuedata = queue.get()
+        # print(f"thread_queue: {queuedata}")
+        cmd, params = queuedata
+        if cmd == 'vpn':
+            vpncf, stop = params
+            vpncont = vpn.setup_vpn(vpncf, stop=stop)
+        if cmd == 'msfstart':
+            log_dir, ovpn, stop, wizard = params
+            if not stop:
+                startAnim = threading.Event()
+                starting_thread = LoadingThread(
+                    startAnim, window, start_gif=True)
+                starting_thread.start()
+            msfcont = metasploit.start_msfrpcd(log_dir, ovpn, stop)
+            if not stop:
+                startAnim.set()
+            window.write_event_value('START', (msfcont, wizard, stop))
+        if cmd == 'msfconn':
+            passwd, = params
+            msfclient = metasploit.get_msf_connection(passwd)
+            if msfclient is not None:
+                window.write_event_value('CONNECT', cst.NOERROR)
+                global shared_msfcl
+                shared_msfcl = msfclient
             else:
-                if tmp_pay_opt['OPTIONS']:
-                    sg.Window('Error', [
-                        [sg.Text(
-                            "Payload already exists.", font=const.FONT)],
-                        [sg.Text(
-                            "Delete current payload before adding new one.",
-                            font=const.FONT)],
-                        [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                               font=const.FONT)]
-                    ], element_justification=const.CENTER,
-                              auto_close=True).read(close=True)
-                else:
-                    pay_window(
-                        client, owindow, tmp_pay_opt)
+                window.write_event_value('CONNECT', cst.EMSCONN)
 
-        if oevent == const.KEY_PAY_EDIT:
-            pay_window(
-                client, owindow, tmp_pay_opt)
+        if cmd == 'msfrun':
+            res_scpt, log_file = params
+            metasploit.launch_metasploit(msfclient, res_scpt, log_file)
 
-        if oevent == const.KEY_PAY_REM:
-            tmp_pay_opt = {'NAME': '', 'OPTIONS': {}}
-            owindow[const.KEY_PAY_DD](value='')
-            owindow[const.KEY_PAY_ADD](disabled=False)
-            owindow[const.KEY_PAY_EDIT](disabled=True)
-            owindow[const.KEY_PAY_REM](disabled=True)
+        if cmd == 'hlfloadconfig':
+            _asyncio.set_event_loop(async_loop)
+            config_file, = params
+            config = blockchain.load_config(config_file, loop=async_loop)
 
-        if oevent == const.KEY_PAY_INFO:
-            if owindow[const.KEY_PAY_DD].Get():
-                pay_n = owindow[const.KEY_PAY_DD].Get()
-                pay = wizard.get_payload(client, pay_n)
-                pay_info = wizard.get_module_info(pay)
-                pay_info_layout = [
-                    [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                             font=const.FONTPAD)],
-                    [sg.Text(pay_n, font=const.FONTB)],
-                    [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                             font=const.FONTPAD)]
-                ] + [
-                    [sg.Frame(const.NO_TEXT,
-                              [[sg.Text(el, font=const.FONTB,
-                                        size=const.EXEC_TEXT_SIZE_XS),
-                                sg.Text(
-                                    TextWrapper(width=const.WRAP_TEXT_SIZE)
-                                    .fill(str(pay_info[el])),
-                                    font=const.FONT)]
-                               for el in pay_info],
-                              border_width=const.NO_BORDER)]
-                ] + [[sg.OK(font=const.FONT)]]
+        if cmd == 'hlfstore':
+            report, log_file = params
+            if config is not None:
+                blockchain.store_report(config, report, log_file,
+                                        loop=async_loop)
 
-                sg.Window(const.TEXT_PAYLOAD_INFO, pay_info_layout,
-                          element_justification=const.CENTER).read(close=True)
-
-        if oevent == const.KEY_OPT_ACCEPT:
-            if mtype not in mod_list:
-                mod_list[mtype] = {}
-            if mname not in mod_list[mtype]:
-                mod_list[mtype][mname] = {}
-
-            opt_l = {
-                opt: utils.correct_type(
-                    owindow[const.KEY_OPT_VAL+str(idx)].Get(),
-                    wizard.get_option_info(mod,
-                                           owindow[const.KEY_OPT
-                                                   + str(idx)].Get()
-                                           )
-                )
-                for idx, opt in enumerate(opts)
-                if opt != 'PAYLOAD'
-                and opts_default[opt] != utils.correct_type(
-                    owindow[const.KEY_OPT_VAL+str(idx)].Get(),
-                    wizard.get_option_info(mod,
-                                           owindow[const.KEY_OPT
-                                                   + str(idx)].Get()
-                                           )
-                )
-            }
-
-            invalid = []
-            missing = []
-            for op in opt_l:
-                if opt_l[op] == 'Invalid':
-                    invalid.append(op)
-                elif opt_l[op] == 'Missing':
-                    missing.append(op)
-            if invalid or missing:
-                print(invalid)
-                print(missing)
-                invmislayout = []
-                if invalid:
-                    invmislayout.extend([
-                        [sg.Text("Invalid value in the following options:",
-                                 font=const.FONT)],
-                        [sg.Text("{}".format(invalid),
-                                 font=const.FONT)]])
-                if invalid and missing:
-                    invmislayout.extend([
-                        [sg.Text(const.NO_TEXT, font=const.FONTPAD)]])
-                if missing:
-                    invmislayout.extend([
-                        [sg.Text("Missing value in the following options:",
-                                 font=const.FONT)],
-                        [sg.Text("{}".format(missing),
-                                 font=const.FONT)]])
-                invmislayout.extend([
-                    [sg.Text(const.NO_TEXT, font=const.FONTPAD)],
-                    [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                           font=const.FONT)]])
-                sg.Window('Error', invmislayout,
-                          element_justification=const.CENTER).read(close=True)
-                continue
-            if tmp_pay_opt['OPTIONS']:
-                opt_l['PAYLOAD'] = tmp_pay_opt
-
-            mod_list[mtype][mname][mod_idx] = opt_l
-
-            parent_window[const.KEY_MOD_NAME +
-                          str(mod_idx)](value=": ".join([mtype, mname]))
-            parent_window[const.KEY_MOD_FRAME +
-                          str(mod_idx)](visible=True)
-            # Update column scrollbar
-            parent_window.visibility_changed()
-            parent_window[const.KEY_MOD_COL].contents_changed()
-            parent_window[const.KEY_MOD_COL].Widget.canvas.yview_moveto(
-                999)  # workaround to update column scrollbar
-            added = True
-            break
-        if oevent in (sg.WIN_CLOSED, const.KEY_OPT_CANCEL):
-            break
-    owindow.close()
-    return added
+        if cmd == 'stop':
+            stopAnim = threading.Event()
+            stopping_thread = LoadingThread(stopAnim, window, start_gif=False)
+            stopping_thread.start()
+            errcode = utils.shutdown(msfcont, vpncont)
+            stopAnim.set()
+            window.write_event_value('STOP', errcode)
 
 
-def switch(window, button, *elems):
-    for el in elems:
-        if isinstance(el, (sg.InputText, sg.Button)):
-            el(disabled=button.enabled)
-        if isinstance(el, str):
-            window[el](
-                text_color=const.COLOR_DISABLED if button.enabled
-                else const.COLOR_ENABLED)
-    button.switch()
-
-
-def shrink_enlarge_window(window, console, console_cb, cons_size, ncons_size):
-    console(visible=not console_cb.enabled)
-    console_cb.switch()
-    if console_cb.enabled:
-        window.size = cons_size
-    else:
-        window.size = ncons_size
-    window.visibility_changed()
-
-
-def main():
-    lf_fb = browse(const.NO_TEXT, const.KEY_LF_FB, const.KEY_INPUT_LF,
-                   const.FILEPNG, const.BUTTON_M_SIZE,
-                   const.BUTTON_COLOR, const.NO_BORDER,
-                   tooltip=const.TOOLTIP_FILE_BROWSER, pad=const.PAD_NO_TB)
-    lf_i_b = button(const.NO_TEXT, const.KEY_LF_I_B, const.INFO,
-                    const.BUTTON_S_SIZE, const.BUTTON_COLOR,
-                    const.NO_BORDER, const.TOOLTIP_LF,
-                    pad=const.PAD_NO_TBR)
-    ld_fb = browse(const.NO_TEXT, const.KEY_LD_FB, const.KEY_INPUT_LD,
-                   const.FOLDERPNG, const.BUTTON_M_SIZE, const.BUTTON_COLOR,
-                   const.NO_BORDER, tooltip=const.TOOLTIP_FOLDER_BROWSER,
-                   filetype=False, pad=const.PAD_NO_TB)
-    ld_i_b = button(const.NO_TEXT, const.KEY_LD_I_B, const.INFO,
-                    const.BUTTON_S_SIZE, const.BUTTON_COLOR, const.NO_BORDER,
-                    const.TOOLTIP_LD, pad=const.PAD_NO_TBR)
-    rc_fb = browse(const.NO_TEXT, const.KEY_RC_FB, const.KEY_INPUT_RC,
-                   const.FILEPNG, const.BUTTON_M_SIZE,
-                   const.BUTTON_COLOR, const.NO_BORDER,
-                   tooltip=const.TOOLTIP_FILE_BROWSER, pad=const.PAD_NO_TB)
-    rc_i_b = button(const.NO_TEXT, const.KEY_RC_I_B, const.INFO,
-                    const.BUTTON_S_SIZE, const.BUTTON_COLOR,
-                    const.NO_BORDER, const.TOOLTIP_RC, pad=const.PAD_NO_TBR)
-
-    vpn_cb = ImageCheckBox(image_on=const.CBON, image_off=const.CBOFF,
-                           image_size=const.BUTTON_S_SIZE,
-                           key=const.KEY_VPN_CB,
-                           button_color=const.BUTTON_COLOR,
-                           border_width=const.NO_BORDER, enabled=False)
-    vpn_cf_i_b = button(const.NO_TEXT, const.KEY_VPN_CF_I_B,
-                        const.INFO, const.BUTTON_S_SIZE,
-                        const.BUTTON_COLOR, const.NO_BORDER,
-                        const.TOOLTIP_VPN_CF,
-                        disabled=True, pad=const.PAD_NO_TBR)
-    vpn_cf_it = input_text(const.DEFAULT_VPN_CF, const.KEY_INPUT_VPN_CF,
-                           disabled=True, font=const.FONT, pad=const.PAD_IT_T)
-    vpn_cf_fb = browse(const.NO_TEXT, const.KEY_VPN_CF_FB,
-                       const.KEY_INPUT_VPN_CF, const.FILEPNG,
-                       const.BUTTON_M_SIZE, const.BUTTON_COLOR,
-                       const.NO_BORDER, disabled=True,
-                       tooltip=const.TOOLTIP_FILE_BROWSER, pad=const.PAD_NO_TB)
-
-    bc_cb = ImageCheckBox(image_on=const.CBON, image_off=const.CBOFF,
-                          image_size=const.BUTTON_S_SIZE,
-                          key=const.KEY_BC_CB, button_color=const.BUTTON_COLOR,
-                          border_width=const.NO_BORDER, enabled=False)
-    bc_cf_i_b = button(const.NO_TEXT, const.KEY_BC_CF_I_B, const.INFO,
-                       const.BUTTON_S_SIZE, const.BUTTON_COLOR,
-                       const.NO_BORDER, const.TOOLTIP_BC_CF,
-                       disabled=True, pad=const.PAD_NO_TBR)
-    bc_cf_it = input_text(const.DEFAULT_BC_CF, const.KEY_INPUT_BC_CF,
-                          disabled=True, font=const.FONT, pad=const.PAD_IT_T)
-    bc_cf_fb = browse(const.NO_TEXT, const.KEY_BC_CF_FB, const.KEY_INPUT_BC_CF,
-                      const.FILEPNG, const.BUTTON_M_SIZE, const.BUTTON_COLOR,
-                      const.NO_BORDER, disabled=True,
-                      tooltip=const.TOOLTIP_FILE_BROWSER, pad=const.PAD_NO_TB)
-    bc_lf_i_b = button(const.NO_TEXT, const.KEY_BC_LF_I_B, const.INFO,
-                       const.BUTTON_S_SIZE, const.BUTTON_COLOR,
-                       const.NO_BORDER, const.TOOLTIP_BC_LF,
-                       disabled=True, pad=const.PAD_NO_TBR)
-    bc_lf_it = input_text(const.DEFAULT_BC_LF, const.KEY_INPUT_BC_LF,
-                          disabled=True, font=const.FONT, pad=const.PAD_IT_T)
-    bc_lf_fb = browse(const.NO_TEXT, const.KEY_BC_LF_FB, const.KEY_INPUT_BC_LF,
-                      const.FILEPNG, const.BUTTON_M_SIZE, const.BUTTON_COLOR,
-                      const.NO_BORDER, disabled=True,
-                      tooltip=const.TOOLTIP_FILE_BROWSER, pad=const.PAD_NO_TB)
-
-    sc_cb = ImageCheckBox(image_on=const.CBON, image_off=const.CBOFF,
-                          image_size=const.BUTTON_S_SIZE, key=const.KEY_SC_CB,
-                          button_color=const.BUTTON_COLOR,
-                          border_width=const.NO_BORDER, enabled=True)
-
-    console_cb = ImageCheckBox(image_on=const.CONSOLE_HIDE,
-                               image_off=const.CONSOLE_UNHIDE,
-                               image_size=const.BUTTON_S_SIZE,
-                               key=const.KEY_CONSOLE_CB,
-                               button_color=const.BUTTON_COLOR,
-                               border_width=const.NO_BORDER,
-                               enabled=False, pad=const.PAD_NO)
-    console = sg.Multiline(const.NO_TEXT, key=const.KEY_CONSOLE,
-                           size=const.CONSOLE_SIZE, pad=const.CONSOLE_PAD,
-                           visible=False, font=const.FONT, autoscroll=True)
-
+def autoauditor_window():
     mandatory_layout = [
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
-        [sg.Text(const.TEXT_LF, key=const.KEY_LF_T,
-                 size=const.TEXT_DESC_SIZE, font=const.FONTB),
-         input_text(const.DEFAULT_LF, const.KEY_INPUT_LF,
-                    font=const.FONT, pad=const.PAD_IT_T), lf_fb, lf_i_b],
-        [sg.Text(const.TEXT_LD, key=const.KEY_LD_T,
-                 size=const.TEXT_DESC_SIZE, font=const.FONTB),
-         input_text(const.DEFAULT_LD, const.KEY_INPUT_LD,
-                    font=const.FONT, pad=const.PAD_IT_T), ld_fb, ld_i_b],
-        [sg.Text(const.TEXT_RC, key=const.KEY_RC_T,
-                 size=const.TEXT_DESC_SIZE, font=const.FONTB),
-         input_text(const.DEFAULT_RC, const.KEY_INPUT_RC,
-                    font=const.FONT, pad=const.PAD_IT_T), rc_fb, rc_i_b],
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)]
+        [sg.Text(font=cst.FONTP, pad=cst.N_P_TB)],
+        [sg.Text(cst.T_MAIN_LF, size=cst.T_DESC_SZ_S2, font=cst.FONTB),
+         sg.InputText(cst.DEF_MAIN_LF, key=cst.K_MAIN_IT_LF,
+                      font=cst.FONT, pad=cst.P_IT),
+         Browser(key=cst.K_MAIN_LF_FB, tooltip=cst.TT_MAIN_FB,
+                 target=cst.K_MAIN_IT_LF),
+         Button(key=cst.K_MAIN_LFINFO, tooltip=cst.TT_MAIN_LF)],
+        [sg.Text(cst.T_MAIN_LD, size=cst.T_DESC_SZ_S2, font=cst.FONTB),
+         sg.InputText(cst.DEF_MAIN_LD, key=cst.K_MAIN_IT_LD,
+                      font=cst.FONT, pad=cst.P_IT),
+         Browser(key=cst.K_MAIN_LD_FB, tooltip=cst.TT_MAIN_DB,
+                 target=cst.K_MAIN_IT_LD, folder=True),
+         Button(key=cst.K_MAIN_LDINFO, tooltip=cst.TT_MAIN_LD)],
+        [sg.Text(cst.T_MAIN_RC, size=cst.T_DESC_SZ_S2, font=cst.FONTB),
+         sg.InputText(cst.DEF_MAIN_RC, key=cst.K_MAIN_IT_RC,
+                      font=cst.FONT, pad=cst.P_IT),
+         Browser(key=cst.K_MAIN_RC_FB, tooltip=cst.TT_MAIN_FB,
+                 target=cst.K_MAIN_IT_RC),
+         Button(key=cst.K_MAIN_RCINFO, tooltip=cst.TT_MAIN_RC)],
+        [sg.Text(font=cst.FONTP, pad=cst.N_P_TB)]
     ]
 
     vpn_layout = [
-        [vpn_cb, sg.Text(const.TEXT_VPN_CB, key=const.KEY_VPN_CB_T,
-                         text_color=const.COLOR_DISABLED, font=const.FONTB,
-                         enable_events=True)],
-        [sg.Text(const.TEXT_VPN_CF, key=const.KEY_VPN_CF_T,
-                 size=const.TEXT_DESC_SIZE, font=const.FONTB,
-                 text_color=const.COLOR_DISABLED),
-         vpn_cf_it, vpn_cf_fb, vpn_cf_i_b],
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)]
+        [ImageCheckBox(key=cst.K_MAIN_VPN_CB),
+         sg.Text(cst.T_MAIN_VPN_CB, key=cst.K_MAIN_VPN_CB_T,
+                 font=cst.FONTB, text_color=cst.C_DIS,
+                 enable_events=True)],
+        [sg.Text(cst.T_MAIN_VPN_CF, key=cst.K_MAIN_VPN_CF_T,
+                 size=cst.T_DESC_SZ_S2, font=cst.FONTB,
+                 text_color=cst.C_DIS),
+         sg.InputText(cst.DEF_MAIN_VPN_CF, key=cst.K_MAIN_IT_VPN_CF,
+                      font=cst.FONT, pad=cst.P_IT, disabled=True),
+         Browser(key=cst.K_MAIN_VPN_CF_FB, tooltip=cst.TT_MAIN_FB,
+                 target=cst.K_MAIN_IT_VPN_CF, disabled=True),
+         Button(key=cst.K_MAIN_VPN_CFINFO,
+                tooltip=cst.TT_MAIN_VPN_CF, disabled=True)],
+        [sg.Text(font=cst.FONTP, pad=cst.N_P_TB)]
     ]
 
     blockchain_layout = [
-        [bc_cb, sg.Text(const.TEXT_BC_CB, key=const.KEY_BC_CB_T,
-                        text_color=const.COLOR_DISABLED, font=const.FONTB,
-                        enable_events=True)],
-        [sg.Text(const.TEXT_BC_CF, key=const.KEY_BC_CF_T,
-                 size=const.TEXT_DESC_SIZE, font=const.FONTB,
-                 text_color=const.COLOR_DISABLED),
-         bc_cf_it, bc_cf_fb, bc_cf_i_b],
-        [sg.Text(const.TEXT_BC_LF, key=const.KEY_BC_LF_T,
-                 size=const.TEXT_DESC_SIZE, font=const.FONTB,
-                 text_color=const.COLOR_DISABLED),
-         bc_lf_it, bc_lf_fb, bc_lf_i_b],
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
-
-        [sc_cb, sg.Text(const.TEXT_SC_CB, key=const.KEY_SC_CB_T,
-                        text_color=const.COLOR_ENABLED, font=const.FONTB,
-                        enable_events=True)]
+        [ImageCheckBox(key=cst.K_MAIN_BC_CB),
+         sg.Text(cst.T_MAIN_BC_CB, key=cst.K_MAIN_BC_CB_T,
+                 font=cst.FONTB, text_color=cst.C_DIS,
+                 enable_events=True)],
+        [sg.Text(cst.T_MAIN_BC_CF, key=cst.K_MAIN_BC_CF_T,
+                 size=cst.T_DESC_SZ_S2, font=cst.FONTB,
+                 text_color=cst.C_DIS),
+         sg.InputText(cst.DEF_MAIN_BC_CF, key=cst.K_MAIN_IT_BC_CF,
+                      font=cst.FONT, pad=cst.P_IT, disabled=True),
+         Browser(key=cst.K_MAIN_BC_CF_FB, tooltip=cst.TT_MAIN_FB,
+                 target=cst.K_MAIN_IT_BC_CF, disabled=True),
+         Button(key=cst.K_MAIN_BC_CFINFO,
+                tooltip=cst.TT_MAIN_BC_CF, disabled=True)],
+        [sg.Text(cst.T_MAIN_BC_LF, key=cst.K_MAIN_BC_LF_T,
+                 size=cst.T_DESC_SZ_S2, font=cst.FONTB,
+                 text_color=cst.C_DIS),
+         sg.InputText(cst.DEF_MAIN_BC_LF, key=cst.K_MAIN_IT_BC_LF,
+                      font=cst.FONT, pad=cst.P_IT, disabled=True),
+         Browser(key=cst.K_MAIN_BC_LF_FB, tooltip=cst.TT_MAIN_FB,
+                 target=cst.K_MAIN_IT_BC_LF, disabled=True),
+         Button(key=cst.K_MAIN_BC_LFINFO,
+                tooltip=cst.TT_MAIN_BC_LF, disabled=True)],
+        [sg.Text(font=cst.FONTP, pad=cst.N_P_TB)],
+        [ImageCheckBox(key=cst.K_MAIN_SC_CB, enabled=True),
+         sg.Text(cst.T_MAIN_SC_CB, key=cst.K_MAIN_SC_CB_T,
+                 font=cst.FONTB, text_color=cst.C_EN,
+                 enable_events=True)]
     ]
 
     button_layout = [
-        [
-            button(const.NO_TEXT, const.KEY_WIZARD_B, const.WIZARD,
-                   const.BUTTON_L_SIZE, const.BUTTON_COLOR, const.NO_BORDER,
-                   const.TOOLTIP_WIZARD, const.PAD_T),
-            sg.Text(const.NO_TEXT, size=const.EXEC_TEXT_SIZE_S,
-                    pad=const.PAD_NO),
-            button(const.NO_TEXT, const.KEY_START_B, const.PLAY,
-                   const.BUTTON_L_SIZE, const.BUTTON_COLOR, const.NO_BORDER,
-                   const.TOOLTIP_START, const.PAD_T),
-            sg.Text(const.NO_TEXT, size=const.EXEC_TEXT_SIZE_S,
-                    pad=const.PAD_NO),
-            button(const.NO_TEXT, const.KEY_STOP_B, const.STOP,
-                   const.BUTTON_L_SIZE, const.BUTTON_COLOR, const.NO_BORDER,
-                   const.TOOLTIP_STOP, const.PAD_T),
-        ],
-        [
-            sg.Text(const.TEXT_WIZARD, key=const.KEY_WIZARD_T,
-                    size=const.EXEC_TEXT_SIZE_S, font=const.FONTB,
-                    pad=const.PAD_EXEC_TEXT, justification=const.CENTER,
-                    enable_events=True),
-            sg.Text(const.TEXT_START, key=const.KEY_START_T, font=const.FONTB,
-                    size=const.EXEC_TEXT_SIZE_S, pad=const.PAD_EXEC_TEXT,
-                    justification=const.CENTER, enable_events=True),
-            sg.Text(const.TEXT_STOP, key=const.KEY_STOP_T, font=const.FONTB,
-                    size=const.EXEC_TEXT_SIZE_S, pad=const.PAD_EXEC_TEXT,
-                    justification=const.CENTER, enable_events=True)
-        ],
-        [sg.Frame(const.NO_TEXT, [[sg.Text(const.NO_TEXT,
-                                           size=const.CONSOLE_CB_SIZE,
-                                           pad=const.PAD_NO),
-                                   console_cb]],
-                  border_width=const.NO_BORDER)],
-        [console]
+        [Button(key=cst.K_MAIN_RAA_B, tooltip=cst.TT_MAIN_RAA,
+                image_data=cst.ICO_PLAY, image_size=cst.B_SZ_L,
+                pad=cst.P_T),
+         sg.Text(size=cst.EXEC_T_SZ_S, pad=cst.N_P),
+         Button(key=cst.K_MAIN_RBC_B, tooltip=cst.TT_MAIN_RBC,
+                image_data=cst.ICO_BCKCHN, image_size=cst.B_SZ_L,
+                pad=cst.P_T),
+         sg.Text(size=cst.EXEC_T_SZ_S, pad=cst.N_P),
+         Button(key=cst.K_MAIN_WIZ_B, tooltip=cst.TT_MAIN_WIZ,
+                image_data=cst.ICO_WIZ, image_size=cst.B_SZ_L,
+                pad=cst.P_T),
+         sg.Text(size=cst.EXEC_T_SZ_S, pad=cst.N_P),
+         Button(cst.K_MAIN_STP_B, tooltip=cst.TT_MAIN_STP,
+                image_data=cst.ICO_STOP, image_size=cst.B_SZ_L,
+                pad=cst.P_T),
+         ],
+        [sg.Text(cst.T_MAIN_RAA, key=cst.K_MAIN_RAA_T,
+                 size=cst.EXEC_T_SZ_S, font=cst.FONTB,
+                 pad=cst.P_EXEC_T, justification=cst.J_C,
+                 enable_events=True),
+         sg.Text(cst.T_MAIN_RBC, key=cst.K_MAIN_RBC_T,
+                 size=cst.EXEC_T_SZ_S, font=cst.FONTB,
+                 pad=cst.P_EXEC_T, justification=cst.J_C,
+                 enable_events=True),
+         sg.Text(cst.T_MAIN_WIZ, key=cst.K_MAIN_WIZ_T,
+                 size=cst.EXEC_T_SZ_S, font=cst.FONTB,
+                 pad=cst.P_EXEC_T, justification=cst.J_C,
+                 enable_events=True),
+         sg.Text(cst.T_MAIN_STP, key=cst.K_MAIN_STP_T,
+                 size=cst.EXEC_T_SZ_S, font=cst.FONTB,
+                 pad=cst.P_EXEC_T, justification=cst.J_C,
+                 enable_events=True)
+         ],
+        [sg.Frame(cst.N_T, [
+            [sg.Text(size=cst.LOG_CB_P_SZ, pad=cst.N_P),
+             ImageCheckBox(key=cst.K_MAIN_LOG_CB, image_on=cst.ICO_C_H,
+                           image_off=cst.ICO_C_S)]
+        ], border_width=cst.N_WDTH)],
+        [sg.Multiline(key=cst.K_MAIN_LOG, size=cst.LOG_SZ,
+                      font=cst.FONT, pad=cst.LOG_P,
+                      autoscroll=True, visible=False)]
     ]
     autoauditor_layout = [
-        [sg.Frame(const.NO_TEXT, mandatory_layout, border_width=0)],
-        [sg.Frame(const.NO_TEXT, vpn_layout, border_width=0)],
-        [sg.Frame(const.NO_TEXT, blockchain_layout, border_width=0)],
-        [sg.Frame(const.NO_TEXT, button_layout, border_width=0,
-                  element_justification=const.CENTER)]
+        [sg.Frame(cst.N_T, mandatory_layout, border_width=cst.N_WDTH)],
+        [sg.Frame(cst.N_T, vpn_layout, border_width=cst.N_WDTH)],
+        [sg.Frame(cst.N_T, blockchain_layout, border_width=cst.N_WDTH)],
+        [sg.Frame(cst.N_T, button_layout, border_width=0,
+                  element_justification=cst.J_C)]
     ]
 
     about_layout = [
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB, font=const.FONTPAD)],
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB)],
-        [sg.Text(const.ABOUT_NAME, font=const.FONTB)],
-        [sg.Text(const.ABOUT_VERSION, font=const.FONTB)],
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB)],
-        [sg.Text(const.ABOUT_AUTHOR, font=const.FONT)],
-        [sg.Text(const.ABOUT_LAB, font=const.FONT)],
-        [sg.Text(const.ABOUT_DEPARTMENT, font=const.FONT)],
-        [sg.Text(const.ABOUT_UC3M, font=const.FONT)],
-        [sg.Text(const.ABOUT_LOCATION, font=const.FONT)],
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB)],
-        [sg.Text(const.ABOUT_ACKNOWLEDGEMENT, font=const.FONT,
-                 justification=const.CENTER)],
-        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB)],
-        [sg.Text(const.ABOUT_YEAR, font=const.FONT)],
+        [sg.Text(font=cst.FONTP, pad=cst.N_P_TB)],
+        [sg.Text(pad=cst.N_P_TB)],
+        [sg.Text(cst.MAIN_ABOUT_NAME, font=cst.FONTB)],
+        [sg.Text(cst.MAIN_ABOUT_VER, font=cst.FONTB)],
+        [sg.Text(pad=cst.N_P_TB)],
+        [sg.Text(cst.MAIN_ABOUT_AUTHOR, font=cst.FONT)],
+        [sg.Text(cst.MAIN_ABOUT_LAB, font=cst.FONT)],
+        [sg.Text(cst.MAIN_ABOUT_DEPT, font=cst.FONT)],
+        [sg.Text(cst.MAIN_ABOUT_UC3M, font=cst.FONT)],
+        [sg.Text(cst.MAIN_ABOUT_LOC, font=cst.FONT)],
+        [sg.Text(pad=cst.N_P_TB)],
+        [sg.Text(cst.MAIN_ABOUT_ACK, font=cst.FONT,
+                 justification=cst.J_C)],
+        [sg.Text(pad=cst.N_P_TB)],
+        [sg.Text(cst.MAIN_ABOUT_YEAR, font=cst.FONT)],
     ]
 
-    with open(const.DEFAULT_LICENSE, 'r') as f:
+    with open(cst.DEF_MAIN_LIC, 'r') as f:
+        # fix double spaces in GNU LICENSE text
         gplv3_full = f.read().replace('.  ', '. ').replace('  ', '')
 
     gplv3_full_layout = [
-        [sg.Text(gplv3_full, justification=const.CENTER,
-                 size=const.LICENSE_TEXT_SIZE,
-                 background_color=const.COLOR_TAB_DISABLED)]
+        [sg.Text(gplv3_full, size=cst.MAIN_LIC_T_SZ,
+                 justification=cst.J_C, background_color=cst.C_TAB_DIS)]
     ]
     license_layout = [
-        [sg.Text(const.COPYRIGHT, font=const.FONT,
-                 justification=const.CENTER)],
+        [sg.Text(cst.COPYRIGHT, font=cst.FONT,
+                 justification=cst.J_C)],
         [sg.Column(gplv3_full_layout,
-                   scrollable=True, size=const.LICENSE_COLUMN_SIZE,
-                   vertical_scroll_only=True, justification=const.CENTER,
-                   background_color=const.COLOR_TAB_DISABLED, pad=const.PAD_T)]
+                   size=cst.MAIN_LIC_C_SZ, pad=cst.P_T, justification=cst.J_C,
+                   scrollable=True, vertical_scroll_only=True,
+                   background_color=cst.C_TAB_DIS, )]
     ]
 
     layout = [
-        [sg.TabGroup(
-            [
-                [sg.Tab('AutoAuditor', autoauditor_layout,
-                        element_justification=const.CENTER)],
-                [sg.Tab('About', about_layout,
-                        element_justification=const.CENTER)],
-                [sg.Tab('License', license_layout,
-                        element_justification=const.CENTER)]
-            ],
-            border_width=const.NO_BORDER,
-            tab_background_color=const.COLOR_TAB_DISABLED,
-            font=const.FONT
-        )]
+        [sg.TabGroup([
+            [sg.Tab('AutoAuditor', autoauditor_layout,
+                    element_justification=cst.J_C)],
+            [sg.Tab('About', about_layout,
+                    element_justification=cst.J_C)],
+            [sg.Tab('License', license_layout,
+                    element_justification=cst.J_C)]
+        ], font=cst.FONT, border_width=cst.N_WDTH,
+                     tab_background_color=cst.C_TAB_DIS)]
     ]
 
-    # Event Loop to process "events" and get the "values" of the inputs
-    window = sg.Window('AutoAuditor', layout,
-                       element_justification=const.CENTER)  # main window
-    window_cons_size = None
-    window_ncons_size = None
+    WIN[MN] = sg.Window('AutoAuditor', layout,
+                        element_justification=cst.J_C,
+                        finalize=True)
 
-    vpncont = msfcont = None
+    # remove extra pixel displacement on click
+    WIN[MN][cst.K_MAIN_VPN_CB].Widget.config(
+        relief=sg.RELIEF_SUNKEN, borderwidth=0)
+    WIN[MN][cst.K_MAIN_BC_CB].Widget.config(
+        relief=sg.RELIEF_SUNKEN, borderwidth=0)
+    WIN[MN][cst.K_MAIN_SC_CB].Widget.config(
+        relief=sg.RELIEF_SUNKEN, borderwidth=0)
+
+
+def wizard_window():
+    mod_layout = [
+        [sg.Frame(cst.N_T, [
+            [sg.InputText(str(i), key=f"{cst.K_WIZ_MNAME}{i}",
+                          size=cst.T_DESC_SZ_M2, font=cst.FONT,
+                          pad=cst.N_P_TBR, border_width=cst.N_WDTH,
+                          disabled_readonly_background_color=cst.C_W,
+                          readonly=True),
+             Button(key=f"{cst.K_WIZ_MEDIT}{i}", tooltip=cst.TT_WIZ_MEDIT,
+                    image_data=cst.ICO_EDIT, image_size=cst.B_SZ_M,
+                    pad=cst.P_MOD),
+             Button(key=f"{cst.K_WIZ_MREM}{i}", tooltip=cst.TT_WIZ_MREM,
+                    image_data=cst.ICO_REM, image_size=cst.B_SZ_M),
+             Button(key=f"{cst.K_WIZ_MINFO}{i}", tooltip=cst.TT_WIZ_MINFO,
+                    image_data=cst.ICO_INFO, pad=cst.P_MOD)
+             ]], visible=False, pad=cst.N_P,
+                  border_width=cst.N_WDTH,
+                  key=f"{cst.K_WIZ_MFRAME}{i}",
+                  element_justification=cst.J_C)]
+        for i in range(cst.MAX_MODS)]
+
+    wizard_layout = [
+        [sg.Text(font=cst.FONT, pad=cst.N_P_TB)],
+        [sg.Text(cst.T_WIZ_MTYPE, size=cst.T_DESC_SZ_S2, font=cst.FONTB),
+         sg.DropDown(cst.MOD_TYPES, key=cst.K_WIZ_MODT,
+                     size=cst.EXEC_T_SZ_L, font=cst.FONT,
+                     enable_events=True, readonly=True)],
+        [sg.Text(cst.T_WIZ_MNAME, size=cst.T_DESC_SZ_S2, font=cst.FONTB),
+         sg.DropDown(cst.N_T, key=cst.K_WIZ_MODN,
+                     size=cst.EXEC_T_SZ_L, font=cst.FONT,
+                     readonly=True)],
+        [sg.Text(font=cst.FONT, pad=cst.N_P)],
+        [sg.Column(mod_layout, key=cst.K_WIZ_MCOL, size=cst.C_SZ,
+                   pad=cst.N_P, justification=cst.J_C,
+                   scrollable=True, vertical_scroll_only=True,
+                   element_justification=cst.J_C)],
+        [sg.Text(font=cst.FONT, pad=cst.N_P)],
+        [Button(key=cst.K_WIZ_MADD, tooltip=cst.TT_WIZ_MADD,
+                image_data=cst.ICO_ADD, image_size=cst.B_SZ_L,)],
+        [sg.Text(font=cst.FONTP, pad=cst.N_P_TB)],
+        [sg.Button(cst.T_WIZ_GEN, key=cst.K_WIZ_GEN, font=cst.FONT),
+         sg.Button(cst.T_WIZ_EXIT, key=cst.K_WIZ_EXIT, font=cst.FONT)],
+        [sg.Text(font=cst.FONTP, pad=cst.N_P_TB)]
+    ]
+    WIN[WZ] = sg.Window(cst.T_WIZ_TIT, wizard_layout,
+                        element_justification=cst.J_C,
+                        finalize=True)
+
+
+def mopts_window(module, edit=False):
+    opts, ropts = module.options()
+
+    current_opts = module.mopts()
+    if current_opts:
+        for copt in current_opts:
+            opts[copt] = current_opts[copt]
+
+    scrollable = len(opts) > 15
+    hidden = f"{module.ticket}:{'new' if not edit else 'edit'}"
+    opt_layout = [
+        [sg.Text(hidden, key=cst.K_MOPTS_ID,
+                 font=cst.FONTP, text_color=cst.C_W,
+                 pad=cst.N_P_TB)],
+        [sg.Text(f"{module.mtype()}/{module.mname()}",
+                 key=cst.K_MOPTS_TIT,
+                 font=cst.FONTB)],
+        [sg.Frame(cst.N_T, [
+            [sg.Text(size=cst.T_DESC_SZ_XL2 if scrollable
+                     else cst.T_DESC_SZ_XL,
+                     font=cst.FONTP, pad=cst.N_P)],
+            [sg.Text(cst.T_MOPTS_HNAME, size=cst.T_OPT_NAME_SZ,
+                     font=cst.FONTB, pad=cst.P_OPT_HEAD_NAME),
+             sg.Text(cst.T_MOPTS_HVAL, size=cst.T_OPT_VAL_SZ,
+                     font=cst.FONTB, pad=cst.P_OPT_HEAD_VAL),
+             sg.Text(cst.T_MOPTS_HREQ, size=cst.T_REQ_SZ,
+                     font=cst.FONTB,
+                     pad=cst.P_OPT_HEAD_REQ if scrollable
+                     else cst.P_OPT_HEAD_REQ2),
+             sg.Text(cst.T_MOPTS_HINFO, font=cst.FONTB,
+                     pad=cst.P_OPT_HEAD_INFO)]
+        ], pad=cst.N_P_L, border_width=cst.N_WDTH)],
+        [sg.Column([
+            [sg.Frame(cst.N_T, [
+                [sg.InputText(opt, key=f"{cst.K_MOPTS}{idx}",
+                              size=cst.T_DESC_SZ_S, font=cst.FONT,
+                              pad=cst.P_IT2, border_width=cst.N_WDTH,
+                              disabled_readonly_background_color=cst.C_W,
+                              readonly=True),
+                 sg.InputText(opts[opt], key=f"{cst.K_MOPTS_VAL}{idx}",
+                              size=cst.T_DESC_SZ_M, font=cst.FONT,
+                              pad=cst.P_IT2),
+                 sg.Text(cst.T_MOPTS_RY if opt in ropts
+                         else cst.T_MOPTS_RN,
+                         size=cst.T_REQ_SZ, font=cst.FONT,
+                         pad=cst.P_IT_TR if scrollable
+                         else cst.P_IT_TR2),
+                 Button(key=f"{cst.K_MOPTS_INFO}{idx}",
+                        tooltip=module.opt_desc(opt))]
+            ], pad=cst.N_P, border_width=cst.N_WDTH)]
+            for idx, opt in enumerate(opts)],
+            size=cst.C_SZ if scrollable
+            else cst.column_size(len(opts)),
+            scrollable=scrollable, vertical_scroll_only=True),
+         ]]
+
+    if module.has_payloads():
+        pay_exist = module.payload is not None
+        opt_layout.extend(
+            [
+                [sg.Frame(cst.N_T, [
+                    [sg.Text(cst.T_MOPTS_PAY, size=cst.T_DESC_SZ_S,
+                             font=cst.FONT, pad=cst.P_IT3),
+                     sg.DropDown(module.payloads(), key=cst.K_MOPTS_PDD,
+                                 default_value=(module.payload.mname()
+                                                if pay_exist else ''),
+                                 size=cst.EXEC_T_SZ_L2, font=cst.FONT,
+                                 readonly=True, pad=cst.P_IT4,
+                                 disabled=pay_exist),
+                     Button(key=cst.K_MOPTS_PADD, image_data=cst.ICO_ADD_S,
+                            tooltip=cst.TT_MOPTS_PADD, pad=cst.P_IT5,
+                            disabled=pay_exist),
+                     Button(key=cst.K_MOPTS_PEDIT, tooltip=cst.TT_MOPTS_PEDIT,
+                            image_data=cst.ICO_EDIT, image_size=cst.B_SZ_M,
+                            pad=cst.P_IT6, disabled=not pay_exist),
+                     Button(key=cst.K_MOPTS_PREM, tooltip=cst.TT_MOPTS_PREM,
+                            image_data=cst.ICO_REM, image_size=cst.B_SZ_M,
+                            pad=cst.P_IT6, disabled=not pay_exist),
+                     Button(key=cst.K_MOPTS_PINFO, tooltip=cst.TT_MOPTS_PINFO,
+                            pad=cst.P_IT7 if scrollable
+                            else cst.P_IT7_NS)]
+                ], pad=cst.N_P_LB if scrollable
+                          else cst.N_P_LB_NS,
+                          border_width=cst.N_WDTH)]])
+
+    opt_layout.extend([
+        [sg.Text(pad=cst.N_P_TB)],
+        [sg.Button('Accept', key=cst.K_MOPTS_ACPT, font=cst.FONT),
+         sg.Button('Cancel', key=cst.K_MOPTS_CNCL, font=cst.FONT)]])
+
+    WIN[MO][module.ticket] = sg.Window(
+        cst.T_MOPTS_TIT, opt_layout,
+        element_justification=cst.J_C,
+        finalize=True)
+
+
+def popts_window(module, mstate, pname=''):
+    if pname:
+        module.payload = pname
+    popts, propts = module.payload.options()
+
+    current_opts = module.payload.mopts()
+    if current_opts:
+        for copt in current_opts:
+            popts[copt] = current_opts[copt]
+
+    scrollable = len(popts) > 15
+
+    hidden = f"{module.ticket}:{mstate}:{'new' if pname else 'edit'}"
+
+    popt_layout = [
+        [sg.Text(hidden, key=cst.K_POPTS_ID,
+                 font=cst.FONTP, text_color=cst.C_W, pad=cst.N_P_TB,)],
+        [sg.Text(f"{module.mtype()}/{module.mname()}",
+                 key=cst.K_MOPTS_TIT,
+                 font=cst.FONTB)],
+        [sg.Text(module.payload.mname(),
+                 key=cst.K_POPTS_TITLE,
+                 font=cst.FONT)],
+        [sg.Frame(cst.N_T, [
+            [sg.Text(font=cst.FONTP, pad=cst.N_P,
+                     size=cst.T_DESC_SZ_XL2 if scrollable
+                     else cst.T_DESC_SZ_XL)],
+            [sg.Text(cst.T_MOPTS_HNAME, size=cst.T_OPT_NAME_SZ,
+                     font=cst.FONTB, pad=cst.P_OPT_HEAD_NAME),
+             sg.Text(cst.T_MOPTS_HVAL, size=cst.T_OPT_VAL_SZ,
+                     font=cst.FONTB, pad=cst.P_OPT_HEAD_VAL),
+             sg.Text(cst.T_MOPTS_HREQ, size=cst.T_REQ_SZ,
+                     font=cst.FONTB,
+                     pad=cst.P_OPT_HEAD_REQ if scrollable
+                     else cst.P_OPT_HEAD_REQ2, ),
+             sg.Text(cst.T_MOPTS_HINFO, font=cst.FONTB,
+                     pad=cst.P_OPT_HEAD_INFO)]
+        ], border_width=cst.N_WDTH, pad=cst.N_P_L)],
+        [sg.Column([
+            [sg.Frame(cst.N_T, [
+                [sg.InputText(popt, key=f"{cst.K_POPTS}{idx}",
+                              size=cst.T_DESC_SZ_S, font=cst.FONT,
+                              pad=cst.P_IT2, border_width=cst.N_WDTH,
+                              disabled_readonly_background_color=cst.C_W,
+                              readonly=True),
+                 sg.InputText(popts[popt], key=f"{cst.K_POPTS_VAL}{idx}",
+                              size=cst.T_DESC_SZ_M, font=cst.FONT,
+                              pad=cst.P_IT2),
+                 sg.Text(cst.T_MOPTS_RY if popt in propts
+                         else cst.T_MOPTS_RN,
+                         size=cst.T_REQ_SZ, font=cst.FONT,
+                         pad=cst.P_IT_TR if scrollable
+                         else cst.P_IT_TR2),
+                 Button(key=f"{cst.K_POPTS_INFO}{idx}",
+                        tooltip=module.opt_desc(popt))]
+            ], pad=cst.N_P, border_width=cst.N_WDTH)]
+            for idx, popt in enumerate(popts)],
+                   size=cst.C_SZ if scrollable
+                   else cst.column_size(len(popts)),
+                   scrollable=scrollable, vertical_scroll_only=True),
+         ],
+        [sg.Text(pad=cst.N_P_TB)],
+        [sg.Button('Accept', key=cst.K_POPTS_ACPT, font=cst.FONT),
+         sg.Button('Cancel', key=cst.K_POPTS_CNCL, font=cst.FONT)]]
+
+    WIN[PO][module.ticket] = sg.Window(
+        cst.T_POPTS_TIT, popt_layout,
+        element_justification=cst.J_C,
+        finalize=True)
+
+
+def switch(target_button, *elems):
+    for el in elems:
+        if isinstance(el, (sg.InputText, sg.Button)):
+            el(disabled=target_button.enabled)
+        if isinstance(el, str):
+            WIN[MN][el](
+                text_color=cst.C_DIS if target_button.enabled
+                else cst.C_EN)
+    target_button.switch()
+
+
+def shrink_enlarge_window(console, console_cb, cons_size, ncons_size):
+    console(visible=not console_cb.enabled)
+    console_cb.switch()
+    if console_cb.enabled:
+        WIN[MN].size = cons_size
+    else:
+        WIN[MN].size = ncons_size
+    WIN[MN].visibility_changed()
+
+
+def close_all_windows(stop=False):
+    for win in WIN[POP]:
+        win.close()
+    for win in WIN[PO]:
+        WIN[PO][win].close()
+    for win in WIN[MO]:
+        WIN[MO][win].close()
+    if WIN[WZ] is not None:
+        WIN[WZ].close()
+        WIN[WZ] = None
+    if not stop:
+        if WIN[MN] is not None:
+            WIN[MN].close()
+            WIN[MN] = None
+
+
+def main():
+    autoauditor_window()
+
+    win_out_sz = None
+    win_out_sz_hidden = None
+
+    mtype = None
+    mname = None
+
+    modules = {}
+    tmp_modules = {}
+
+    def get_module(ticket, modtype):
+        search = modules
+        if modtype == 'new':
+            search = tmp_modules
+        try:
+            mod = search[ticket]
+        except KeyError:
+            print((f"Error, could not find ticket in "
+                   f"{'' if modtype == 'edit' else 'tmp_'}modules dict: "
+                   f"{search}."))
+        else:
+            return mod
+
+    def rm_cancel_mod(ticket, remove=False):
+        ts.return_ticket(ticket)
+        search = tmp_modules
+        if remove:
+            search = modules
+        try:
+            del search[ticket]
+        except KeyError:
+            print((f"Error: Could not find module "
+                   f"in {'' if remove else 'tmp_'}modules dict."))
+
+    wiz_medit_re = re.compile(cst.K_WIZ_MEDIT+r'\d+')
+    wiz_mrem_re = re.compile(cst.K_WIZ_MREM+r'\d+')
+    wiz_minfo_re = re.compile(cst.K_WIZ_MINFO+r'\d+')
+    mopts_info_re = re.compile(cst.K_MOPTS_INFO + r'\d+')
+    popts_info_re = re.compile(cst.K_POPTS_INFO + r'\d+')
+
+    ts = TicketSystem(cst.MAX_MODS)
+
+    cmd_queue = queue.Queue()
+    cmd_event = threading.Event()
+    cmd_thread = threading.Thread(target=autoauditor_thread,
+                                  args=(cmd_event, cmd_queue, WIN[MN]),
+                                  daemon=True)
+    cmd_thread.start()
+
+    gif = None
+    job_run = False
 
     while True:
-        event, values = window.read()
-        if event is not None and window_ncons_size is None:
-            window_ncons_size = window.size
-        if event is not None \
-           and window and console_cb.enabled \
-           and window_cons_size is None:
-            window_cons_size = window.size
+        window, event, values = sg.read_all_windows()
+        # print(window.Title, event)
 
-        if event in (const.KEY_VPN_CB, const.KEY_VPN_CB_T):
-            switch(window, vpn_cb, vpn_cf_it, vpn_cf_fb,
-                   const.KEY_VPN_CF_T, const.KEY_VPN_CB_T, vpn_cf_i_b)
-
-        if event in (const.KEY_BC_CB, const.KEY_BC_CB_T):
-            switch(window, bc_cb, bc_cf_it, bc_cf_fb, bc_lf_it, bc_lf_fb,
-                   const.KEY_BC_CF_T, const.KEY_BC_LF_T,
-                   const.KEY_BC_CB_T, bc_cf_i_b, bc_lf_i_b)
-
-        if event in (const.KEY_SC_CB, const.KEY_SC_CB_T):
-            switch(window, sc_cb, const.KEY_SC_CB_T, const.KEY_SC_CB_T)
-
-        if event in (const.KEY_START_B, const.KEY_START_T):
-            if not console_cb.enabled:
-                shrink_enlarge_window(window, console, console_cb,
-                                      window_cons_size,
-                                      window_ncons_size)
-            utils.console_log(window, console)
-
-            if vpn_cb.enabled:
-                vpncf = window[const.KEY_INPUT_VPN_CF].Get()
-                if not os.path.isfile(vpncf):
-                    sg.Window('Error', [
-                        [sg.Text("File {}".format(vpncf), font=const.FONT)],
-                        [sg.Text("does not exist.", font=const.FONT)],
-                        [sg.Text(const.NO_TEXT, font=const.FONTPAD)],
-                        [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                               font=const.FONT)]
-                    ], element_justification=const.CENTER,
-                              auto_close=True).read(close=True)
-                else:
-                    vpncont = vpn.setup_vpn(vpncf)
-
-            lf = window[const.KEY_INPUT_LF].Get()
-            ld = window[const.KEY_INPUT_LD].Get()
-
-            errcode = utils.check_file_dir(lf, ld)
-            if errcode is not None:
-                sg.Window('Error', [
-                    [sg.Text("Log file/Log directory", font=const.FONT)],
-                    [sg.Text("does not exist.", font=const.FONT)],
-                    [sg.Text(const.NO_TEXT, font=const.FONTPAD)],
-                    [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                           font=const.FONT)]
-                ], element_justification=const.CENTER,
-                          auto_close=True).read(close=True)
-            else:
-                msfcont = metasploit.start_msfrpcd(ld, ovpn=vpn_cb.enabled)
-
-            msfclient = metasploit.get_msf_connection(
-                const.DEFAULT_MSFRPC_PASSWD)
-
-            rc = window[const.KEY_INPUT_RC].Get()
-            if not os.path.isfile(rc):
-                sg.Window('Error', [
-                    [sg.Text("File {}".format(rc), font=const.FONT)],
-                    [sg.Text("does not exist.", font=const.FONT)],
-                    [sg.Text(const.NO_TEXT, font=const.FONTPAD)],
-                    [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                           font=const.FONT)]
-                ], element_justification=const.CENTER,
-                          auto_close=True).read(close=True)
-            else:
-                metasploit.launch_metasploit(msfclient, rc, lf)
-
-            if bc_cb.enabled:
-                hc = window[const.KEY_INPUT_BC_CF].Get()
-                ho = window[const.KEY_INPUT_BC_LF].Get()
-                if not os.path.isfile(hc):
-                    sg.Window('Error', [
-                        [sg.Text("File {}".format(rc), font=const.FONT)],
-                        [sg.Text("does not exist.", font=const.FONT)],
-                        [sg.Text(const.NO_TEXT, font=const.FONTPAD)],
-                        [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                               font=const.FONT)]
-                    ], element_justification=const.CENTER,
-                              auto_close=True).read(close=True)
-                else:
-                    info = blockchain.load_config(hc)
-                    errcode = utils.check_file_dir(ho)
-                    if errcode is not None:
-                        sg.Window('Error', [
-                            [sg.Text("Blockchain log file", font=const.FONT)],
-                            [sg.Text("does not exist.", font=const.FONT)],
-                            [sg.Text(const.NO_TEXT, font=const.FONTPAD)],
-                            [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                                   font=const.FONT)]
-                        ], element_justification=const.CENTER,
-                                  auto_close=True).read(close=True)
-                    else:
-                        blockchain.store_report(info, lf, ho)
-            if sc_cb.enabled:
-                errcode = utils.shutdown(msfcont, vpncont)
-                if errcode:
-                    sg.Window('Success', [
-                        [sg.Text("AutoAuditor finished successfully.",
-                                 font=const.FONT)],
-                        [sg.OK(font=const.FONT)]
-                    ], element_justification=const.CENTER,
-                              auto_close=True).read(close=True)
-
-        if event in (const.KEY_STOP_B, const.KEY_STOP_T):
-            if not console_cb.enabled:
-                shrink_enlarge_window(window, console, console_cb,
-                                      window_cons_size,
-                                      window_ncons_size)
-            utils.console_log(window, console)
-
-            if vpn_cb.enabled:
-                vpncont = vpn.setup_vpn(
-                    window[const.KEY_INPUT_VPN_CF].Get(), stop=True)
-
-            msfcont = metasploit.start_msfrpcd(
-                window[const.KEY_INPUT_LD].Get(),
-                ovpn=vpn_cb.enabled,
-                stop=True)
-
-            errcode = utils.shutdown(msfcont, vpncont)
-            if errcode:
-                sg.Window('Success', [
-                    [sg.Text("Containers stopped successfully.",
-                             font=const.FONT)],
-                    [sg.OK(font=const.FONT)]
-                ], element_justification=const.CENTER,
-                          auto_close=True).read(close=True)
-
-        if event == const.KEY_LF_I_B:
-            sg.Window(const.TEXT_LF, [
-                [sg.Text(
-                    "Absolute or relative path where output should be logged.",
-                    font=const.FONT)],
-                [sg.Text("By default, output/msf.log will be used:",
-                         font=const.FONT)],
-                [sg.InputText(const.DEFAULT_LF, font=const.FONT, disabled=True,
-                              justification=const.CENTER)],
-                [sg.OK()]
-            ], element_justification=const.CENTER).read(close=True)
-
-        if event == const.KEY_LD_I_B:
-            sg.Window(const.TEXT_LD, [
-                [sg.Text(
-                    ("Absolute or relative path to directory "
-                     "where gathered data should be stored."),
-                    font=const.FONT)],
-                [sg.Text("By default, output will be used:", font=const.FONT)],
-                [sg.InputText(const.DEFAULT_LD, font=const.FONT, disabled=True,
-                              justification=const.CENTER)],
-                [sg.OK()]
-            ], element_justification=const.CENTER).read(close=True)
-
-        if event == const.KEY_RC_I_B:
-            sg.Window(const.TEXT_RC, [
-                [sg.Text(
-                    "Absolute or relative path to resource script file.",
-                    font=const.FONT)],
-                [sg.Text(
-                    "Under config, a template and few examples can be found:",
-                    font=const.FONT)],
-                [sg.InputText(const.DEFAULT_RC, font=const.FONT, disabled=True,
-                              justification=const.CENTER)],
-                [sg.OK()]
-            ], element_justification=const.CENTER).read(close=True)
-
-        if event == const.KEY_VPN_CF_I_B:
-            sg.Window(const.TEXT_VPN_CF, [
-                [sg.Text(
-                    "Absolute or relative path to openvpn configuration file.",
-                    font=const.FONT)],
-                [sg.Text(
-                    "Under config, a template and an example can be found:",
-                    font=const.FONT)],
-                [sg.InputText(const.DEFAULT_VPN_CF, font=const.FONT,
-                              disabled=True, justification=const.CENTER)],
-                [sg.OK()]
-            ], element_justification=const.CENTER).read(close=True)
-
-        if event == const.KEY_BC_CF_I_B:
-            sg.Window(const.TEXT_BC_CF, [
-                [sg.Text(
-                    ("Absolute or relative path to "
-                     "blockchain network configuration."), font=const.FONT)],
-                [sg.Text(
-                    "Under config, a template and an example can be found:",
-                    font=const.FONT)],
-                [sg.InputText(const.DEFAULT_BC_CF, font=const.FONT,
-                              disabled=True, justification=const.CENTER)],
-                [sg.OK()]
-            ], element_justification=const.CENTER).read(close=True)
-
-        if event == const.KEY_BC_LF_I_B:
-            sg.Window(const.TEXT_BC_LF, [
-                [sg.Text(
-                    ("Absolute or relative path to "
-                     "blockchain log file of uploaded reports."),
-                    font=const.FONT)],
-                [sg.Text("By default, output/blockchain.log will be used:",
-                         font=const.FONT)],
-                [sg.InputText(const.DEFAULT_BC_LF, font=const.FONT,
-                              disabled=True, justification=const.CENTER)],
-                [sg.OK()]
-            ], element_justification=const.CENTER).read(close=True)
-
-        if event == sg.WIN_CLOSED:
+        if window == sg.WIN_CLOSED:
+            cmd_event.set()
             break
 
-        if event == const.KEY_CONSOLE_CB:
-            shrink_enlarge_window(window, console, console_cb,
-                                  window_cons_size,
-                                  window_ncons_size)
+        if window in WIN[POP]:
+            window.close()
+            WIN[POP].remove(window)
 
-        if event in (const.KEY_WIZARD_B, const.KEY_WIZARD_T):
-            if not console_cb.enabled:
-                shrink_enlarge_window(window, console, console_cb,
-                                      window_cons_size,
-                                      window_ncons_size)
-            utils.console_log(window, console)
+        if window == WIN[MN]:
+            if event == sg.WIN_CLOSED:
+                close_all_windows()
+                break
+            else:
+                if not window[cst.K_MAIN_LOG_CB].enabled and \
+                   win_out_sz_hidden is None:
+                    win_out_sz_hidden = window.size
 
-            msfcont = metasploit.start_msfrpcd(
-                window[const.KEY_INPUT_LD].Get())
-            msfclient = metasploit.get_msf_connection(
-                const.DEFAULT_MSFRPC_PASSWD)
-            mtype = None
-            mname = None
-            mod = None
+                if window[cst.K_MAIN_LOG_CB].enabled and \
+                   win_out_sz is None:
+                    win_out_sz = window.size
 
-            # mt_i_b = button(const.NO_TEXT, const.KEY_MT_I_B, const.INFO,
-            #                 const.BUTTON_S_SIZE, const.BUTTON_COLOR,
-            #                 const.NO_BORDER, const.TOOLTIP_MT)
-            # mn_i_b = button(const.NO_TEXT, const.KEY_MN_I_B, const.INFO,
-            #                 const.BUTTON_S_SIZE, const.BUTTON_COLOR,
-            #                 const.NO_BORDER, const.TOOLTIP_MN)
+                if event in (cst.K_MAIN_VPN_CB, cst.K_MAIN_VPN_CB_T):
+                    switch(window[cst.K_MAIN_VPN_CB],
+                           window[cst.K_MAIN_IT_VPN_CF],
+                           window[cst.K_MAIN_VPN_CF_FB],
+                           cst.K_MAIN_VPN_CF_T, cst.K_MAIN_VPN_CB_T,
+                           window[cst.K_MAIN_VPN_CFINFO])
 
-            mod_layout = [[sg.Frame(const.NO_TEXT, [[
-                sg.InputText(str(i), size=const.TEXT_DESC_SIZE_L,
-                             pad=const.PAD_NO_TBR,
-                             disabled_readonly_background_color=const.COLOR_T,
-                             readonly=True, border_width=const.NO_BORDER,
-                             font=const.FONT, key=const.KEY_MOD_NAME+str(i)),
-                button(const.NO_TEXT, const.KEY_MOD_EDIT+str(i),
-                       const.EDIT, const.BUTTON_M_SIZE,
-                       const.BUTTON_COLOR, const.NO_BORDER,
-                       const.TOOLTIP_MOD_EDIT, pad=const.PAD_MOD),
-                button(const.NO_TEXT, const.KEY_MOD_REM+str(i),
-                       const.REMOVE, const.BUTTON_M_SIZE,
-                       const.BUTTON_COLOR, const.NO_BORDER,
-                       const.TOOLTIP_MOD_REMOVE),
-                button(const.NO_TEXT, const.KEY_MOD_INFO+str(i),
-                       const.INFO, const.BUTTON_S_SIZE,
-                       const.BUTTON_COLOR, const.NO_BORDER,
-                       const.TOOLTIP_MOD_INFO, pad=const.PAD_MOD)
-            ]], visible=False, pad=const.PAD_NO, border_width=const.NO_BORDER,
-                                    key=const.KEY_MOD_FRAME+str(i),
-                                    element_justification=const.CENTER)]
-                          for i in range(const.MAX_MODULES)]
+                if event in (cst.K_MAIN_BC_CB, cst.K_MAIN_BC_CB_T):
+                    switch(window[cst.K_MAIN_BC_CB],
+                           window[cst.K_MAIN_IT_BC_CF],
+                           window[cst.K_MAIN_BC_CF_FB],
+                           window[cst.K_MAIN_IT_BC_LF],
+                           window[cst.K_MAIN_BC_LF_FB],
+                           cst.K_MAIN_BC_CF_T, cst.K_MAIN_BC_LF_T,
+                           cst.K_MAIN_BC_CB_T,
+                           window[cst.K_MAIN_BC_CFINFO],
+                           window[cst.K_MAIN_BC_LFINFO])
 
-            wizard_layout = [
-                [sg.Text(const.NO_TEXT, font=const.FONT, pad=const.PAD_NO_TB)],
-                [sg.Text(const.TEXT_MODULE_TYPE, font=const.FONTB,
-                         size=const.TEXT_DESC_SIZE),
-                 sg.DropDown(const.MODULE_TYPES, size=const.EXEC_TEXT_SIZE_L,
-                             font=const.FONT, enable_events=True,
-                             key=const.KEY_MODULE_TYPE, readonly=True)],
-                [sg.Text(const.TEXT_MODULE_NAME, font=const.FONTB,
-                         size=const.TEXT_DESC_SIZE),
-                 sg.DropDown(const.NO_TEXT, size=const.EXEC_TEXT_SIZE_L,
-                             font=const.FONT, key=const.KEY_MODULE_NAME,
-                             readonly=True)],
-                [sg.Text(const.NO_TEXT, font=const.FONT, pad=const.PAD_NO)],
-                [sg.Column(mod_layout, size=const.OPT_MOD_COLUMN_SIZE,
-                           element_justification=const.CENTER,
-                           pad=const.PAD_NO, justification=const.CENTER,
-                           scrollable=True, vertical_scroll_only=True,
-                           key=const.KEY_MOD_COL)],
-                [sg.Text(const.NO_TEXT, font=const.FONT, pad=const.PAD_NO)],
-                [button(const.NO_TEXT, const.KEY_MOD_ADD, const.ADD,
-                        const.BUTTON_L_SIZE, const.BUTTON_COLOR,
-                        const.NO_BORDER, const.TOOLTIP_MOD_ADD)],
-                [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                         font=const.FONTPAD)],
-                [sg.Button(const.TEXT_WIZARD_GEN, key=const.KEY_WIZARD_GEN,
-                           font=const.FONT),
-                 sg.Button(const.TEXT_WIZARD_EXIT, key=const.KEY_WIZARD_EXIT,
-                           font=const.FONT)],
-                [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                         font=const.FONTPAD)]
-            ]
-            wwindow = sg.Window('Wizard', wizard_layout,  # Wizard window
-                                element_justification=const.CENTER)
+                if event in (cst.K_MAIN_SC_CB, cst.K_MAIN_SC_CB_T):
+                    switch(window[cst.K_MAIN_SC_CB], cst.K_MAIN_SC_CB_T,
+                           cst.K_MAIN_SC_CB_T)
 
-            edit_regex = re.compile(const.KEY_MOD_EDIT+r'\d+')
-            rem_regex = re.compile(const.KEY_MOD_REM+r'\d+')
-            info_regex = re.compile(const.KEY_MOD_INFO+r'\d+')
-            # (const.MAX_MODULES-1) ... 0
-            mod_idx = list(range(const.MAX_MODULES-1, -1, -1))
-            mod_list = {}
-            while True:
-                wevent, wvalues = wwindow.read()
-                if wevent == const.KEY_MODULE_TYPE:
-                    mtype = wvalues[const.KEY_MODULE_TYPE]
-                    mods = [''] + wizard.get_modules(msfclient, mtype)
-                    wwindow[const.KEY_MODULE_NAME](
+                if event == cst.K_MAIN_LFINFO:
+                    WIN[POP].append(
+                        sg.Window(cst.T_MAIN_LF, [
+                            [sg.Text(
+                                ("Absolute or relative path "
+                                 "where output should be logged."),
+                                font=cst.FONT)],
+                            [sg.Text("Default:",
+                                     font=cst.FONT)],
+                            [sg.InputText(cst.DEF_MAIN_LF, font=cst.FONT,
+                                          disabled=True,
+                                          justification=cst.J_C)],
+                            [sg.OK()]
+                        ], element_justification=cst.J_C, finalize=True))
+
+                if event == cst.K_MAIN_LDINFO:
+                    WIN[POP].append(
+                        sg.Window(cst.T_MAIN_LD, [
+                            [sg.Text(
+                                ("Absolute or relative path to directory "
+                                 "where gathered data should be stored."),
+                                font=cst.FONT)],
+                            [sg.Text("Default:",
+                                     font=cst.FONT)],
+                            [sg.InputText(cst.DEF_MAIN_LD, font=cst.FONT,
+                                          disabled=True,
+                                          justification=cst.J_C)],
+                            [sg.OK()]
+                        ], element_justification=cst.J_C, finalize=True))
+
+                if event == cst.K_MAIN_RCINFO:
+                    WIN[POP].append(
+                        sg.Window(cst.T_MAIN_RC, [
+                            [sg.Text(
+                                ("Absolute or relative path "
+                                 "to resource script file."),
+                                font=cst.FONT)],
+                            [sg.Text(
+                                ("Template and examples in config folder. "
+                                 "Default:"),
+                                font=cst.FONT)],
+                            [sg.InputText(cst.DEF_MAIN_RC, font=cst.FONT,
+                                          disabled=True,
+                                          justification=cst.J_C)],
+                            [sg.OK()]
+                        ], element_justification=cst.J_C, finalize=True))
+
+                if event == cst.K_MAIN_VPN_CFINFO:
+                    WIN[POP].append(
+                        sg.Window(cst.T_MAIN_VPN_CF, [
+                            [sg.Text(
+                                ("Absolute or relative path "
+                                 "to OpenVPN configuration file."),
+                                font=cst.FONT)],
+                            [sg.Text(
+                                ("Template and example in config folder. "
+                                 "Default:"),
+                                font=cst.FONT)],
+                            [sg.InputText(cst.DEF_MAIN_VPN_CF, font=cst.FONT,
+                                          disabled=True,
+                                          justification=cst.J_C)],
+                            [sg.OK()]
+                        ], element_justification=cst.J_C, finalize=True))
+
+                if event == cst.K_MAIN_BC_CFINFO:
+                    WIN[POP].append(
+                        sg.Window(cst.T_MAIN_BC_CF, [
+                            [sg.Text(
+                                ("Absolute or relative path to "
+                                 "blockchain network configuration."),
+                                font=cst.FONT)],
+                            [sg.Text(
+                                ("Template and example in config folder. "
+                                 "Default:"),
+                                font=cst.FONT)],
+                            [sg.InputText(cst.DEF_MAIN_BC_CF, font=cst.FONT,
+                                          disabled=True,
+                                          justification=cst.J_C)],
+                            [sg.OK()]
+                        ], element_justification=cst.J_C, finalize=True))
+
+                if event == cst.K_MAIN_BC_LFINFO:
+                    WIN[POP].append(
+                        sg.Window(cst.T_MAIN_BC_LF, [
+                            [sg.Text(
+                                ("Absolute or relative path to "
+                                 "blockchain log file of uploaded reports."),
+                                font=cst.FONT)],
+                            [sg.Text(("Default:"),
+                                     font=cst.FONT)],
+                            [sg.InputText(cst.DEF_MAIN_BC_LF, font=cst.FONT,
+                                          disabled=True,
+                                          justification=cst.J_C)],
+                            [sg.OK()]
+                        ], element_justification=cst.J_C, finalize=True))
+
+                if event == cst.K_MAIN_LOG_CB:
+                    shrink_enlarge_window(window[cst.K_MAIN_LOG],
+                                          window[cst.K_MAIN_LOG_CB],
+                                          win_out_sz,
+                                          win_out_sz_hidden)
+
+                if event in (cst.K_MAIN_RAA_B, cst.K_MAIN_RAA_T):
+                    if not job_run:
+                        error = False
+                        utils.set_logger(window)
+
+                        lf = window[cst.K_MAIN_IT_LF].Get()
+                        ld = window[cst.K_MAIN_IT_LD].Get()
+
+                        errcode = utils.check_file_dir(lf, ld)
+                        if errcode is not None:
+                            sg.Window('Error', [
+                                [sg.Text((f"Log file/directory path "
+                                          f"cannot be created: {errcode}."),
+                                         font=cst.FONT)],
+                                [sg.Text(font=cst.FONTP)],
+                                [sg.OK(button_color=cst.B_C_ERR,
+                                       font=cst.FONT)]
+                            ], element_justification=cst.J_C,
+                                      auto_close=True, keep_on_top=True
+                                      ).read(close=True)
+                            error = True
+
+                        rc = window[cst.K_MAIN_IT_RC].Get()
+                        if not os.path.isfile(rc):
+                            sg.Window('Error', [
+                                [sg.Text(f"File {rc} does not exist.",
+                                         font=cst.FONT)],
+                                [sg.Text(font=cst.FONTP)],
+                                [sg.OK(button_color=cst.B_C_ERR,
+                                       font=cst.FONT)]
+                            ], element_justification=cst.J_C,
+                                      auto_close=True, keep_on_top=True
+                                      ).read(close=True)
+                            error = True
+
+                        if window[cst.K_MAIN_VPN_CB].enabled:
+                            vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
+                            if not os.path.isfile(vpncf):
+                                sg.Window('Error', [
+                                    [sg.Text(f"File {vpncf} does not exist.",
+                                             font=cst.FONT)],
+                                    [sg.Text(font=cst.FONTP)],
+                                    [sg.OK(button_color=cst.B_C_ERR,
+                                           font=cst.FONT)]
+                                ], element_justification=cst.J_C,
+                                          auto_close=True, keep_on_top=True
+                                          ).read(close=True)
+                                error = True
+
+                        if window[cst.K_MAIN_BC_CB].enabled:
+                            hc = window[cst.K_MAIN_IT_BC_CF].Get()
+                            if not os.path.isfile(hc):
+                                sg.Window('Error', [
+                                    [sg.Text(f"File {hc} does not exist.",
+                                             font=cst.FONT)],
+                                    [sg.Text(font=cst.FONTP)],
+                                    [sg.OK(button_color=cst.B_C_ERR,
+                                           font=cst.FONT)]
+                                ], element_justification=cst.J_C,
+                                          auto_close=True, keep_on_top=True
+                                          ).read(close=True)
+                                error = True
+
+                            ho = window[cst.K_MAIN_IT_BC_LF].Get()
+                            errcode = utils.check_file_dir(ho)
+                            if errcode is not None:
+                                sg.Window('Error', [
+                                    [sg.Text((f"File path {ho} cannot "
+                                              f"be created: {errcode}."),
+                                             font=cst.FONT)],
+                                    [sg.Text(font=cst.FONTP)],
+                                    [sg.OK(button_color=cst.B_C_ERR,
+                                           font=cst.FONT)]
+                                ], element_justification=cst.J_C,
+                                          auto_close=True, keep_on_top=True
+                                          ).read(close=True)
+                                error = True
+
+                        if not error:
+                            if not window[cst.K_MAIN_LOG_CB].enabled:
+                                shrink_enlarge_window(
+                                    window[cst.K_MAIN_LOG],
+                                    window[cst.K_MAIN_LOG_CB],
+                                    win_out_sz,
+                                    win_out_sz_hidden)
+                            if window[cst.K_MAIN_VPN_CB].enabled:
+                                cmd_queue.put(('vpn', (vpncf, False)))
+
+                            cmd_queue.put(('msfstart',
+                                           (ld,
+                                            window[cst.K_MAIN_VPN_CB].enabled,
+                                            False,    # stop
+                                            False)))  # wizard
+                            cmd_queue.put(('msfconn', (cst.DEF_MSFRPC_PWD,)))
+                            cmd_queue.put(('msfrun', (rc, lf)))
+
+                            if window[cst.K_MAIN_BC_CB].enabled:
+                                cmd_queue.put(('hlfloadconfig', (hc,)))
+                                cmd_queue.put(('hlfstore', (lf, ho)))
+
+                            if window[cst.K_MAIN_SC_CB].enabled:
+                                cmd_queue.put(('stop', ()))
+
+                            job_run = True
+
+                if event in (cst.K_MAIN_RBC_B, cst.K_MAIN_RBC_T):
+                    error = False
+                    utils.set_logger(window)
+
+                    lf = window[cst.K_MAIN_IT_LF].Get()
+                    if not os.path.isfile(lf):
+                        sg.Window('Error', [
+                            [sg.Text("Autoauditor log does not exist.",
+                                     font=cst.FONT)],
+                            [sg.Text(font=cst.FONTP)],
+                            [sg.OK(button_color=cst.B_C_ERR,
+                                   font=cst.FONT)]
+                        ], element_justification=cst.J_C,
+                                  auto_close=True, keep_on_top=True
+                                  ).read(close=True)
+                        error = True
+
+                    if not window[cst.K_MAIN_BC_CB].enabled:
+                        sg.Window('Error', [
+                            [sg.Text("Blockchain must be enabled.",
+                                     font=cst.FONT)],
+                            [sg.Text(font=cst.FONTP)],
+                            [sg.OK(button_color=cst.B_C_ERR,
+                                   font=cst.FONT)]
+                            ], element_justification=cst.J_C,
+                                  auto_close=True, keep_on_top=True
+                                  ).read(close=True)
+                        error = True
+                    else:
+                        hc = window[cst.K_MAIN_IT_BC_CF].Get()
+                        if not os.path.isfile(hc):
+                            sg.Window('Error', [
+                                [sg.Text(f"File {hc} does not exist.",
+                                         font=cst.FONT)],
+                                [sg.Text(font=cst.FONTP)],
+                                [sg.OK(button_color=cst.B_C_ERR,
+                                       font=cst.FONT)]
+                            ], element_justification=cst.J_C,
+                                      auto_close=True, keep_on_top=True
+                                      ).read(close=True)
+                            error = True
+
+                        ho = window[cst.K_MAIN_IT_BC_LF].Get()
+                        errcode = utils.check_file_dir(ho)
+                        if errcode is not None:
+                            sg.Window('Error', [
+                                [sg.Text((f"File path {ho} cannot "
+                                          f"be created: {errcode}."),
+                                         font=cst.FONT)],
+                                [sg.Text(font=cst.FONTP)],
+                                [sg.OK(button_color=cst.B_C_ERR,
+                                       font=cst.FONT)]
+                            ], element_justification=cst.J_C,
+                                      auto_close=True, keep_on_top=True
+                                      ).read(close=True)
+                            error = True
+
+                    if not error:
+                        if not window[cst.K_MAIN_LOG_CB].enabled:
+                            shrink_enlarge_window(
+                                window[cst.K_MAIN_LOG],
+                                window[cst.K_MAIN_LOG_CB],
+                                win_out_sz,
+                                win_out_sz_hidden)
+                        cmd_queue.put(('hlfloadconfig', (hc,)))
+                        cmd_queue.put(('hlfstore', (lf, ho)))
+
+                if event in (cst.K_MAIN_WIZ_B, cst.K_MAIN_WIZ_T):
+                    if WIN[WZ] is None and not job_run:
+                        if not window[cst.K_MAIN_LOG_CB].enabled:
+                            shrink_enlarge_window(window[cst.K_MAIN_LOG],
+                                                  window[cst.K_MAIN_LOG_CB],
+                                                  win_out_sz,
+                                                  win_out_sz_hidden)
+                        utils.set_logger(window)
+
+                        lf = window[cst.K_MAIN_IT_LF].Get()
+                        ld = window[cst.K_MAIN_IT_LD].Get()
+
+                        errcode = utils.check_file_dir(lf, ld)
+                        if errcode is not None:
+                            sg.Window('Error', [
+                                [sg.Text("Log file/Log directory",
+                                         font=cst.FONT)],
+                                [sg.Text("creation permission error.",
+                                         font=cst.FONT)],
+                                [sg.Text(font=cst.FONTP)],
+                                [sg.OK(button_color=cst.B_C_ERR,
+                                       font=cst.FONT)]
+                            ], element_justification=cst.J_C,
+                                      auto_close=True, keep_on_top=True
+                                      ).read(close=True)
+
+                        cmd_queue.put(('msfstart', (ld,
+                                                    False,   # ovpn
+                                                    False,   # stop
+                                                    True)))  # wizard
+                        cmd_queue.put(('msfconn', (cst.DEF_MSFRPC_PWD,)))
+                        job_run = True
+
+                if event in (cst.K_MAIN_STP_B, cst.K_MAIN_STP_T):
+                    if not window[cst.K_MAIN_LOG_CB].enabled:
+                        shrink_enlarge_window(window[cst.K_MAIN_LOG],
+                                              window[cst.K_MAIN_LOG_CB],
+                                              win_out_sz,
+                                              win_out_sz_hidden)
+                    utils.set_logger(window)
+
+                    if window[cst.K_MAIN_VPN_CB].enabled:
+                        vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
+                        cmd_queue.put(('vpn', (vpncf, True)))
+
+                    ld = window[cst.K_MAIN_IT_LD].Get()
+                    cmd_queue.put(('msfstart',
+                                   (ld,
+                                    window[cst.K_MAIN_VPN_CB].enabled,
+                                    True,     # stop
+                                    False)))  # wizard
+
+                    cmd_queue.put(('stop', ()))
+                    close_all_windows(stop=True)
+
+                if event == 'LOG':
+                    window[cst.K_MAIN_LOG].print(values[event])
+
+                if event == 'GIF':
+                    if gif is None:
+                        gif = LoadingGif(starting_gif=values[event])
+                    gif.update()
+
+                if event == 'GIFSTOP':
+                    if gif is not None:
+                        gif.stop()
+                    gif = None
+
+                if event == 'START':
+                    msfcl, is_wizard, stop = values[event]
+                    if msfcl is not None:
+                        if is_wizard:
+                            wizard_window()
+                    else:
+                        if not stop:
+                            sg.Window('Error', [
+                                [sg.Text("Containers could not be started",
+                                         font=cst.FONT)],
+                                [sg.OK(font=cst.FONT,
+                                       button_color=cst.B_C_ERR)]
+                            ], element_justification=cst.J_C,
+                                      auto_close=True, keep_on_top=True
+                                      ).read(close=True)
+
+                if event == 'STOP':
+                    if values[event] == cst.NOERROR:
+                        sg.Window('Success', [
+                            [sg.Text("AutoAuditor finished successfully.",
+                                     font=cst.FONT)],
+                            [sg.OK(font=cst.FONT)]
+                        ], element_justification=cst.J_C,
+                                  auto_close=True, auto_close_duration=1,
+                                  keep_on_top=True).read(close=True)
+                    else:
+                        sg.Window('Error', [
+                            [sg.Text((f"AutoAuditor finished with error: "
+                                      f"{values[event]}"),
+                                     font=cst.FONT)],
+                            [sg.OK(font=cst.FONT,
+                                   button_color=cst.B_C_ERR)]
+                        ], element_justification=cst.J_C,
+                                  keep_on_top=True).read(close=True)
+                    job_run = False
+
+                if event == 'CONNECT':
+                    if values[event] != cst.NOERROR:
+                        sg.Window('Error', [
+                            [sg.Text((f"Error establishing connection "
+                                      f"with metasploit container: "
+                                      f"{values[event]}"),
+                                     font=cst.FONT,
+                                     button_color=cst.B_C_ERR)],
+                            [sg.OK(font=cst.FONT)]
+                        ], element_justification=cst.J_C,
+                                  auto_close=True, keep_on_top=True
+                                  ).read(close=True)
+
+        if window == WIN[WZ]:
+            if event == sg.WIN_CLOSED:
+                window.close()
+                WIN[WZ] = None
+                job_run = False
+            else:
+                if event == cst.K_WIZ_MODT:
+                    mtype = values[cst.K_WIZ_MODT]
+                    if shared_msfcl is not None:
+                        mods = [''] + wizard.get_modules(shared_msfcl, mtype)
+                    else:
+                        mods = ['Error loading list. '
+                                'Wait until metasploit container starts.']
+                    window[cst.K_WIZ_MODN](
                         values=mods)
-                    wwindow[const.KEY_MODULE_NAME](
+                    window[cst.K_WIZ_MODN](
                         value='')
 
-                if wevent == const.KEY_MOD_ADD:
-                    mname = wvalues[const.KEY_MODULE_NAME]
+                if event == cst.K_WIZ_MADD:
+                    mname = values[cst.K_WIZ_MODN]
                     if mtype and mname:
-                        if mod_idx:
-                            added = opt_window(
-                                msfclient, wwindow, mod_list, mtype, mname,
-                                mod_idx[-1])
-                            if added:
-                                mod_idx.remove(mod_idx[-1])
-                        else:
+                        if mname.startswith('Error'):
                             sg.Window('Error', [
-                                [sg.Text("Maximum modules allowed ({})."
-                                         .format(const.MAX_MODULES),
-                                         font=const.FONT)],
-                                [sg.Text(
-                                    ("Limit can be changed in "
-                                     "utils.py:const.MAX_MODULES"),
-                                    font=const.FONT)],
-                                [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                                       font=const.FONT)]
-                            ], element_justification=const.CENTER,
-                                      auto_close=True).read(close=True)
+                                    [sg.Text(("Choose module type again "
+                                              "to reload module names list."),
+                                             font=cst.FONT)],
+                                    [sg.OK(button_color=cst.B_C_ERR,
+                                           font=cst.FONT)]
+                                ], element_justification=cst.J_C,
+                                          auto_close=True, keep_on_top=True
+                                      ).read(close=True)
+                        else:
+                            if ts.available_ticket():
+                                ticket = ts.get_ticket()
+                                tmp_mod = Module(shared_msfcl,
+                                                 mtype, mname, ticket)
+                                tmp_modules[ticket] = tmp_mod
+
+                                mopts_window(tmp_mod)
+                            else:
+                                sg.Window('Error', [
+                                    [sg.Text((f"Maximum modules allowed "
+                                              f"({cst.MAX_MODS})."),
+                                             font=cst.FONT)],
+                                    [sg.Text(
+                                        ("Limit can be changed in "
+                                         "utils.py:cst.MAX_MODS"),
+                                        font=cst.FONT)],
+                                    [sg.OK(button_color=cst.B_C_ERR,
+                                           font=cst.FONT)]
+                                ], element_justification=cst.J_C,
+                                          auto_close=True, keep_on_top=True
+                                          ).read(close=True)
                     else:
                         sg.Window('Error', [
                             [sg.Text(
-                                "Module type or module name not selected.",
-                                font=const.FONT)],
+                                "Module type/name not selected.",
+                                font=cst.FONT)],
                             [sg.Text(
                                 ("Choose a module type and module name "
-                                 "from the dropdown."), font=const.FONT)],
-                            [sg.OK(button_color=const.BUTTON_COLOR_ERR,
-                                   font=const.FONT)]
-                        ], element_justification=const.CENTER,
-                                  auto_close=True).read(close=True)
+                                 "from dropdown list."), font=cst.FONT)],
+                            [sg.OK(button_color=cst.B_C_ERR,
+                                   font=cst.FONT)]
+                        ], element_justification=cst.J_C,
+                                  auto_close=True, keep_on_top=True
+                                  ).read(close=True)
 
-                if wevent is not None and edit_regex.match(wevent):
-                    aux_mod_idx = int(wevent.split("_")[2])  # module_name_xxx
-                    aux_mt, aux_mn = wwindow[const.KEY_MOD_NAME +
-                                             str(aux_mod_idx)].Get(
-                                             ).split(': ')
-                    opt_window(
-                        msfclient, wwindow, mod_list, aux_mt, aux_mn,
-                        aux_mod_idx, edit=True)
+                if event == 'MOD_NEW':
+                    ticket, modstate = values[event]
+                    if ticket not in tmp_modules and ticket not in modules:
+                        sg.Window('Error', [
+                            [sg.Text(
+                                "Error processing module. Try again.",
+                                font=cst.FONT)],
+                            [sg.OK(button_color=cst.B_C_ERR,
+                                   font=cst.FONT)]
+                        ], element_justification=cst.J_C,
+                                  auto_close=True, keep_on_top=True
+                                  ).read(close=True)
+                    elif ticket in tmp_modules:
+                        modules[ticket] = tmp_modules[ticket]
+                        del tmp_modules[ticket]
 
-                if wevent is not None and rem_regex.match(wevent):
-                    aux_mod_idx = int(wevent.split("_")[2])  # module_rem_xxx
-                    aux_mt, aux_mn = wwindow[const.KEY_MOD_NAME +
-                                             str(aux_mod_idx)].Get(
-                                             ).split(': ')
-                    wwindow[const.KEY_MOD_FRAME +
-                            str(aux_mod_idx)](visible=False)
+                if wiz_medit_re.match(event):
+                    ticket = int(event.split("_")[2])  # kwiz_mname_xxx
+                    if ticket in WIN[MO]:
+                        sg.Window('Error', [
+                            [sg.Text("Payload window already open.",
+                                     font=cst.FONT)],
+                            [sg.Text(font=cst.FONTP)],
+                            [sg.OK(button_color=cst.B_C_ERR,
+                                   font=cst.FONT)]
+                        ], element_justification=cst.J_C
+                                  ).read(close=True)
+                    else:
+                        mopts_window(modules[ticket], edit=True)
+                if wiz_mrem_re.match(event):
+                    ticket = int(event.split("_")[2])  # kwiz_mrem_xxx
+                    window[f"{cst.K_WIZ_MFRAME}{ticket}"](visible=False)
                     # workaround to hide row after removal
-                    wwindow[const.KEY_MOD_FRAME +
-                            str(aux_mod_idx)
-                            ].ParentRowFrame.config(width=0, height=1)
-                    del mod_list[aux_mt][aux_mn][aux_mod_idx]
-                    mod_idx.insert(0, aux_mod_idx)  # reuse removed item
+                    window[f"{cst.K_WIZ_MFRAME}{ticket}"
+                           ].ParentRowFrame.config(width=0, height=1)
+                    rm_cancel_mod(ticket, remove=True)
                     # Update column scrollbar
-                    wwindow.visibility_changed()
-                    wwindow[const.KEY_MOD_COL].contents_changed()
+                    window.visibility_changed()
+                    window[cst.K_WIZ_MCOL].contents_changed()
 
-                if wevent is not None and info_regex.match(wevent):
-                    aux_mod_idx = int(wevent.split("_")[2])  # module_info_xxx
-                    aux_mt, aux_mn = wwindow[const.KEY_MOD_NAME +
-                                             str(aux_mod_idx)].Get(
-                                             ).split(': ')
-                    mod = wizard.get_module(msfclient, aux_mt, aux_mn)
-                    mod_info = wizard.get_module_info(mod)
-                    mod_info_layout = [
-                        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                                 font=const.FONTPAD)],
-                        [sg.Text("/".join([aux_mt, aux_mn]),
-                                 font=const.FONTB)],
-                        [sg.Text(const.NO_TEXT, pad=const.PAD_NO_TB,
-                                 font=const.FONTPAD)]
+                if wiz_minfo_re.match(event):
+                    ticket = int(event.split("_")[2])  # kwiz_minfo_xxx
+                    mod = get_module(ticket, 'edit')
+                    oinfo = mod.info()
+                    minfo_lay = [
+                        [sg.Text(pad=cst.N_P_TB,
+                                 font=cst.FONTP)],
+                        [sg.Text(f"{mod.mtype()}/{mod.mname()}",
+                                 font=cst.FONTB)],
+                        [sg.Text(pad=cst.N_P_TB,
+                                 font=cst.FONTP)]
                     ] + [
-                        [sg.Frame(const.NO_TEXT,
-                                  [[sg.Text(el, font=const.FONTB,
-                                            size=const.EXEC_TEXT_SIZE_XS),
-                                    sg.Text(
-                                        TextWrapper(width=const.WRAP_TEXT_SIZE)
-                                        .fill(str(mod_info[el])),
-                                        font=const.FONT)]
-                                   for el in mod_info],
-                                  border_width=const.NO_BORDER)]
-                    ] + [[sg.OK(font=const.FONT)]]
+                        [sg.Frame(cst.N_T, [
+                            [sg.Text(el, font=cst.FONTB,
+                                     size=cst.EXEC_T_SZ_XS),
+                             sg.Text(
+                                 TextWrapper(width=cst.WRAP_T_SZ)
+                                 .fill(str(oinfo[el])),
+                                 font=cst.FONT)
+                             ] for el in oinfo],
+                                  border_width=cst.N_WDTH)]
+                    ] + [[sg.OK(font=cst.FONT)]]
 
-                    sg.Window(const.TEXT_PAYLOAD_INFO, mod_info_layout,
-                              element_justification=const.CENTER
-                              ).read(close=True)
+                    WIN[POP].append(
+                        sg.Window(cst.T_WIZ_MINFO_TIT, minfo_lay,
+                                  element_justification=cst.J_C,
+                                  finalize=True))
 
-                if wevent in (const.KEY_WIZARD_EXIT, sg.WIN_CLOSED):
-                    # while True:
-                    #     sg.popup_animated(const.LOADING, no_titlebar=False,
-                    #                       background_color='white',
-                    #                       time_between_frames=80)
-                    errcode = utils.shutdown(msfcont)
-                    if errcode:
-                        sg.Window('Success', [
-                            [sg.Text("Wizard finished successfully.",
-                                     font=const.FONT)],
-                            [sg.OK(font=const.FONT)]
-                        ], element_justification=const.CENTER,
-                                  auto_close=True).read(close=True)
-                    break
+                if event == cst.K_WIZ_EXIT:
+                    cmd_queue.put(('stop', ()))
+                    window.close()
+                    WIN[WZ] = None
+                    job_run = False
 
-                if wevent == const.KEY_WIZARD_GEN:
-                    ev, val = sg.Window("Warning", [
-                        [sg.Text("Are you sure you want to",
-                                 justification=const.CENTER, font=const.FONT,
-                                 pad=const.PAD_NO_R),
-                         sg.Text(
-                            "overwrite", justification=const.CENTER,
-                             font=const.FONTB, pad=const.PAD_NO_L)],
-                        [sg.Text("{}?"
-                                 .format(window[const.KEY_INPUT_RC].Get()),
-                                 justification=const.CENTER, font=const.FONT)],
-                        [sg.Text(const.NO_TEXT, justification=const.CENTER,
-                                 font=const.FONTPAD)],
-                        [sg.Yes(font=const.FONT,
-                                button_color=const.BUTTON_COLOR_ERR),
-                         sg.No(font=const.FONT)]
-                    ], element_justification=const.CENTER).read(close=True)
-                    if ev == 'Yes':
-                        mod_list_ax = {}
-                        for mlt in mod_list:
-                            mod_list_ax = deepcopy(mod_list)
-                            for mln in mod_list_ax[mlt]:
-                                mod_list_ax[mlt][mln] = list(
-                                    mod_list_ax[mlt][mln].values())
-                        aux_rc = window[const.KEY_INPUT_RC].Get()
-                        with open(aux_rc, 'w') as f:
-                            json.dump(mod_list_ax, f, indent=2)
+                if event == cst.K_WIZ_GEN:
+                    ev, _ = sg.Window("Warning", [
+                        [sg.Text((f"You are overwriting "
+                                  f"{WIN[MN][cst.K_MAIN_IT_RC].Get()}."),
+                                 justification=cst.J_C,
+                                 font=cst.FONT, pad=cst.N_P_R)],
+                        [sg.Text("Do you want to continue?",
+                                 justification=cst.J_C,
+                                 font=cst.FONTB, pad=cst.N_P_L)],
+                        [sg.Text(justification=cst.J_C,
+                                 font=cst.FONTP)],
+                        [sg.Ok(font=cst.FONT,
+                               button_color=cst.B_C_ERR),
+                         sg.Cancel(font=cst.FONT)]
+                    ], element_justification=cst.J_C).read(close=True)
+                    if ev == 'Ok':
+                        rc_dict = dump_modules(modules)
+                        rc_out = WIN[MN][cst.K_MAIN_IT_RC].Get()
+                        with open(rc_out, 'w') as f:
+                            json.dump(rc_dict, f, indent=2)
                         utils.log(
                             'succg',
-                            "Resource script correctly generated in {}"
-                            .format(aux_rc))
+                            f"Resources script generated in {rc_out}")
                         sg.Window('Success', [
-                            [sg.Text("Resource script correctly generated in",
-                                     font=const.FONT)],
-                            [sg.Text("{}".format(aux_rc),
-                                     font=const.FONT)],
-                            [sg.OK(font=const.FONT)]
-                        ], element_justification=const.CENTER,
-                                  auto_close=True).read(close=True)
-                        sev, sval = sg.Window("Shutdown", [
-                            [sg.Text("Shutdown wizard container?",
-                                     justification=const.CENTER,
-                                     font=const.FONT, pad=const.PAD_NO_R)],
-                            [sg.Text(const.NO_TEXT, justification=const.CENTER,
-                                     font=const.FONTPAD)],
-                            [sg.Yes(font=const.FONT,
-                                    button_color=const.BUTTON_COLOR_ERR),
-                             sg.No(font=const.FONT)]
-                        ], element_justification=const.CENTER).read(close=True)
-                        if sev == 'Yes':
-                            errcode = utils.shutdown(msfcont)
-                            if errcode:
-                                sg.Window('Success', [
-                                    [sg.Text(
-                                        "AutoAuditor finished successfully.",
-                                        font=const.FONT)],
-                                    [sg.OK(font=const.FONT)]
-                                ], element_justification=const.CENTER,
-                                          auto_close=True).read(close=True)
-                        break
-            wwindow.close()
-    window.close()
+                            [sg.Text(
+                                "Resources script generated in",
+                                font=cst.FONT)],
+                            [sg.Text(f"{rc_out}",
+                                     font=cst.FONT)],
+                            [sg.OK(font=cst.FONT)]
+                        ], element_justification=cst.J_C,
+                                  auto_close=True, keep_on_top=True
+                                  ).read(close=True)
+                        sev, _ = sg.Window("Shutdown", [
+                            [sg.Text("Close wizard and shutdown containers?",
+                                     justification=cst.J_C,
+                                     font=cst.FONT, pad=cst.N_P_R)],
+                            [sg.Text(cst.N_T,
+                                     justification=cst.J_C,
+                                     font=cst.FONTP)],
+                            [sg.Ok(font=cst.FONT,
+                                   button_color=cst.B_C_ERR),
+                             sg.Cancel(font=cst.FONT)]
+                        ], element_justification=cst.J_C).read(
+                            close=True)
+                        if sev == 'Ok':
+                            cmd_queue.put(('stop', ()))
+                            close_all_windows(stop=True)
+
+        if window in WIN[MO].values():
+            ax = window[cst.K_MOPTS_ID].Get().split(':')
+            ticket, modstate = int(ax[0]), ax[1]
+
+            if event in (sg.WIN_CLOSED, cst.K_MOPTS_CNCL):
+                window.close()
+                del WIN[MO][ticket]
+                if modstate == 'new':
+                    rm_cancel_mod(ticket)
+            else:
+                module = get_module(ticket, modstate)
+                if module is not None:
+                    if mopts_info_re.match(event):
+                        idx = int(event.split('_')[2])  # kmopts_info_xxx
+                        opt = window[cst.K_MOPTS+str(idx)].Get()
+                        oinfo = module.opt_info(opt)
+                        oinfo_lay = [
+                            [sg.Text(pad=cst.N_P_TB,
+                                     font=cst.FONTP)],
+                            [sg.Text(opt, font=cst.FONTB)],
+                            [sg.Text(pad=cst.N_P_TB, font=cst.FONTP)]
+                        ] + [
+                            [sg.Frame(cst.N_T, [
+                                [sg.Text(el, font=cst.FONTB,
+                                         size=cst.EXEC_T_SZ_XS),
+                                 sg.Text(oinfo[el],
+                                         font=cst.FONT)
+                                 ] for el in oinfo],
+                                      border_width=cst.N_WDTH)]
+                        ] + [[sg.OK(font=cst.FONT)]]
+
+                        WIN[POP].append(
+                            sg.Window(cst.T_MOPTS_HINFO, oinfo_lay,
+                                      element_justification=cst.J_C,
+                                      finalize=True))
+
+                    if event == cst.K_MOPTS_PADD:
+                        if not window[cst.K_MOPTS_PDD].Get():
+                            sg.Window('Error', [
+                                [sg.Text(
+                                    "Payload not selected.", font=cst.FONT)],
+                                [sg.Text(
+                                    "Choose payload from dropdown list.",
+                                    font=cst.FONT)],
+                                [sg.OK(button_color=cst.B_C_ERR,
+                                       font=cst.FONT)]
+                            ], element_justification=cst.J_C
+                                      ).read(close=True)
+                        else:
+                            if ticket in WIN[PO]:
+                                sg.Window('Error', [
+                                    [sg.Text("Payload window already open.",
+                                             font=cst.FONT)],
+                                    [sg.Text(font=cst.FONTP)],
+                                    [sg.OK(button_color=cst.B_C_ERR,
+                                           font=cst.FONT)]
+                                ], element_justification=cst.J_C
+                                          ).read(close=True)
+                            else:
+                                popts_window(module,
+                                             modstate,
+                                             window[cst.K_MOPTS_PDD].Get())
+
+                    if event == cst.K_MOPTS_PEDIT:
+                        if ticket in WIN[PO]:
+                            sg.Window('Error', [
+                                [sg.Text("Payload window already open.",
+                                         font=cst.FONT)],
+                                [sg.Text(font=cst.FONTP)],
+                                [sg.OK(button_color=cst.B_C_ERR,
+                                       font=cst.FONT)]
+                            ], element_justification=cst.J_C
+                                      ).read(close=True)
+                        else:
+                            popts_window(module, modstate)
+
+                    if event == cst.K_MOPTS_PREM:
+                        del module.payload
+                        window[cst.K_MOPTS_PDD](disabled=False)
+                        window[cst.K_MOPTS_PDD](value='')
+                        window[cst.K_MOPTS_PADD](disabled=False)
+                        window[cst.K_MOPTS_PEDIT](disabled=True)
+                        window[cst.K_MOPTS_PREM](disabled=True)
+
+                    if event == cst.K_MOPTS_PINFO:
+                        if window[cst.K_MOPTS_PDD].Get():
+                            tmp_pname = window[cst.K_MOPTS_PDD].Get()
+                            tmp_pay = wizard.get_payload(
+                                shared_msfcl, tmp_pname)
+                            tmp_pinfo = wizard.get_module_info(tmp_pay)
+                            tmp_pinfo_lay = [
+                                [sg.Text(pad=cst.N_P_TB,
+                                         font=cst.FONTP)],
+                                [sg.Text(tmp_pname, font=cst.FONTB)],
+                                [sg.Text(pad=cst.N_P_TB,
+                                         font=cst.FONTP)]
+                            ] + [
+                                [sg.Frame(cst.N_T, [
+                                    [sg.Text(el, font=cst.FONTB,
+                                             size=cst.EXEC_T_SZ_XS),
+                                     sg.Text(
+                                         TextWrapper(width=cst.WRAP_T_SZ)
+                                         .fill(str(tmp_pinfo[el])),
+                                         font=cst.FONT)]
+                                    for el in tmp_pinfo],
+                                          border_width=cst.N_WDTH)]
+                            ] + [[sg.OK(font=cst.FONT)]]
+
+                            WIN[POP].append(
+                                sg.Window(cst.T_MOPTS_PINFO_TIT,
+                                          tmp_pinfo_lay,
+                                          element_justification=cst.J_C,
+                                          finalize=True)
+                            )
+
+                    if event == cst.K_MOPTS_ACPT:
+                        ax_opts, _ = module.options()
+
+                        tmp_opts = {}
+                        for idx, opt in enumerate(ax_opts):
+                            opt_val = utils.correct_type(
+                                window[f"{cst.K_MOPTS_VAL}{idx}"].Get(),
+                                module.opt_info(
+                                    window[f"{cst.K_MOPTS}{idx}"].Get())
+                            )
+                            if ax_opts[opt] != opt_val:
+                                tmp_opts[opt] = opt_val
+
+                        invalid = []
+                        missing = []
+                        for opt in tmp_opts:
+                            if isinstance(tmp_opts[opt], str):
+                                if tmp_opts[opt].startswith('Invalid'):
+                                    invalid.append(
+                                        (opt, tmp_opts[opt].split('. ')[1]))
+                                elif tmp_opts[opt].startswith('Missing'):
+                                    missing.append(opt)
+                        if invalid or missing:
+                            invmis_lay = []
+                            if invalid:
+                                invmis_lay.extend([
+                                    [sg.Text("Invalid value in options:",
+                                             font=cst.FONT)],
+                                    [sg.Text(f"{invalid}",
+                                             font=cst.FONT)]])
+                            if invalid and missing:
+                                invmis_lay.extend([
+                                    [sg.Text(font=cst.FONTP)]])
+                            if missing:
+                                invmis_lay.extend([
+                                    [sg.Text("Missing value in options:",
+                                             font=cst.FONT)],
+                                    [sg.Text(f"{missing}",
+                                             font=cst.FONT)]])
+                            invmis_lay.extend([
+                                [sg.Text(font=cst.FONTP)],
+                                [sg.OK(button_color=cst.B_C_ERR,
+                                       font=cst.FONT)]])
+                            sg.Window('Error', invmis_lay,
+                                      element_justification=cst.J_C,
+                                      keep_on_top=True).read(close=True)
+                        else:
+                            cur_opts = module.mopts()
+
+                            for opt in tmp_opts:
+                                cur_opts[opt] = tmp_opts[opt]
+
+                            WIN[WZ][cst.K_WIZ_MNAME+str(ticket)](
+                                value=f"{module.mtype()}: {module.mname()}")
+                            WIN[WZ][cst.K_WIZ_MFRAME+str(ticket)](
+                                visible=True)
+                            # Update column scrollbar
+                            WIN[WZ].visibility_changed()
+                            WIN[WZ][cst.K_WIZ_MCOL].contents_changed()
+                            WIN[WZ][cst.K_WIZ_MCOL].Widget.canvas.yview_moveto(
+                                999)  # set scrollbar to last element
+                            WIN[WZ].write_event_value('MOD_NEW',
+                                                      (ticket, modstate))
+                            window.close()
+                            del WIN[MO][ticket]
+                else:
+                    sg.Window('Error', [
+                        [sg.Text(
+                            "Error processing module. Add module again.",
+                            font=cst.FONT)],
+                        [sg.OK(button_color=cst.B_C_ERR,
+                               font=cst.FONT)]
+                    ], element_justification=cst.J_C,
+                              auto_close=True).read(close=True)
+                    window.close()
+                    del WIN[MO][ticket]
+                    if ticket in WIN[PO]:
+                        WIN[PO][ticket].close()
+                        del WIN[PO][ticket]
+
+        if window in WIN[PO].values():
+            ax = window[cst.K_POPTS_ID].Get().split(':')
+            ticket, modstate, paystate = int(ax[0]), ax[1], ax[2]
+            module = get_module(ticket, modstate)
+
+            if module is not None:
+                if event in (sg.WIN_CLOSED, cst.K_POPTS_CNCL):
+                    window.close()
+                    del WIN[PO][ticket]
+                    if paystate == 'new':
+                        del module.payload
+                else:
+                    if popts_info_re.match(event):
+                        idx = int(event.split('_')[2])  # kpopts_info_xxx
+                        popt = window[cst.K_POPTS+str(idx)].Get()
+                        pinfo = module.payload.opt_info(popt)
+                        pinfo_lay = [
+                            [sg.Text(pad=cst.N_P_TB,
+                                     font=cst.FONTP)],
+                            [sg.Text(popt, font=cst.FONTB)],
+                            [sg.Text(pad=cst.N_P_TB,
+                                     font=cst.FONTP)]
+                        ] + [[sg.Frame(cst.N_T,
+                                       [[sg.Text(el,
+                                                 font=cst.FONTB,
+                                                 size=cst.EXEC_T_SZ_S),
+                                         sg.Text(pinfo[el],
+                                                 font=cst.FONT)]
+                                        for el in pinfo],
+                                       border_width=cst.N_WDTH)]
+                             ] + [[sg.OK(font=cst.FONT)]]
+
+                        WIN[POP].append(
+                            sg.Window(cst.T_POPTS_INFO_TIT, pinfo_lay,
+                                      element_justification=cst.J_C,
+                                      finalize=True))
+
+                    if event == cst.K_POPTS_ACPT:
+                        ax_popts, _ = module.payload.options()
+                        tmp_popts = {}
+                        for idx, popt in enumerate(ax_popts):
+                            popt_val = utils.correct_type(
+                                    window[cst.K_POPTS_VAL+str(idx)].Get(),
+                                    module.payload.opt_info(
+                                        window[cst.K_POPTS+str(idx)].Get()))
+                            if ax_popts[popt] != popt_val:
+                                tmp_popts[popt] = popt_val
+
+                        invalid = []
+                        missing = []
+                        for popt in tmp_popts:
+                            if isinstance(tmp_popts[popt], str):
+                                if tmp_popts[popt].startswith('Invalid'):
+                                    invalid.append(popt)
+                                elif tmp_popts[popt].startswith('Missing'):
+                                    missing.append(popt)
+                        if invalid or missing:
+                            invmis_lay = []
+                            if invalid:
+                                invmis_lay.extend([
+                                    [sg.Text("Invalid value in options:",
+                                             font=cst.FONT)],
+                                    [sg.Text(f"{invalid}",
+                                             font=cst.FONT)]])
+                            if invalid and missing:
+                                invmis_lay.extend([
+                                    [sg.Text(font=cst.FONTP)]])
+                            if missing:
+                                invmis_lay.extend([
+                                    [sg.Text("Missing value in options:",
+                                             font=cst.FONT)],
+                                    [sg.Text(f"{missing}",
+                                             font=cst.FONT)]])
+                            invmis_lay.extend([
+                                [sg.Text(font=cst.FONTP)],
+                                [sg.OK(button_color=cst.B_C_ERR,
+                                       font=cst.FONT)]])
+                            sg.Window('Error', invmis_lay,
+                                      element_justification=cst.J_C,
+                                      keep_on_top=True).read(close=True)
+                        else:
+                            cur_popts = module.payload.mopts()
+                            for popt in tmp_popts:
+                                cur_popts[popt] = tmp_popts[popt]
+
+                            WIN[MO][ticket][cst.K_MOPTS_PDD](disabled=True)
+                            WIN[MO][ticket][cst.K_MOPTS_PADD](disabled=True)
+                            WIN[MO][ticket][cst.K_MOPTS_PEDIT](disabled=False)
+                            WIN[MO][ticket][cst.K_MOPTS_PREM](disabled=False)
+                            window.close()
+                            del WIN[PO][ticket]
+            else:
+                sg.Window('Error', [
+                    [sg.Text(
+                        "Error processing module. Add module again.",
+                        font=cst.FONT)],
+                    [sg.OK(button_color=cst.B_C_ERR,
+                           font=cst.FONT)]
+                ], element_justification=cst.J_C,
+                          auto_close=True).read(close=True)
+                window.close()
+                del WIN[PO][ticket]
+                if ticket in WIN[MO]:
+                    WIN[MO][ticket].close()
+                    del WIN[MO][ticket]
 
 
 if __name__ == "__main__":

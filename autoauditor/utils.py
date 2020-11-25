@@ -19,8 +19,8 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 from distutils.util import strtobool
-from ipaddress import IPv4Address, AddressValueError
-import constants as const
+import ipaddress
+import constants as cst
 import sys
 import pwd
 import grp
@@ -35,7 +35,6 @@ _GREEN = '\033[92m'
 _CLEANC = '\033[0m'
 _NC = ''
 
-CONSOLE = None
 WINDOW = None
 
 
@@ -44,34 +43,33 @@ def disable_ansi_colors():
     _GREEN = _BLUE = _YELLOW = _RED = _CLEANC = _NC
 
 
-def console_log(window, console):
-    global CONSOLE, WINDOW
-    CONSOLE = console
-    WINDOW = window
-    disable_ansi_colors()
+def set_logger(window):
+    global WINDOW
+    if WINDOW is None:
+        WINDOW = window
+        disable_ansi_colors()
 
 
 def log(color, string, end='\n', errcode=None):
     level = {
         'normal': '',
-        'succg': '{}[+] {}'.format(_GREEN, _CLEANC),
-        'succb': '{}[*] {}'.format(_BLUE, _CLEANC),
-        'warn': '{}[-] {}'.format(_YELLOW, _CLEANC),
-        'error': '{}[!] {}'.format(_RED, _CLEANC)
+        'succg': f'{_GREEN}[+] {_CLEANC}',
+        'succb': f'{_BLUE}[*] {_CLEANC}',
+        'warn': f'{_YELLOW}[-] {_CLEANC}',
+        'error': f'{_RED}[!] {_CLEANC}'
     }
-    if CONSOLE:
-        CONSOLE.print(level.get(color) + string)
-        WINDOW.refresh()
+    if WINDOW:
+        WINDOW.write_event_value('LOG', level.get(color) + string)
     else:
         print(level.get(color) + string, end=end, flush=True)
 
-    if errcode is not None and errcode != const.NOERROR:
-        if not CONSOLE:
+    if errcode is not None and errcode != cst.NOERROR:
+        if not WINDOW:
             sys.exit(errcode)
 
 
 def copyright():
-    log('normal', const.COPYRIGHT)
+    log('normal', cst.COPYRIGHT)
 
 
 def check_privileges():
@@ -81,26 +79,25 @@ def check_privileges():
 
     if 'docker' not in groups:
         log('error',
-            ("User '{}' must belong to 'docker' group "
-             "to communicate with docker API.")
-            .format(user),
-            errcode=const.ENOPERM)
+            (f"User '{user}' must belong to 'docker' group "
+             f"to communicate with docker API."),
+            errcode=cst.ENOPERM)
 
 
-def print_options(exploit, adv=False):
-    opt_l = exploit.options
+def print_options(module, adv=False):
+    opt_l = module.options
     if not adv:
-        opt_l = [opt for opt in opt_l if opt not in exploit.advanced]
+        opt_l = [opt for opt in opt_l if opt not in module.advanced]
 
     for opt in opt_l:
         sym = ''
-        if opt in exploit.required:
-            sym = '{}- {}'.format(_YELLOW, _CLEANC)
-            if opt in exploit.missing_required:
-                sym = '{}* {}'.format(_RED, _CLEANC)
+        if opt in module.required:
+            sym = f'{_YELLOW}- {_CLEANC}'
+            if opt in module.missing_required:
+                sym = f'{_RED}* {_CLEANC}'
 
-        print("\t{}{}: {}".format(
-            sym, opt, exploit[opt] if exploit[opt] is not None else ''))
+        print(
+            f"\t{sym}{opt}: {module[opt] if module[opt] is not None else ''}")
 
 
 def correct_type(value, info):
@@ -122,15 +119,13 @@ def correct_type(value, info):
         elif value_type in ('integer', 'port'):
             if value.isdigit():
                 dig = int(value)
-                if value_type == 'integer':
-                    return dig
-                elif 0 < dig < 2 ** 16:
+                if value_type == 'integer' or 0 < dig < 2 ** 16:
                     return dig
         elif value_type in ('address', 'addressrange'):
             try:
-                IPv4Address(value)
+                ipaddress.ip_network(value, strict=False)
                 return value
-            except AddressValueError:
+            except ValueError:
                 pass
         elif value_type == 'enum':
             try:
@@ -138,16 +133,16 @@ def correct_type(value, info):
                     return value
             except KeyError:
                 pass
-        elif value_type == 'string':
+        elif value_type in ('string', 'path'):
             return value
 
-    return 'Invalid'
+    return f'Invalid. Expected {value_type}'
 
 
 def shutdown(msfcont, vpncont=None):
     client = docker.from_env()
     log('succb',
-        const.MSSTOP,
+        cst.MSSTOP,
         end='\r')
     if msfcont is not None:
         try:
@@ -155,20 +150,20 @@ def shutdown(msfcont, vpncont=None):
         except docker.errors.APIError:
             log(
                 'error',
-                const.MSSTOPERR,
-                errcode=const.EDOCKER)
+                cst.MSSTOPERR,
+                errcode=cst.EDOCKER)
         else:
             log(
                 'succg',
-                const.MSSTOPPED)
+                cst.MSSTOPPED)
     else:
         log(
             'succg',
-            const.MSNR)
+            cst.MSNR)
 
     log(
         'succb',
-        const.VPNSTOP,
+        cst.VPNSTOP,
         end='\r')
     if vpncont is not None:
         try:
@@ -176,42 +171,42 @@ def shutdown(msfcont, vpncont=None):
         except docker.errors.APIError:
             log(
                 'error',
-                const.VPNSTOPERR,
-                errcode=const.EDOCKER)
+                cst.VPNSTOPERR,
+                errcode=cst.EDOCKER)
         else:
             log(
                 'succg',
-                const.VPNSTOPPED)
+                cst.VPNSTOPPED)
     else:
         log(
             'succg',
-            const.VPNNR)
+            cst.VPNNR)
 
     log(
         'succb',
-        const.ATNET,
+        cst.ATNET,
         end='\r')
     try:
         net = client.networks.get('attacker_network')
     except docker.errors.NotFound:
         log(
             'succg',
-            const.ATNETNF)
+            cst.ATNETNF)
     else:
         try:
             net.remove()
         except docker.errors.APIError:
             log(
                 'error',
-                const.ATNETAEND,
-                errcode=const.EDOCKER)
+                cst.ATNETAEND,
+                errcode=cst.EDOCKER)
         else:
             log(
                 'succg',
-                const.ATNETRM)
+                cst.ATNETRM)
 
-    log('succg', 'Exiting autoauditor.', errcode=const.NOERROR)
-    return const.NOERROR
+    log('succg', 'Exiting autoauditor.', errcode=cst.NOERROR)
+    return cst.NOERROR
 
 
 def check_file_dir(outf, outd=None):
@@ -222,10 +217,9 @@ def check_file_dir(outf, outd=None):
         except PermissionError:
             log(
                 'error',
-                "Insufficient permission to create file path {}."
-                .format(outf),
-                errcode=const.EACCESS)
-            return const.EACCESS
+                f"Insufficient permission to create file path {outf}.",
+                errcode=cst.EACCESS)
+            return cst.EACCESS
 
     if outd is not None:
         try:
@@ -233,14 +227,13 @@ def check_file_dir(outf, outd=None):
         except PermissionError:
             log(
                 'error',
-                "Insufficient permission to create directory {}."
-                .format(outd),
-                errcode=const.EACCESS)
-            return const.EACCESS
+                f"Insufficient permission to create directory {outd}.",
+                errcode=cst.EACCESS)
+            return cst.EACCESS
 
 
 if __name__ == '__main__':
     log(
         'error',
         "Not standalone module. Run again from autoauditor.py.",
-        errcode=const.EMODNR)
+        errcode=cst.EMODNR)
