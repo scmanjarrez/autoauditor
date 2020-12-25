@@ -397,7 +397,13 @@ def load_config(config, loop=None):
     client_discovery = Client()
 
     with open(config, 'r') as f:
-        network = json.load(f)
+        try:
+            network = json.load(f)
+        except json.JSONDecodeError:
+            utils.log('error',
+                      (f"Wrong network configuration file format. "
+                       f"Check {utils.NET_TEMPLATE}."),
+                      errcode=cst.EBADNETFMT)
 
     peer_config = get_net_info(network, 'network', 'organization', 'peer')
     tls_cacerts = peer_config['tls_cacerts']

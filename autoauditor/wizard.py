@@ -21,6 +21,7 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 from pymetasploit3.msfrpc import MsfRpcError, ExploitModule
+from copy import deepcopy
 import constants as cst
 import utils
 import json
@@ -38,7 +39,7 @@ def get_module(client, mtype, mname):
 
 
 def get_module_info(module):
-    info = module.info
+    info = deepcopy(module.info)
     del info['options']
     return info
 
@@ -157,7 +158,7 @@ def set_options(mod):
 
 def generate_resources_file(client, rc_out):
     more_mod = True
-    rc_file = {}
+    modules = {}
     mod_opts = {}
 
     while more_mod:
@@ -178,10 +179,10 @@ def generate_resources_file(client, rc_out):
                         'error',
                         f"Invalid module: {mname}.")
                 else:
-                    if mtype not in rc_file:
-                        rc_file[mtype] = {}
-                    if mname not in rc_file[mtype]:
-                        rc_file[mtype][mname] = []
+                    if mtype not in modules:
+                        modules[mtype] = {}
+                    if mname not in modules[mtype]:
+                        modules[mtype][mname] = []
 
             mod_opts = set_options(mod)
 
@@ -201,7 +202,7 @@ def generate_resources_file(client, rc_out):
                     mod_opts['PAYLOAD'] = {'NAME': pname,
                                            'OPTIONS': pay_opts}
 
-            rc_file[mtype][mname].append(mod_opts)
+            modules[mtype][mname].append(mod_opts)
 
             if str.lower(input("[*] More modules [y/N]: ")) not in YES:
                 more_mod = False
@@ -210,7 +211,7 @@ def generate_resources_file(client, rc_out):
             break
 
     with open(rc_out, 'w') as f:
-        json.dump(rc_file, f, indent=2)
+        json.dump(modules, f, indent=2)
         utils.log(
             'succg',
             f"Resource script correctly generated in {rc_out}")

@@ -105,7 +105,10 @@ def correct_type(value, info):
         value_type = info['type']
         value_required = info['required']
     except KeyError:
-        pass
+        if value in info.values():
+            return value
+        else:
+            return f'Invalid. Expected {info}'
     else:
         if not value and not value_required:  # empty and not req -> ok
             return value
@@ -136,7 +139,7 @@ def correct_type(value, info):
         elif value_type in ('string', 'path'):
             return value
 
-    return f'Invalid. Expected {value_type}'
+        return f'Invalid. Expected {value_type}'
 
 
 def shutdown(msfcont, vpncont=None):
