@@ -692,7 +692,7 @@ under certain conditions; check below for details.
 
 # MAIN Window
 MAIN_ABOUT_NAME = 'AutoAuditor'
-MAIN_ABOUT_VER = 'v2.2'
+MAIN_ABOUT_VER = 'v2.3'
 MAIN_ABOUT_AUTHOR = 'Sergio Chica Manjarrez'
 MAIN_ABOUT_LAB = 'Pervasive Computing Laboratory'
 MAIN_ABOUT_DEPT = "Telematic Engineering Department"
@@ -711,6 +711,8 @@ K_GIF = 'k_gif'
 K_MINFO_COL = 'k_minfo_col_'
 K_O_ML = 'k_o_ml_'
 K_OINFO_ML = 'k_oinfo_ml_'
+K_OINV_ML = 'k_oinv_ml'
+K_OMIS_ML = 'k_omis_ml'
 
 K_MAIN_ABOUT_P = 'kmain_about_p'
 K_MAIN_TAB = 'kmain_tab'
@@ -796,7 +798,6 @@ DEF_MAIN_LIC = os.path.abspath('../LICENSE')
 K_WIZ_MODT = 'kwiz_mtype'
 K_WIZ_MODN = 'kwiz_mname'
 K_WIZ_MODN_INFO = 'kwiz_mname_info'
-K_WIZ_MODN_INFO_COL = 'kwiz_mname_info_col'
 K_WIZ_EXIT = 'kwiz_exit'
 K_WIZ_GEN = 'kwiz_gen'
 K_WIZ_MCOL = 'kwiz_mcol'
@@ -862,20 +863,20 @@ T_POPTS_TIT = 'Payload Options'
 T_POPTS_INFO_TIT = 'Payload Option Info'
 
 # Magic numbers
-MAX_MODS = 50
+MAX_MODS = 25
 C_EL = 10
 C_OPTS = 13
 
 C = {
-    'white': '#ffffff',
-    'blue': '#0079d3',
-    'darkblue': '#4ca1e0',
-    'lightblue': '#e9f6ff',
-    'greyblue': '#d2dce4',
+    'white': '#FFFFFF',
+    'blue': '#0079D3',
+    'darkblue': '#4CA1E0',
+    'lightblue': '#E9F6FF',
+    'greyblue': '#D2DCEA',
     'grey': '#808080',
-    'lightgrey': '#e5e5e5',
+    'lightgrey': '#E5E5E5',
     'black': '#000000',
-    'red': '#ff0000'
+    'red': '#FF0000'
 }
 
 B_C = (C['white'], C['white'])
@@ -885,7 +886,7 @@ B_SZ24 = (24, 24)
 B_SZ32 = (32, 32)
 B_SZ48 = (48, 48)
 P_ACTION = ((10, 10), (10, 0))
-P_AB = ((5, 5), (60, 5))
+P_AB = ((5, 5), (55, 5))
 P_MN = ((27, 5), (5, 5))
 P_DD = ((38, 5), (5, 5))
 P_T = ((5, 5), (10, 0))
@@ -922,6 +923,7 @@ T_INFO_SZ = (15, 1)
 T_INFO_SZ2 = (10, 2)
 T_INFO_SZ3 = (50, 2)
 T_INFO_SZ4 = (66, 2)
+T_INFO_SZ5 = (50, 3)
 T_MODDD_SZ = (45, 1)
 T_DESC_SZ = (27, 1)
 T_DESC_SZ2 = (30, 1)
@@ -945,6 +947,7 @@ def column_size(n_elem):
 
 FNT = ('TkDefaultFont', 12)
 FNT2 = ('TkDefaultFont', 10)
+FNT_F = 'TkFixedFont'
 FNT_B = ('TkDefaultFont', 12, 'bold')
 FNT_P = 'Any 2'
 FNT_P2 = ('TkDefaultFont', 55)

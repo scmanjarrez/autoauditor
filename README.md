@@ -63,8 +63,8 @@ de los nodos.
 
 - Ejecución individual de la función blockchain de AutoAuditor.
 
-    `python ../autoauditor/blockchain.py -f output/msf.log -hc network.example.json -ho output/blockchain.log`
-    - -f: Almacena los reportes presentes en el fichero **output/msf.log**.
+    `python ../autoauditor/blockchain.py -o output/msf.log -hc network.example.json -ho output/blockchain.log`
+    - -o: Analiza el fichero **output/msf.log** y obtiene los reportes que se almacenarán en la blockchain.
     - -hc: Configuración de la red de HLF presente en el fichero **network.example.json**.
     - -ho: (Opcional) Guarda una copia de los reportes almacenados en la blockchain en el fichero **output/blockchain.log**.
 
@@ -137,27 +137,33 @@ de los nodos.
                 </div>
             </details>
             <details>
+                <summary> Captura de la ventana de error de una opción del módulo. </summary>
+                <div align="center">
+                    <img alt="moption_info" src="autoauditor/gui_files/screenshots/9.moption_error.png" width="50%"/>
+                </div>
+            </details>
+            <details>
                 <summary> Captura de la ventana de información de una opción del módulo. </summary>
                 <div align="center">
-                    <img alt="moption_info" src="autoauditor/gui_files/screenshots/9.moption_info.png" width="50%"/>
+                    <img alt="moption_info" src="autoauditor/gui_files/screenshots/10.moption_info.png" width="50%"/>
                 </div>
             </details>
             <details>
                 <summary> Captura de la ventana de información del payload. </summary>
                 <div align="center">
-                    <img alt="payload_info" src="autoauditor/gui_files/screenshots/10.payload_info.png" width="75%"/>
+                    <img alt="payload_info" src="autoauditor/gui_files/screenshots/11.payload_info.png" width="75%"/>
                 </div>
             </details>
             <details>
                 <summary> Captura de la ventana de opciones del payload. </summary>
                 <div align="center">
-                    <img alt="payload_options" src="autoauditor/gui_files/screenshots/11.payload_options.png" width="75%"/>
+                    <img alt="payload_options" src="autoauditor/gui_files/screenshots/12.payload_options.png" width="75%"/>
                 </div>
             </details>
             <details>
                 <summary> Captura de la ventana de información de una opción del payload. </summary>
                 <div align="center">
-                    <img alt="poption_info" src="autoauditor/gui_files/screenshots/12.poption_info.png" width="50%"/>
+                    <img alt="poption_info" src="autoauditor/gui_files/screenshots/13.poption_info.png" width="50%"/>
                 </div>
             </details>
 
@@ -165,7 +171,7 @@ de los nodos.
             <details>
                 <summary> Captura de la ventana de AutoAuditor durante la detención de los contenedores. </summary>
                 <div align="center">
-                    <img alt="main_stop" src="autoauditor/gui_files/screenshots/13.main_stop.png" width="75%"/>
+                    <img alt="main_stop" src="autoauditor/gui_files/screenshots/14.main_stop.png" width="75%"/>
                 </div>
             </details>
 

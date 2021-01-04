@@ -39,16 +39,16 @@ import json
 import sys
 import logging
 import sqlite3
+import wizard
+import metasploit
 
 
-RAPID7 = "https://www.rapid7.com/db/modules/"
 CVEDETAILS = "https://www.cvedetails.com/cve/"
 
 CHAINCODENAME = "autoauditor"
 NEWREPORTFUNC = "NewReport"
 NEWREPKEYWORD = "report"
 
-cveregex = re.compile(r'^CVE-\d+-\d+')
 modregex = re.compile(r'^\#{5}\s(?P<modname>[\w\d_\/]+)\s#{5}$')
 modendregex = re.compile(r'^#{10,}$')
 rprtdateregex = re.compile(r'^#{14}\s(?P<date>[\d:\-\s\+\.]+)\s#{14}$')
@@ -182,20 +182,10 @@ def cache(db, mod, data, update_cache=False):
 
 
 def get_cve(exploit):
-    try:
-        req = requests.get(RAPID7 + exploit)
-    except requests.exceptions.ConnectionError:
-        utils.log(
-            'error',
-            'Connection error. Check internet connection.',
-            errcode=cst.ECONN)
-
-    soup = BeautifulSoup(req.text, features='html.parser')
-    references = soup.find(
-        'section', attrs={'class': 'vulndb__references'}).find_all('a')
-    cve_vuln = [ref.string for ref in references if cveregex.match(
-        ref.string) is not None]
-    return cve_vuln
+    exp = exploit.split('/')
+    cl = metasploit.get_msf_connection(cst.DEF_MSFRPC_PWD)
+    mod = wizard.get_module(cl, exp[0], "/".join(exp[1:]))
+    return wizard.get_module_references(mod)
 
 
 def get_score(cve):
@@ -459,10 +449,15 @@ def main():
     parser = argparse.ArgumentParser(
         description="Autoauditor submodule to store reports in blockchain.")
 
-    parser.add_argument('-f', '--reportfile',
+    parser.add_argument('-o', '--outfile',
                         metavar='log_file',
-                        required=True,
-                        help="AutoAuditor log file.")
+                        default='output/msf.log',
+                        help=("AutoAuditor log file."))
+
+    parser.add_argument('-d', '--outdir',
+                        metavar='gather_dir',
+                        default='output/loot',
+                        help=("AutoAuditor output directory."))
 
     parser.add_argument('-ho', '--hyperledgerout',
                         metavar='hyperledger_log_file',
@@ -483,11 +478,16 @@ def main():
 
     utils.copyright()
 
-    if not os.path.isfile(args.reportfile):
+    utils.check_file_dir(args.outfile, args.outdir)
+
+    msfcont = metasploit.start_msfrpcd(args.outdir)
+
+    if not os.path.isfile(args.outfile):
         utils.log(
             'error',
-            f"File {args.reportfile} does not exist.",
+            f"File {args.outfile} does not exist.",
             errcode=cst.ENOENT)
+
     if not os.path.isfile(args.hyperledgercfg):
         utils.log(
             'error',
@@ -498,8 +498,10 @@ def main():
 
     utils.check_file_dir(args.hyperledgerout)
 
-    store_report(info, args.reportfile, args.hyperledgerout,
+    store_report(info, args.outfile, args.hyperledgerout,
                  args.force_update_cache)
+
+    utils.shutdown(msfcont)
 
 
 if __name__ == '__main__':

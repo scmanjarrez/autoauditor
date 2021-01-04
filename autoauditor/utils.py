@@ -107,13 +107,14 @@ def correct_type(value, info):
     except KeyError:
         if value in info.values():
             return value
-        else:
-            return f'Invalid. Expected {info}'
+        return f'Invalid. Expected {info}'
     else:
         if not value and not value_required:  # empty and not req -> ok
             return value
+
         if not value and value_required:  # empty and req -> error
-            return 'Missing'
+            return f'Missing. Expected {value_type}'
+
         if value_type == 'bool':  # if not empty, check type
             try:
                 return bool(strtobool(value))
@@ -131,11 +132,8 @@ def correct_type(value, info):
             except ValueError:
                 pass
         elif value_type == 'enum':
-            try:
-                if value in info['enums']:
-                    return value
-            except KeyError:
-                pass
+            if value in info['enums']:
+                return value
         elif value_type in ('string', 'path'):
             return value
 

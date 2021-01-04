@@ -1,6 +1,7 @@
 #!/bin/bash
 
 venv="virtualenv"
+aa="../autoauditor/autoauditor.py"
 aa_venv="autoauditor_venv"
 tmp_hfc="backup/channel.py"
 tmp_pysg="backup/PySimpleGUI.py"
@@ -25,9 +26,6 @@ cp -r $(pwd)/$hfc_sdk_py/hfc $aa_venv/lib/python3.*/site-packages
 
 echo -e "${yellow}Using $tmp_hfc backup until fabric-sdk-py gets fixed.$nc"
 cp $tmp_hfc $aa_venv/lib/python3.*/site-packages/hfc/util/
-
-echo -e "${yellow}Using $tmp_pysg backup until PySimpleGUI.py gets fixed.$nc"
-cp $tmp_pysg $aa_venv/lib/python3.*/site-packages/PySimpleGUI/
 
 echo -e "${yellow}Using $tmp_pym3 backup until pymetasploit3 gets fixed.$nc"
 cp $tmp_pym3 $aa_venv/lib/python3.*/site-packages/pymetasploit3/

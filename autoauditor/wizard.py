@@ -34,6 +34,12 @@ import readline # noqa
 YES = ['y', 'yes']
 
 
+def get_modules(client, mtype):
+    if mtype in ['encoder', 'exploit', 'payload', 'nop']:
+        mtype = mtype + 's'
+    return getattr(client.modules, mtype)
+
+
 def get_module(client, mtype, mname):
     return client.modules.use(mtype, mname)
 
@@ -44,10 +50,19 @@ def get_module_info(module):
     return info
 
 
-def get_modules(client, mtype):
-    if mtype in ['encoder', 'exploit', 'payload', 'nop']:
-        mtype = mtype + 's'
-    return getattr(client.modules, mtype)
+def get_module_references(module):
+    info = get_module_info(module)
+    if 'references' in info:
+        ref = ["-".join(rf) for rf in info['references']
+               if rf[0].lower() == 'cve']
+    return ref if ref else ['CVE info not present']
+
+
+def get_module_options(module):
+    opts = {opt: module[opt] if module[opt] is not None else ''
+            for opt in module.options}
+    ropts = module.required
+    return opts, ropts
 
 
 def get_option_info(module, option):
@@ -63,13 +78,6 @@ def get_option_desc(module, option):
         return module.optioninfo(option)['desc']
     except KeyError:
         return ''
-
-
-def get_module_options(module):
-    opts = {opt: module[opt] if module[opt] is not None else ''
-            for opt in module.options}
-    ropts = module.required
-    return opts, ropts
 
 
 def has_payloads(module):

@@ -60,8 +60,6 @@ WIN = {
     }
 }
 
-shared_msfcl = None
-
 
 class Button(sg.Button):
     def __init__(self, key, tooltip=None, image_data=cst.ICO_INFO,
@@ -113,6 +111,22 @@ class ImageCheckBox(Button):
         else:
             self(image_data=self.image_on)
             self.enabled = True
+
+
+class Window(sg.Window):
+    def __init__(self, *text, title="Error", button_color=cst.B_C_ERR,
+                 auto_close_duration=4):
+        layout = [
+            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
+            [sg.OK(button_color=button_color)]
+        ]
+        for t in text[::-1]:
+            layout.insert(0, [sg.Text(t)])
+
+        super().__init__(title, layout, element_justification=cst.J_C,
+                         icon=cst.ICO, auto_close=True, keep_on_top=True,
+                         auto_close_duration=auto_close_duration)
+        self.read(close=True)
 
 
 class Module():
@@ -174,19 +188,6 @@ class Module():
         return axm
 
 
-def dump_modules(mod_list):
-    mod_dict = {}
-    for mod in mod_list.values():
-        mtype = mod.mtype()
-        mname = mod.mname()
-        if mtype not in mod_dict:
-            mod_dict[mtype] = {}
-        if mname not in mod_dict[mtype]:
-            mod_dict[mtype][mname] = []
-        mod_dict[mtype][mname].append(mod.gen_dict())
-    return mod_dict
-
-
 class TicketSystem():
     def __init__(self, total):
         self.tickets = list(range(total))[::-1]
@@ -202,9 +203,9 @@ class TicketSystem():
 
 
 class LoadingGif(sg.Window):
-    def __init__(self, starting_gif=False):
-        self.starting_gif = starting_gif
-        self.message = ('Starting\ncontainers' if starting_gif
+    def __init__(self, start_gif=False):
+        self.start_gif = start_gif
+        self.message = ('Starting\ncontainers' if start_gif
                         else 'Stopping\ncontainers')
         self.layout = [
             [sg.Image(filename=cst.LOADING,
@@ -242,69 +243,78 @@ class LoadingThread(threading.Thread):
         self.window.write_event_value('GIFSTOP', self.start_gif)
 
 
-def autoauditor_thread(stopped, queue, window):
-    vpncont = None
-    msfcont = None
-    msfclient = None
-    config = None
-    async_loop = _asyncio.new_event_loop()
-    start_flag = None
-    start_thread = None
-    stop = False
-    while not stopped.is_set():
-        queuedata = queue.get()
-        # print(f"thread_queue: {queuedata}")
-        cmd, params = queuedata
-        if cmd == 'vpn':
-            vpncf, stop = params
-            vpncont = vpn.setup_vpn(vpncf, stop=stop)
-        if cmd == 'msfstart':
-            log_dir, ovpn, stop = params
-            if not stop:
-                start_flag = threading.Event()
-                start_thread = LoadingThread(
-                    start_flag, window, start_gif=True)
-                start_thread.start()
-            msfcont = metasploit.start_msfrpcd(log_dir, ovpn, stop)
-            window.write_event_value('START', (msfcont, stop))
-        if cmd == 'msfconn':
-            passwd, is_wizard = params
-            msfclient = metasploit.get_msf_connection(passwd)
-            error = cst.EMSCONN
-            if msfclient is not None:
-                error = cst.NOERROR
-                global shared_msfcl
-                shared_msfcl = msfclient
+class AutoauditorThread(threading.Thread):
+    def __init__(self, window, cmd_queue, stopped):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.window = window
+        self.queue = cmd_queue
+        self.stopped = stopped
+        self.vpncnt = None
+        self.msfcnt = None
+        self.msfcl = None
+        self.cfg = None
+        self.async_loop = _asyncio.new_event_loop()
+        self.sgif_flag = None
+        self.stop = False
 
-            if not stop:
-                start_flag.set()
-                time.sleep(0.1)  # avoid race condition
+    def run(self):
+        while not self.stopped.is_set():
+            cmd, params = self.queue.get()
+            getattr(self, cmd)(*params)
 
-            window.write_event_value('CONNECT', (error, is_wizard))
+    def vpnstart(self, vpncfg, stop):
+        self.vpncnt = vpn.setup_vpn(vpncfg, stop=stop)
 
-        if cmd == 'msfrun':
-            res_scpt, log_file = params
-            metasploit.launch_metasploit(msfclient, res_scpt, log_file)
+    def msfstart(self, ldir, ovpn, stop):
+        self.stop = stop
+        if not stop:
+            self.sgif_flag = threading.Event()
+            sgif_thread = LoadingThread(self.sgif_flag, self.window,
+                                        start_gif=True)
+            sgif_thread.start()
+        self.msfcnt = metasploit.start_msfrpcd(ldir, ovpn, stop)
+        self.window.write_event_value('START', (self.msfcnt, stop))
 
-        if cmd == 'hlfloadconfig':
-            _asyncio.set_event_loop(async_loop)
-            config_file, = params
-            config = blockchain.load_config(config_file, loop=async_loop)
-
-        if cmd == 'hlfstore':
-            report, log_file = params
-            if config is not None:
-                blockchain.store_report(config, report, log_file,
-                                        loop=async_loop)
-
-        if cmd == 'stop':
-            stop_flag = threading.Event()
-            stop_thread = LoadingThread(stop_flag, window, start_gif=False)
-            stop_thread.start()
-            errcode = utils.shutdown(msfcont, vpncont)
-            stop_flag.set()
+    def msfconnect(self, passwd, is_wizard):
+        self.msfcl = metasploit.get_msf_connection(passwd)
+        err = cst.EMSCONN
+        if self.msfcl is not None:
+            err = cst.NOERROR
+        if not self.stop:
+            self.sgif_flag.set()
             time.sleep(0.1)  # avoid race condition
-            window.write_event_value('STOP', errcode)
+        self.window.write_event_value('CONNECT', (err, is_wizard, self.msfcl))
+
+    def msfrun(self, rc, log):
+        metasploit.launch_metasploit(self.msfcl, rc, log)
+
+    def hlfloadconfig(self, cfg):
+        _asyncio.set_event_loop(self.async_loop)
+        self.cfg = blockchain.load_config(cfg, loop=self.async_loop)
+
+    def hlfstore(self, report, log):
+        if self.cfg is not None:
+            blockchain.store_report(self.cfg,
+                                    report, log, loop=self.async_loop)
+
+    def msfstop(self, stop):
+        if stop:
+            sgif = self.msfcnt is not None or self.vpncnt is not None
+            if sgif:
+                sgif_flag = threading.Event()
+                sgif_thread = LoadingThread(sgif_flag, self.window,
+                                            start_gif=False)
+                sgif_thread.start()
+            err = utils.shutdown(self.msfcnt, self.vpncnt)
+            if sgif:
+                sgif_flag.set()
+                time.sleep(0.1)  # avoid race condition
+            self.window.write_event_value('STOP', err)
+        else:
+            self.window.write_event_value('STOP', cst.NOERROR)
+        self.msfcnt = None
+        self.vpncnt = None
 
 
 def color_scrollbar(window, *key, disable=False):
@@ -320,11 +330,9 @@ def color_scrollbar(window, *key, disable=False):
         rel = sg.RELIEF_FLAT
     for k in key:
         attr = 'vbar'
-        # unbind = 'frame'
         if isinstance(window[k].Widget,
                       sg.PySimpleGUI.TkScrollableFrame):
             attr = 'vscrollbar'
-            # unbind = 'TKFrame'
 
         getattr(window[k].Widget, attr).configure(
             activebackground=abg, bg=bg,
@@ -336,14 +344,10 @@ def color_scrollbar(window, *key, disable=False):
                 selectbackground=cst.C['darkblue'],
                 inactiveselectbackground=cst.C['darkblue'])
 
-        # getattr(window[k].Widget, unbind).unbind_all('<Button-4>')
-        # getattr(window[k].Widget, unbind).unbind_all('<Button-5>')
-        # getattr(window[k].Widget, unbind).unbind_all('<MouseWheel>')
-
 
 def color_select_input(window, *args, bg=True):
     for wdgt in args:
-        if type(window[wdgt].Widget) == sg.tk.Entry:
+        if type(window[wdgt].Widget) is sg.tk.Entry:
             window[wdgt].Widget.configure(selectbackground=cst.C['darkblue'],
                                           readonlybackground=cst.C['greyblue']
                                           if bg else None)
@@ -460,7 +464,7 @@ def autoauditor_window():
                            image_off=cst.ICO_C_S, image_size=cst.B_SZ16)]
         ], border_width=cst.N_WDTH)],
         [sg.Multiline(key=cst.K_MAIN_LOG, size=cst.C_LOG_SZ,
-                      font='TkFixedFont', pad=cst.P_LOG,
+                      font=cst.FNT_F, pad=cst.P_LOG,
                       background_color=cst.C['lightblue'], autoscroll=True,
                       visible=False, disabled=True)]
     ]
@@ -477,15 +481,15 @@ def autoauditor_window():
         [sg.Text(cst.MAIN_ABOUT_NAME, font=cst.FNT_B)],
         [sg.Text(cst.MAIN_ABOUT_VER, font=cst.FNT_B)],
         [sg.Text(pad=cst.P_N_TB)],
-        [sg.Text(cst.MAIN_ABOUT_AUTHOR, )],
-        [sg.Text(cst.MAIN_ABOUT_LAB, )],
-        [sg.Text(cst.MAIN_ABOUT_DEPT, )],
-        [sg.Text(cst.MAIN_ABOUT_UC3M, )],
-        [sg.Text(cst.MAIN_ABOUT_LOC, )],
+        [sg.Text(cst.MAIN_ABOUT_AUTHOR)],
+        [sg.Text(cst.MAIN_ABOUT_LAB)],
+        [sg.Text(cst.MAIN_ABOUT_DEPT)],
+        [sg.Text(cst.MAIN_ABOUT_UC3M)],
+        [sg.Text(cst.MAIN_ABOUT_LOC)],
         [sg.Text(pad=cst.P_N_TB)],
         [sg.Text(cst.MAIN_ABOUT_ACK, justification=cst.J_C)],
         [sg.Text(pad=cst.P_N_TB)],
-        [sg.Text(cst.MAIN_ABOUT_YEAR, )],
+        [sg.Text(cst.MAIN_ABOUT_YEAR)],
     ]
 
     with open(cst.DEF_MAIN_LIC, 'r') as f:
@@ -530,7 +534,8 @@ def autoauditor_window():
     WIN[MN].TKroot.option_add('*TCombobox*Listbox*selectBackground',
                               cst.C['lightblue'])
     cstm_s = sg.ttk.Style()
-    cstm_s.map('TCombobox', background=[('hover', cst.C['lightblue'])])
+    cstm_s.map('TCombobox', background=[('hover', cst.C['lightblue']),
+                                        ('disabled', cst.C['greyblue'])])
     # fix combo color other desktop environments
     cstm_s.configure('TCombobox', arrowcolor=cst.C['white'],
                      background=cst.C['blue'])
@@ -585,8 +590,8 @@ def wizard_window(cur_modules):
         [Button(key=cst.K_WIZ_MADD, tooltip=cst.TT_WIZ_MADD,
                 image_data=cst.ICO_ADD, image_size=cst.B_SZ48)],
         [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-        [sg.Button(cst.T_WIZ_GEN, key=cst.K_WIZ_GEN, ),
-         sg.Button(cst.T_WIZ_EXIT, key=cst.K_WIZ_EXIT, )],
+        [sg.Button(cst.T_WIZ_GEN, key=cst.K_WIZ_GEN),
+         sg.Button(cst.T_WIZ_EXIT, key=cst.K_WIZ_EXIT)],
         [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)]
     ]
 
@@ -604,13 +609,11 @@ def wizard_window(cur_modules):
                                   for i in range(cst.MAX_MODS)], bg=False)
 
     if cur_modules:
-        for cm in cur_modules:
-            cur_mod = cur_modules[cm]
-            cur_tckt = cur_mod.ticket()
-            WIN[WZ][f'{cst.K_WIZ_MNAME}{cur_tckt}'](
-                value=f"Module {cur_mod.mtype()}/{cur_mod.mname()}")
-            WIN[WZ][f'{cst.K_WIZ_MFRAME}{cur_tckt}'](visible=True)
-            WIN[WZ][f'{cst.K_WIZ_MFRAME}{cur_tckt}'].unhide_row()
+        for cm in cur_modules.values():
+            WIN[WZ][f'{cst.K_WIZ_MNAME}{cm.ticket()}'](
+                value=f"Module {cm.mtype()}/{cm.mname()}")
+            WIN[WZ][f'{cst.K_WIZ_MFRAME}{cm.ticket()}'](visible=True)
+            WIN[WZ][f'{cst.K_WIZ_MFRAME}{cm.ticket()}'].unhide_row()
         # Update column scrollbar
         WIN[WZ].visibility_changed()
         WIN[WZ][cst.K_WIZ_MCOL].contents_changed()
@@ -628,8 +631,8 @@ def mopts_window(module, edit=False):
 
     current_opts = module.mopts()
     if current_opts:
-        for copt in current_opts:
-            opts[copt] = current_opts[copt]
+        for kcopt, vcopt in current_opts.items():
+            opts[kcopt] = vcopt
 
     scrollable = len(opts) > cst.C_OPTS
     hidden = f"{module.ticket()}:{'new' if not edit else 'edit'}"
@@ -659,7 +662,7 @@ def mopts_window(module, edit=False):
                               disabled_readonly_background_color=(
                                   cst.C['white']),
                               readonly=True),
-                 sg.InputText(opts[opt], key=f'{cst.K_MOPTS_VAL}{idx}',
+                 sg.InputText(str(opts[opt]), key=f'{cst.K_MOPTS_VAL}{idx}',
                               size=cst.T_DESC_SZ4,
                               pad=cst.P_IT2) if (opt != 'ACTION' and
                                                  module.opt_info(
@@ -717,8 +720,8 @@ def mopts_window(module, edit=False):
 
     opt_layout.extend([
         [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-        [sg.Button('Accept', key=cst.K_MOPTS_ACPT, ),
-         sg.Button('Cancel', key=cst.K_MOPTS_CNCL, )]])
+        [sg.Button('Accept', key=cst.K_MOPTS_ACPT),
+         sg.Button('Cancel', key=cst.K_MOPTS_CNCL)]])
 
     WIN[MO][module.ticket()] = sg.Window(
         cst.T_MOPTS_TIT, opt_layout,
@@ -744,8 +747,8 @@ def popts_window(module, mstate, pname=''):
 
     current_opts = module.payload.mopts()
     if current_opts:
-        for copt in current_opts:
-            popts[copt] = current_opts[copt]
+        for kcopt, vcopt in current_opts.items():
+            popts[kcopt] = vcopt
 
     scrollable = len(popts) > cst.C_OPTS
 
@@ -758,8 +761,7 @@ def popts_window(module, mstate, pname=''):
                  key=cst.K_MOPTS_TIT,
                  font=cst.FNT_B)],
         [sg.Text(module.payload.mname(),
-                 key=cst.K_POPTS_TITLE,
-                 )],
+                 key=cst.K_POPTS_TITLE)],
         [sg.Frame(cst.T_N, [
             [sg.Text(size=cst.T_DESC_SZ6, font=cst.FNT_P, pad=cst.P_N)],
             [sg.Text(cst.T_MOPTS_HNAME, size=cst.T_HEAD_ONAME_SZ,
@@ -779,7 +781,7 @@ def popts_window(module, mstate, pname=''):
                               disabled_readonly_background_color=(
                                   cst.C['white']),
                               readonly=True),
-                 sg.InputText(popts[popt], key=f'{cst.K_POPTS_VAL}{idx}',
+                 sg.InputText(str(popts[popt]), key=f'{cst.K_POPTS_VAL}{idx}',
                               size=cst.T_DESC_SZ4, pad=cst.P_IT2),
                  sg.Text(cst.T_MOPTS_RY if popt in propts
                          else cst.T_MOPTS_RN,
@@ -794,8 +796,8 @@ def popts_window(module, mstate, pname=''):
                    scrollable=scrollable, vertical_scroll_only=True),
          ],
         [sg.Text(pad=cst.P_N_TB)],
-        [sg.Button('Accept', key=cst.K_POPTS_ACPT, ),
-         sg.Button('Cancel', key=cst.K_POPTS_CNCL, )]]
+        [sg.Button('Accept', key=cst.K_POPTS_ACPT),
+         sg.Button('Cancel', key=cst.K_POPTS_CNCL)]]
 
     WIN[PO][module.ticket()] = sg.Window(
         cst.T_POPTS_TIT, popt_layout,
@@ -923,93 +925,195 @@ def oinfo_window(module, option, payload=False):
             highlightbackground=cst.C['white'], highlightcolor=cst.C['white'])
 
 
-def switch_state(win, checkbox, *elems):
-    for el in elems:
-        if isinstance(win[el], (sg.InputText, sg.Button)):
-            win[el](disabled=win[checkbox].enabled)
-        else:
-            win[el](
-                text_color=cst.C['grey'] if win[checkbox].enabled
-                else cst.C['black'])
-    win[checkbox].switch()
+def oerror_window(opt_window, invalid_missing, payload=False):
+    invmis_lay = []
+    if invalid_missing['inv']:
+        invmis_lay.extend([
+            [sg.Text("Invalid", font=cst.FNT_B)],
+            [sg.Multiline(
+                "\n".join(
+                    [f"{opt}: {val}"
+                     for opt, val in invalid_missing['inv'].values()]),
+                key=f'{cst.K_OINV_ML}',
+                size=cst.T_INFO_SZ5, font=cst.FNT_F,
+                background_color=cst.C['lightblue'],
+                disabled=True)]])
+    if invalid_missing['inv'] and invalid_missing['mis']:
+        invmis_lay.extend([
+            [sg.Text(font=cst.FNT_P)]])
+    if invalid_missing['mis']:
+        invmis_lay.extend([
+            [sg.Text("Missing", font=cst.FNT_B)],
+            [sg.Multiline(
+                "\n".join(
+                    [f"{opt}: {val}"
+                     for opt, val in invalid_missing['mis'].values()]),
+                key=f'{cst.K_OMIS_ML}',
+                size=cst.T_INFO_SZ5, font=cst.FNT_F,
+                background_color=cst.C['lightblue'],
+                disabled=True)]])
+    invmis_lay.extend([
+        [sg.Text(font=cst.FNT_P)],
+        [sg.OK(button_color=cst.B_C_ERR)]])
+
+    for idx in invalid_missing['inv']:
+        opt_window[f'{cst.K_POPTS if payload else cst.K_MOPTS}{idx}'](
+            text_color=cst.C['red'])
+
+    for idx in invalid_missing['mis']:
+        opt_window[f'{cst.K_POPTS if payload else cst.K_MOPTS}{idx}'](
+            text_color=cst.C['red'])
+
+    tmpw = sg.Window("Error", invmis_lay,
+                     element_justification=cst.J_C,
+                     keep_on_top=True,
+                     icon=cst.ICO, finalize=True)
+    if invalid_missing['inv']:
+        color_scrollbar(tmpw, cst.K_OINV_ML)
+        color_select_input(tmpw, cst.K_OINV_ML)
+    if invalid_missing['mis']:
+        color_scrollbar(tmpw, cst.K_OMIS_ML)
+        color_select_input(tmpw, cst.K_OMIS_ML)
+    tmpw.read(close=True)
 
 
-def shrink_enlarge_window(console, console_cb, cons_size, ncons_size):
-    console(visible=not console_cb.enabled)
-    console_cb.switch()
-    if console_cb.enabled:
-        WIN[MN].size = cons_size
-    else:
-        WIN[MN].size = ncons_size
-    WIN[MN].visibility_changed()
-
-
-def is_popup(window):
-    return (window in WIN[POP][MN] or window in WIN[POP][WZ] or
-            window in [win for wtckt in WIN[POP][MO]
-                       for win in WIN[POP][MO][wtckt]] or
-            window in [win for wtckt in WIN[POP][PO]
-                       for win in WIN[POP][PO][wtckt]])
-
-
-def close_popups(ticket=None, *wtype):
-    for wt in wtype:
-        if isinstance(WIN[POP][wt], list):
-            for win in WIN[POP][wt]:
-                win.close()
-            WIN[POP][wt] = []
-        else:
-            if ticket is None:
-                for wtckt in WIN[POP][wt]:
-                    for win in WIN[POP][wt][wtckt]:
-                        win.close()
-                WIN[POP][wt] = {}
-            else:
-                if ticket in WIN[POP][wt]:
-                    for win in WIN[POP][wt][ticket]:
-                        win.close()
-                    WIN[POP][wt][ticket] = []
-
-
-def close_wizard():
-    close_popups(None, WZ, MO, PO)
-
-    for win in WIN[PO]:
-        WIN[PO][win].close()
-    WIN[PO] = {}
-
-    for win in WIN[MO]:
-        WIN[MO][win].close()
-    WIN[MO] = {}
-
-    if WIN[WZ] is not None:
-        WIN[WZ].close()
-        WIN[WZ] = None
-
-
-def parse_rc_file(rcfile, client, ticket_system):
-    with open(rcfile, 'r') as f:
-        rcf = json.load(f)
-    modules = {}
-    for mtype in rcf:
-        for mname in rcf[mtype]:
-            for el in rcf[mtype][mname]:
-                ticket = ticket_system.get_ticket()
-                mod = Module(client, mtype, mname, ticket)
-                mopts = mod.mopts()
-                for mopt in el:
-                    if mopt == 'PAYLOAD':
-                        mod.payload = el['PAYLOAD']['NAME']
-                        popts = mod.payload.mopts()
-                        for popt in el['PAYLOAD']['OPTIONS']:
-                            popts[popt] = el['PAYLOAD']['OPTIONS'][popt]
-                    else:
-                        mopts[mopt] = el[mopt]
-                modules[ticket] = mod
-    return modules
+def help_window(title, text, path):
+    hw = sg.Window(title, [
+        [sg.Text(text)],
+        [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
+        [sg.Text("Default:", font=cst.FNT_B),
+         sg.InputText(path, key=cst.K_MAIN_INFO_DEF, disabled=True)],
+        [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
+        [sg.OK()]
+    ], element_justification=cst.J_C, icon=cst.ICO_I, finalize=True)
+    color_select_input(hw, cst.K_MAIN_INFO_DEF)
+    return hw
 
 
 def main():
+    def switch_state(win, checkbox, *elems):
+        for el in elems:
+            if isinstance(win[el], (sg.InputText, sg.Button)):
+                win[el](disabled=win[checkbox].enabled)
+            else:
+                win[el](
+                    text_color=cst.C['grey'] if win[checkbox].enabled
+                    else cst.C['black'])
+        win[checkbox].switch()
+
+    def shrink_enlarge_window(console, console_cb, cons_size, ncons_size):
+        console(visible=not console_cb.enabled)
+        console_cb.switch()
+        if console_cb.enabled:
+            WIN[MN].size = cons_size
+        else:
+            WIN[MN].size = ncons_size
+        WIN[MN].visibility_changed()
+
+    def is_popup(window):
+        return (window in WIN[POP][MN] or window in WIN[POP][WZ] or
+                window in [win for wtckt in WIN[POP][MO]
+                           for win in WIN[POP][MO][wtckt]] or
+                window in [win for wtckt in WIN[POP][PO]
+                           for win in WIN[POP][PO][wtckt]])
+
+    def close_popups(ticket, *wtype):
+        for wt in wtype:
+            if isinstance(WIN[POP][wt], list):
+                for win in WIN[POP][wt]:
+                    win.close()
+                WIN[POP][wt] = []
+            else:
+                if ticket is None:
+                    for wtckt in WIN[POP][wt]:
+                        for win in WIN[POP][wt][wtckt]:
+                            win.close()
+                    WIN[POP][wt] = {}
+                else:
+                    if ticket in WIN[POP][wt]:
+                        for win in WIN[POP][wt][ticket]:
+                            win.close()
+                        WIN[POP][wt][ticket] = []
+
+    def close_wizard():
+        close_popups(None, WZ, MO, PO)
+
+        for win in WIN[PO]:
+            WIN[PO][win].close()
+        WIN[PO] = {}
+
+        for win in WIN[MO]:
+            WIN[MO][win].close()
+        WIN[MO] = {}
+
+        if WIN[WZ] is not None:
+            WIN[WZ].close()
+            WIN[WZ] = None
+
+    def parse_rc_file(rcfile, client, ticket_system):
+        with open(rcfile, 'r') as f:
+            rc = json.load(f)
+        modules = {}
+        for mtype in rc:
+            for mname in rc[mtype]:
+                for rcmod in rc[mtype][mname]:
+                    ticket = ticket_system.get_ticket()
+                    mod = Module(client, mtype, mname, ticket)
+                    mopts = mod.mopts()
+                    for rcmopt in rcmod:
+                        if rcmopt == 'PAYLOAD':
+                            mod.payload = rcmod['PAYLOAD']['NAME']
+                            popts = mod.payload.mopts()
+                            for popt in rcmod['PAYLOAD']['OPTIONS']:
+                                popts[popt] = rcmod['PAYLOAD']['OPTIONS'][popt]
+                        else:
+                            mopts[rcmopt] = rcmod[rcmopt]
+                    modules[ticket] = mod
+        return modules
+
+    def dump_modules(mod_list):
+        mod_dict = {}
+        for mod in mod_list.values():
+            mtype = mod.mtype()
+            mname = mod.mname()
+            if mtype not in mod_dict:
+                mod_dict[mtype] = {}
+            if mname not in mod_dict[mtype]:
+                mod_dict[mtype][mname] = []
+            mod_dict[mtype][mname].append(mod.gen_dict())
+        return mod_dict
+
+    def gen_tmp_opts(window, module, payload=False):
+        if payload:
+            options, _ = module.payload.options()
+        else:
+            options, _ = module.options()
+
+        tmp_opts = {}
+        for idx, opt in enumerate(options):
+            opt_val = utils.correct_type(
+                window[(f'{cst.K_POPTS_VAL if payload else cst.K_MOPTS_VAL}'
+                       f'{idx}')].Get(),
+                module.payload.opt_info(
+                    window[(f'{cst.K_POPTS}{idx}')].Get()
+                ) if payload else
+                module.opt_info(
+                    window[(f'{cst.K_MOPTS}{idx}')].Get())
+            )
+
+            if options[opt] != opt_val:
+                tmp_opts[idx] = (opt, opt_val)
+
+        inv_miss = {'inv': {}, 'mis': {}}
+        for kidx, vopt in tmp_opts.items():
+            if isinstance(vopt[1], str):
+                if vopt[1].startswith('Invalid'):
+                    inv_miss['inv'][kidx] = (vopt[0], vopt[1].split('. ')[1])
+                elif vopt[1].startswith('Missing'):
+                    inv_miss['mis'][kidx] = (vopt[0], vopt[1].split('. ')[1])
+
+        return tmp_opts, inv_miss
+
     autoauditor_window()
 
     win_out_sz = None
@@ -1020,6 +1124,8 @@ def main():
 
     modules = {}
     tmp_modules = {}
+
+    msfcl = None
 
     def get_module(ticket, modtype):
         search = modules
@@ -1055,9 +1161,7 @@ def main():
 
     cmd_queue = queue.Queue()
     cmd_event = threading.Event()
-    cmd_thread = threading.Thread(target=autoauditor_thread,
-                                  args=(cmd_event, cmd_queue, WIN[MN]),
-                                  daemon=True)
+    cmd_thread = AutoauditorThread(WIN[MN], cmd_queue, cmd_event)
     cmd_thread.start()
 
     gif = None
@@ -1077,324 +1181,133 @@ def main():
         if window == WIN[MN]:
             if event == sg.WIN_CLOSED:
                 break
-            else:
-                if not window[cst.K_MAIN_LOG_CB].enabled and \
-                   win_out_sz_hidden is None:
-                    win_out_sz_hidden = window.size
 
-                if window[cst.K_MAIN_LOG_CB].enabled and \
-                   win_out_sz is None:
-                    win_out_sz = window.size
+            if not window[cst.K_MAIN_LOG_CB].enabled and \
+               win_out_sz_hidden is None:
+                win_out_sz_hidden = window.size
 
-                if event == cst.K_MAIN_TAB:
-                    if values[cst.K_MAIN_TAB] == 'License':
-                        lic_sz = cst.MAIN_LIC_C_H
-                        if window[cst.K_MAIN_LOG_CB].enabled:
-                            lic_sz = cst.MAIN_LIC_C_H2
-                        window[cst.K_MAIN_LIC].Widget.configure(
-                            height=lic_sz)
+            if window[cst.K_MAIN_LOG_CB].enabled and \
+               win_out_sz is None:
+                win_out_sz = window.size
 
-                    elif values[cst.K_MAIN_TAB] == 'About':
-                        fontp = cst.FNT_P
-                        if window[cst.K_MAIN_LOG_CB].enabled:
-                            fontp = cst.FNT_P2
-                        window[cst.K_MAIN_ABOUT_P](font=fontp)
-                    else:
-                        window[cst.K_MAIN_IT_LF].Widget.select_clear()
+            if event == cst.K_MAIN_TAB:
+                if values[cst.K_MAIN_TAB] == 'License':
+                    lic_sz = cst.MAIN_LIC_C_H
+                    if window[cst.K_MAIN_LOG_CB].enabled:
+                        lic_sz = cst.MAIN_LIC_C_H2
+                    window[cst.K_MAIN_LIC].Widget.configure(
+                        height=lic_sz)
 
-                if event in (cst.K_MAIN_RC_CB, cst.K_MAIN_RC_CB_T):
-                    switch_state(window, cst.K_MAIN_RC_CB)
+                elif values[cst.K_MAIN_TAB] == 'About':
+                    fontp = cst.FNT_P
+                    if window[cst.K_MAIN_LOG_CB].enabled:
+                        fontp = cst.FNT_P2
+                    window[cst.K_MAIN_ABOUT_P](font=fontp)
+                else:
+                    window[cst.K_MAIN_IT_LF].Widget.select_clear()
 
-                if event in (cst.K_MAIN_VPN_CB, cst.K_MAIN_VPN_CB_T):
-                    switch_state(window, cst.K_MAIN_VPN_CB,
-                                 cst.K_MAIN_VPN_CF_T, cst.K_MAIN_IT_VPN_CF,
-                                 cst.K_MAIN_VPN_CF_FB, cst.K_MAIN_VPN_CFINFO)
+            if event in (cst.K_MAIN_RC_CB, cst.K_MAIN_RC_CB_T):
+                switch_state(window, cst.K_MAIN_RC_CB)
 
-                if event in (cst.K_MAIN_BC_CB, cst.K_MAIN_BC_CB_T):
-                    switch_state(window, cst.K_MAIN_BC_CB,
-                                 cst.K_MAIN_BC_CF_T, cst.K_MAIN_IT_BC_CF,
-                                 cst.K_MAIN_BC_CF_FB, cst.K_MAIN_BC_CFINFO,
-                                 cst.K_MAIN_BC_LF_T, cst.K_MAIN_IT_BC_LF,
-                                 cst.K_MAIN_BC_LF_FB, cst.K_MAIN_BC_LFINFO)
+            if event in (cst.K_MAIN_VPN_CB, cst.K_MAIN_VPN_CB_T):
+                switch_state(window, cst.K_MAIN_VPN_CB,
+                             cst.K_MAIN_VPN_CF_T, cst.K_MAIN_IT_VPN_CF,
+                             cst.K_MAIN_VPN_CF_FB, cst.K_MAIN_VPN_CFINFO)
 
-                if event in (cst.K_MAIN_SC_CB, cst.K_MAIN_SC_CB_T):
-                    switch_state(window, cst.K_MAIN_SC_CB)
+            if event in (cst.K_MAIN_BC_CB, cst.K_MAIN_BC_CB_T):
+                switch_state(window, cst.K_MAIN_BC_CB,
+                             cst.K_MAIN_BC_CF_T, cst.K_MAIN_IT_BC_CF,
+                             cst.K_MAIN_BC_CF_FB, cst.K_MAIN_BC_CFINFO,
+                             cst.K_MAIN_BC_LF_T, cst.K_MAIN_IT_BC_LF,
+                             cst.K_MAIN_BC_LF_FB, cst.K_MAIN_BC_LFINFO)
 
-                if event == cst.K_MAIN_LFINFO:
-                    WIN[POP][MN].append(
-                        sg.Window(cst.T_MAIN_LF, [
-                            [sg.Text(
-                                ("Absolute/Relative path to "
-                                 "autoauditor log output file."),
-                                )],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.Text("Default:", font=cst.FNT_B),
-                             sg.InputText(cst.DEF_MAIN_LD,
-                                          key=cst.K_MAIN_INFO_DEF,
-                                          disabled=True)],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.OK()]
-                        ], element_justification=cst.J_C, icon=cst.ICO_I,
-                                  finalize=True))
-                    color_select_input(WIN[POP][MN][-1],
-                                       cst.K_MAIN_INFO_DEF)
+            if event in (cst.K_MAIN_SC_CB, cst.K_MAIN_SC_CB_T):
+                switch_state(window, cst.K_MAIN_SC_CB)
 
-                if event == cst.K_MAIN_LDINFO:
-                    WIN[POP][MN].append(
-                        sg.Window(cst.T_MAIN_LD, [
-                            [sg.Text(
-                                ("Absolute/Relative path to "
-                                 "gathered data output directory."),
-                                )],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.Text("Default:", font=cst.FNT_B),
-                             sg.InputText(cst.DEF_MAIN_LD,
-                                          key=cst.K_MAIN_INFO_DEF,
-                                          disabled=True)],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.OK()]
-                        ], element_justification=cst.J_C, icon=cst.ICO_I,
-                                  finalize=True))
-                    color_select_input(WIN[POP][MN][-1],
-                                       cst.K_MAIN_INFO_DEF)
+            if event == cst.K_MAIN_LFINFO:
+                WIN[POP][MN].append(
+                    help_window(cst.T_MAIN_LF,
+                                "Absolute/Relative path to "
+                                "autoauditor log output file.",
+                                cst.DEF_MAIN_LF))
 
-                if event == cst.K_MAIN_RCINFO:
-                    WIN[POP][MN].append(
-                        sg.Window(cst.T_MAIN_RC, [
-                            [sg.Text(
-                                ("Absolute/Relative path to "
-                                 "resource script file."),
-                                )],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.Text("Default:", font=cst.FNT_B),
-                             sg.InputText(cst.DEF_MAIN_LD,
-                                          key=cst.K_MAIN_INFO_DEF,
-                                          disabled=True)],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.OK()]
-                        ], element_justification=cst.J_C, icon=cst.ICO_I,
-                                  finalize=True))
-                    color_select_input(WIN[POP][MN][-1],
-                                       cst.K_MAIN_INFO_DEF)
+            if event == cst.K_MAIN_LDINFO:
+                WIN[POP][MN].append(
+                    help_window(cst.T_MAIN_LD,
+                                "Absolute/Relative path to "
+                                "gathered data output directory.",
+                                cst.DEF_MAIN_LD))
 
-                if event == cst.K_MAIN_VPN_CFINFO:
-                    WIN[POP][MN].append(
-                        sg.Window(cst.T_MAIN_VPN_CF, [
-                            [sg.Text(
-                                ("Absolute/Relative path to "
-                                 "OpenVPN configuration file."),
-                                )],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.Text("Default:", font=cst.FNT_B),
-                             sg.InputText(cst.DEF_MAIN_LD,
-                                          key=cst.K_MAIN_INFO_DEF,
-                                          disabled=True)],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.OK()]
-                        ], element_justification=cst.J_C, icon=cst.ICO_I,
-                                  finalize=True))
-                    color_select_input(WIN[POP][MN][-1],
-                                       cst.K_MAIN_INFO_DEF)
+            if event == cst.K_MAIN_RCINFO:
+                WIN[POP][MN].append(
+                    help_window(cst.T_MAIN_RC,
+                                "Absolute/Relative path to "
+                                "resource script file.",
+                                cst.DEF_MAIN_RC))
 
-                if event == cst.K_MAIN_BC_CFINFO:
-                    WIN[POP][MN].append(
-                        sg.Window(cst.T_MAIN_BC_CF, [
-                            [sg.Text(
-                                ("Absolute/Relative path to "
-                                 "blockchain network configuration file."),
-                                )],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.Text("Default:", font=cst.FNT_B),
-                             sg.InputText(cst.DEF_MAIN_LD,
-                                          key=cst.K_MAIN_INFO_DEF,
-                                          disabled=True)],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.OK()]
-                        ], element_justification=cst.J_C, icon=cst.ICO_I,
-                                  finalize=True))
-                    color_select_input(WIN[POP][MN][-1],
-                                       cst.K_MAIN_INFO_DEF)
+            if event == cst.K_MAIN_VPN_CFINFO:
+                WIN[POP][MN].append(
+                    help_window(cst.T_MAIN_VPN_CF,
+                                "Absolute/Relative path to "
+                                "OpenVPN configuration file.",
+                                cst.DEF_MAIN_VPN_CF))
 
-                if event == cst.K_MAIN_BC_LFINFO:
-                    WIN[POP][MN].append(
-                        sg.Window(cst.T_MAIN_BC_LF, [
-                            [sg.Text(
-                                ("Absolute/Relative path to "
-                                 "blockchain log output file."),
-                                )],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.Text("Default:", font=cst.FNT_B),
-                             sg.InputText(cst.DEF_MAIN_LD,
-                                          key=cst.K_MAIN_INFO_DEF,
-                                          disabled=True)],
-                            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-                            [sg.OK()]
-                        ], element_justification=cst.J_C, icon=cst.ICO_I,
-                                  finalize=True))
-                    color_select_input(WIN[POP][MN][-1],
-                                       cst.K_MAIN_INFO_DEF)
+            if event == cst.K_MAIN_BC_CFINFO:
+                WIN[POP][MN].append(
+                    help_window(cst.T_MAIN_BC_CF,
+                                "Absolute/Relative path to "
+                                "blockchain network configuration file.",
+                                cst.DEF_MAIN_BC_CF))
 
-                if event == cst.K_MAIN_LOG_CB:
-                    shrink_enlarge_window(window[cst.K_MAIN_LOG],
-                                          window[cst.K_MAIN_LOG_CB],
-                                          win_out_sz,
-                                          win_out_sz_hidden)
+            if event == cst.K_MAIN_BC_LFINFO:
+                WIN[POP][MN].append(
+                    help_window(cst.T_MAIN_BC_LF,
+                                "Absolute/Relative path to "
+                                "blockchain log output file.",
+                                cst.DEF_MAIN_BC_LF))
 
-                if event in (cst.K_MAIN_RAA_B, cst.K_MAIN_RAA_T):
-                    if not job_run:
-                        error = False
-                        utils.set_logger(window)
+            if event == cst.K_MAIN_LOG_CB:
+                shrink_enlarge_window(window[cst.K_MAIN_LOG],
+                                      window[cst.K_MAIN_LOG_CB],
+                                      win_out_sz,
+                                      win_out_sz_hidden)
 
-                        lf = window[cst.K_MAIN_IT_LF].Get()
-                        ld = window[cst.K_MAIN_IT_LD].Get()
-
-                        errcode = utils.check_file_dir(lf, ld)
-                        if errcode is not None:
-                            sg.Window("Error", [
-                                [sg.Text((f"Log file/directory path "
-                                          f"cannot be created: {errcode}."),
-                                         )],
-                                [sg.Text(font=cst.FNT_P)],
-                                [sg.OK(button_color=cst.B_C_ERR)]
-                            ], element_justification=cst.J_C,
-                                      auto_close=True, keep_on_top=True,
-                                      icon=cst.ICO).read(close=True)
-                            error = True
-
-                        rc = window[cst.K_MAIN_IT_RC].Get()
-                        if not os.path.isfile(rc):
-                            sg.Window("Error", [
-                                [sg.Text(f"File {rc} does not exist.",
-                                         )],
-                                [sg.Text(font=cst.FNT_P)],
-                                [sg.OK(button_color=cst.B_C_ERR)]
-                            ], element_justification=cst.J_C,
-                                      auto_close=True, keep_on_top=True,
-                                      icon=cst.ICO).read(close=True)
-                            error = True
-
-                        if window[cst.K_MAIN_VPN_CB].enabled:
-                            vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
-                            if not os.path.isfile(vpncf):
-                                sg.Window("Error", [
-                                    [sg.Text(f"File {vpncf} does not exist.",
-                                             )],
-                                    [sg.Text(font=cst.FNT_P)],
-                                    [sg.OK(button_color=cst.B_C_ERR)]
-                                ], element_justification=cst.J_C,
-                                          auto_close=True, keep_on_top=True,
-                                          icon=cst.ICO).read(close=True)
-                                error = True
-
-                        if window[cst.K_MAIN_BC_CB].enabled:
-                            hc = window[cst.K_MAIN_IT_BC_CF].Get()
-                            if not os.path.isfile(hc):
-                                sg.Window("Error", [
-                                    [sg.Text(f"File {hc} does not exist.",
-                                             )],
-                                    [sg.Text(font=cst.FNT_P)],
-                                    [sg.OK(button_color=cst.B_C_ERR)]
-                                ], element_justification=cst.J_C,
-                                          auto_close=True, keep_on_top=True,
-                                          icon=cst.ICO).read(close=True)
-                                error = True
-
-                            ho = window[cst.K_MAIN_IT_BC_LF].Get()
-                            errcode = utils.check_file_dir(ho)
-                            if errcode is not None:
-                                sg.Window("Error", [
-                                    [sg.Text((f"File path {ho} cannot "
-                                              f"be created: {errcode}."),
-                                             )],
-                                    [sg.Text(font=cst.FNT_P)],
-                                    [sg.OK(button_color=cst.B_C_ERR)]
-                                ], element_justification=cst.J_C,
-                                          auto_close=True, keep_on_top=True,
-                                          icon=cst.ICO).read(close=True)
-                                error = True
-
-                        if not error:
-                            if not window[cst.K_MAIN_LOG_CB].enabled:
-                                shrink_enlarge_window(
-                                    window[cst.K_MAIN_LOG],
-                                    window[cst.K_MAIN_LOG_CB],
-                                    win_out_sz,
-                                    win_out_sz_hidden)
-
-                            if window[cst.K_MAIN_VPN_CB].enabled:
-                                cmd_queue.put(('vpn',
-                                               (vpncf,
-                                                False)))  # stop
-
-                            cmd_queue.put(('msfstart',
-                                           (ld,
-                                            window[cst.K_MAIN_VPN_CB].enabled,
-                                            False)))  # stop
-                            cmd_queue.put(('msfconn',
-                                           (cst.DEF_MSFRPC_PWD,
-                                            False)))  # wizard
-                            cmd_queue.put(('msfrun', (rc, lf)))
-
-                            if window[cst.K_MAIN_BC_CB].enabled:
-                                cmd_queue.put(('hlfloadconfig', (hc,)))
-                                cmd_queue.put(('hlfstore', (lf, ho)))
-
-                            if window[cst.K_MAIN_SC_CB].enabled:
-                                cmd_queue.put(('stop', ()))
-
-                            job_run = True
-
-                if event in (cst.K_MAIN_RBC_B, cst.K_MAIN_RBC_T):
+            if event in (cst.K_MAIN_RAA_B, cst.K_MAIN_RAA_T):
+                if not job_run:
                     error = False
                     utils.set_logger(window)
 
                     lf = window[cst.K_MAIN_IT_LF].Get()
-                    if not os.path.isfile(lf):
-                        sg.Window("Error", [
-                            [sg.Text("Autoauditor log does not exist.",
-                                     )],
-                            [sg.Text(font=cst.FNT_P)],
-                            [sg.OK(button_color=cst.B_C_ERR)]
-                        ], element_justification=cst.J_C,
-                                  auto_close=True, keep_on_top=True,
-                                  icon=cst.ICO).read(close=True)
+                    ld = window[cst.K_MAIN_IT_LD].Get()
+
+                    errcode = utils.check_file_dir(lf, ld)
+                    if errcode is not None:
+                        Window(f"Log file/directory path "
+                               f"cannot be created: {errcode}.")
                         error = True
 
-                    if not window[cst.K_MAIN_BC_CB].enabled:
-                        sg.Window("Error", [
-                            [sg.Text("Blockchain must be enabled.",
-                                     )],
-                            [sg.Text(font=cst.FNT_P)],
-                            [sg.OK(button_color=cst.B_C_ERR)]
-                            ], element_justification=cst.J_C,
-                                  auto_close=True, keep_on_top=True,
-                                  icon=cst.ICO).read(close=True)
+                    rc = window[cst.K_MAIN_IT_RC].Get()
+                    if not os.path.isfile(rc):
+                        Window(f"File {rc} does not exist.")
                         error = True
-                    else:
+
+                    if window[cst.K_MAIN_VPN_CB].enabled:
+                        vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
+                        if not os.path.isfile(vpncf):
+                            Window(f"File {vpncf} does not exist.")
+                            error = True
+
+                    if window[cst.K_MAIN_BC_CB].enabled:
                         hc = window[cst.K_MAIN_IT_BC_CF].Get()
                         if not os.path.isfile(hc):
-                            sg.Window("Error", [
-                                [sg.Text(f"File {hc} does not exist.",
-                                         )],
-                                [sg.Text(font=cst.FNT_P)],
-                                [sg.OK(button_color=cst.B_C_ERR)]
-                            ], element_justification=cst.J_C,
-                                      auto_close=True, keep_on_top=True,
-                                      icon=cst.ICO).read(close=True)
+                            Window(f"File {hc} does not exist.")
                             error = True
 
                         ho = window[cst.K_MAIN_IT_BC_LF].Get()
                         errcode = utils.check_file_dir(ho)
                         if errcode is not None:
-                            sg.Window("Error", [
-                                [sg.Text((f"File path {ho} cannot "
-                                          f"be created: {errcode}."),
-                                         )],
-                                [sg.Text(font=cst.FNT_P)],
-                                [sg.OK(button_color=cst.B_C_ERR)]
-                            ], element_justification=cst.J_C,
-                                      auto_close=True, keep_on_top=True,
-                                      icon=cst.ICO).read(close=True)
+                            Window(f"File path {ho} "
+                                   f"cannot be created: {errcode}.")
                             error = True
 
                     if not error:
@@ -1404,175 +1317,220 @@ def main():
                                 window[cst.K_MAIN_LOG_CB],
                                 win_out_sz,
                                 win_out_sz_hidden)
+
+                        if window[cst.K_MAIN_VPN_CB].enabled:
+                            cmd_queue.put(('vpnstart',
+                                           (vpncf,
+                                            False)))  # stop
+
+                        cmd_queue.put(('msfstart',
+                                       (ld,
+                                        window[cst.K_MAIN_VPN_CB].enabled,
+                                        False)))  # stop
+                        cmd_queue.put(('msfconnect',
+                                       (cst.DEF_MSFRPC_PWD,
+                                        False)))  # wizard
+                        cmd_queue.put(('msfrun', (rc, lf)))
+
+                        if window[cst.K_MAIN_BC_CB].enabled:
+                            cmd_queue.put(('hlfloadconfig', (hc,)))
+                            cmd_queue.put(('hlfstore', (lf, ho)))
+
+                        cmd_queue.put(('msfstop',
+                                       (window[cst.K_MAIN_SC_CB].enabled,)
+                                       ))
+
+                        job_run = True
+
+            if event in (cst.K_MAIN_RBC_B, cst.K_MAIN_RBC_T):
+                if not job_run:
+                    error = False
+                    utils.set_logger(window)
+
+                    ld = window[cst.K_MAIN_IT_LD].Get()
+                    lf = window[cst.K_MAIN_IT_LF].Get()
+
+                    if not os.path.isfile(lf):
+                        Window("Autoauditor log does not exist.")
+                        error = True
+
+                    errcode = utils.check_file_dir(lf, ld)
+                    if errcode is not None:
+                        Window(f"Log file/directory path "
+                               f"cannot be created: {errcode}.")
+                        error = True
+
+                    if window[cst.K_MAIN_VPN_CB].enabled:
+                        vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
+                        if not os.path.isfile(vpncf):
+                            Window(f"File {vpncf} does not exist.")
+                            error = True
+
+                    if not window[cst.K_MAIN_BC_CB].enabled:
+                        Window("Blockchain must be enabled.")
+                        error = True
+                    else:
+                        hc = window[cst.K_MAIN_IT_BC_CF].Get()
+                        if not os.path.isfile(hc):
+                            Window(f"File {hc} does not exist.")
+                            error = True
+
+                        ho = window[cst.K_MAIN_IT_BC_LF].Get()
+                        errcode = utils.check_file_dir(ho)
+                        if errcode is not None:
+                            Window(f"File path {ho} "
+                                   f"cannot be created: {errcode}.")
+                            error = True
+
+                    if not error:
+                        if not window[cst.K_MAIN_LOG_CB].enabled:
+                            shrink_enlarge_window(
+                                window[cst.K_MAIN_LOG],
+                                window[cst.K_MAIN_LOG_CB],
+                                win_out_sz,
+                                win_out_sz_hidden)
+
+                        if window[cst.K_MAIN_VPN_CB].enabled:
+                            cmd_queue.put(('vpnstart',
+                                           (vpncf,
+                                            False)))  # stop
+
+                        cmd_queue.put(('msfstart',
+                                       (ld,
+                                        window[cst.K_MAIN_VPN_CB].enabled,
+                                        False)))  # stop
+                        cmd_queue.put(('msfconnect',
+                                       (cst.DEF_MSFRPC_PWD,
+                                        False)))  # wizard
                         cmd_queue.put(('hlfloadconfig', (hc,)))
                         cmd_queue.put(('hlfstore', (lf, ho)))
 
-                if event in (cst.K_MAIN_WIZ_B, cst.K_MAIN_WIZ_T):
-                    if WIN[WZ] is None and not job_run:
-                        if not window[cst.K_MAIN_LOG_CB].enabled:
-                            shrink_enlarge_window(window[cst.K_MAIN_LOG],
-                                                  window[cst.K_MAIN_LOG_CB],
-                                                  win_out_sz,
-                                                  win_out_sz_hidden)
-                        error = False
-                        utils.set_logger(window)
+                        cmd_queue.put(('msfstop',
+                                       (window[cst.K_MAIN_SC_CB].enabled,)
+                                       ))
 
-                        lf = window[cst.K_MAIN_IT_LF].Get()
-                        ld = window[cst.K_MAIN_IT_LD].Get()
+                        job_run = True
 
-                        errcode = utils.check_file_dir(lf, ld)
-                        if errcode is not None:
-                            sg.Window("Error", [
-                                [sg.Text("Log file/Log directory",
-                                         )],
-                                [sg.Text("creation permission error.",
-                                         )],
-                                [sg.Text(font=cst.FNT_P)],
-                                [sg.OK(button_color=cst.B_C_ERR)]
-                            ], element_justification=cst.J_C,
-                                      auto_close=True, keep_on_top=True,
-                                      icon=cst.ICO).read(close=True)
-                            error = True
-
-                        if window[cst.K_MAIN_RC_CB].enabled:
-                            rc = window[cst.K_MAIN_IT_RC].Get()
-                            if not os.path.isfile(rc):
-                                sg.Window("Error", [
-                                    [sg.Text(f"File {rc} does not exist.",
-                                             )],
-                                    [sg.Text(font=cst.FNT_P)],
-                                    [sg.OK(button_color=cst.B_C_ERR)]
-                                ], element_justification=cst.J_C,
-                                          auto_close=True, keep_on_top=True,
-                                          icon=cst.ICO).read(close=True)
-                                error = True
-
-                        if window[cst.K_MAIN_VPN_CB].enabled:
-                            vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
-                            if not os.path.isfile(vpncf):
-                                sg.Window("Error", [
-                                    [sg.Text(f"File {vpncf} does not exist.",
-                                             )],
-                                    [sg.Text(font=cst.FNT_P)],
-                                    [sg.OK(button_color=cst.B_C_ERR)]
-                                ], element_justification=cst.J_C,
-                                          auto_close=True, keep_on_top=True,
-                                          icon=cst.ICO).read(close=True)
-                                error = True
-
-                        if not error:
-                            if not window[cst.K_MAIN_LOG_CB].enabled:
-                                shrink_enlarge_window(
-                                    window[cst.K_MAIN_LOG],
-                                    window[cst.K_MAIN_LOG_CB],
-                                    win_out_sz,
-                                    win_out_sz_hidden)
-
-                            if window[cst.K_MAIN_VPN_CB].enabled:
-                                cmd_queue.put(('vpn',
-                                               (vpncf,
-                                                False)))  # stop
-                            cmd_queue.put(
-                                ('msfstart',
-                                 (ld,
-                                  window[cst.K_MAIN_VPN_CB].enabled,  # ovpn
-                                  False)))  # stop
-                            cmd_queue.put(('msfconn',
-                                           (cst.DEF_MSFRPC_PWD,
-                                            True)))  # wizard
-                            job_run = True
-
-                if event in (cst.K_MAIN_STP_B, cst.K_MAIN_STP_T):
+            if event in (cst.K_MAIN_WIZ_B, cst.K_MAIN_WIZ_T):
+                if WIN[WZ] is None and not job_run:
                     if not window[cst.K_MAIN_LOG_CB].enabled:
                         shrink_enlarge_window(window[cst.K_MAIN_LOG],
                                               window[cst.K_MAIN_LOG_CB],
                                               win_out_sz,
                                               win_out_sz_hidden)
+                    error = False
                     utils.set_logger(window)
+
+                    lf = window[cst.K_MAIN_IT_LF].Get()
+                    ld = window[cst.K_MAIN_IT_LD].Get()
+
+                    errcode = utils.check_file_dir(lf, ld)
+                    if errcode is not None:
+                        Window("Log file/directory "
+                               "creation permission error.")
+                        error = True
+
+                    if window[cst.K_MAIN_RC_CB].enabled:
+                        rc = window[cst.K_MAIN_IT_RC].Get()
+                        if not os.path.isfile(rc):
+                            Window(f"File {rc} does not exist.")
+                            error = True
 
                     if window[cst.K_MAIN_VPN_CB].enabled:
                         vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
-                        cmd_queue.put(('vpn',
-                                       (vpncf,
-                                        True)))  # stop
+                        if not os.path.isfile(vpncf):
+                            Window(f"File {vpncf} does not exist.")
+                            error = True
 
-                    ld = window[cst.K_MAIN_IT_LD].Get()
-                    cmd_queue.put(('msfstart',
-                                   (ld,
-                                    window[cst.K_MAIN_VPN_CB].enabled,
+                    if not error:
+                        if not window[cst.K_MAIN_LOG_CB].enabled:
+                            shrink_enlarge_window(
+                                window[cst.K_MAIN_LOG],
+                                window[cst.K_MAIN_LOG_CB],
+                                win_out_sz,
+                                win_out_sz_hidden)
+
+                        if window[cst.K_MAIN_VPN_CB].enabled:
+                            cmd_queue.put(('vpnstart',
+                                           (vpncf,
+                                            False)))  # stop
+                        cmd_queue.put(
+                            ('msfstart',
+                             (ld,
+                              window[cst.K_MAIN_VPN_CB].enabled,  # ovpn
+                              False)))  # stop
+                        cmd_queue.put(('msfconnect',
+                                       (cst.DEF_MSFRPC_PWD,
+                                        True)))  # wizard
+                        job_run = True
+
+            if event in (cst.K_MAIN_STP_B, cst.K_MAIN_STP_T):
+                if not window[cst.K_MAIN_LOG_CB].enabled:
+                    shrink_enlarge_window(window[cst.K_MAIN_LOG],
+                                          window[cst.K_MAIN_LOG_CB],
+                                          win_out_sz,
+                                          win_out_sz_hidden)
+                utils.set_logger(window)
+
+                if window[cst.K_MAIN_VPN_CB].enabled:
+                    vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
+                    cmd_queue.put(('vpnstart',
+                                   (vpncf,
                                     True)))  # stop
 
-                    cmd_queue.put(('stop', ()))
-                    close_wizard()
+                ld = window[cst.K_MAIN_IT_LD].Get()
+                cmd_queue.put(('msfstart',
+                               (ld,
+                                window[cst.K_MAIN_VPN_CB].enabled,
+                                True)))  # stop
 
-                if event == 'LOG':
-                    window[cst.K_MAIN_LOG].print(values[event])
-                    if float(window[cst.K_MAIN_LOG].Widget.index('end-2l')
-                             ) >= cst.C_EL - 1:
-                        color_scrollbar(window, cst.K_MAIN_LOG)
+                cmd_queue.put(('msfstop', (True,)))
+                close_wizard()
 
-                if event == 'GIF':
-                    if gif is None:
-                        gif = LoadingGif(starting_gif=values[event])
-                    gif.update()
+            if event == 'LOG':
+                window[cst.K_MAIN_LOG].print(values[event])
+                if float(window[cst.K_MAIN_LOG].Widget.index('end-2l')
+                         ) >= cst.C_EL - 1:
+                    color_scrollbar(window, cst.K_MAIN_LOG)
 
-                if event == 'GIFSTOP':
-                    if gif is not None:
-                        gif.stop()
-                    gif = None
+            if event == 'GIF':
+                if gif is None:
+                    gif = LoadingGif(start_gif=values[event])
+                gif.update()
 
-                if event == 'START':
-                    msfcl, stop = values[event]
-                    if msfcl is None and not stop:
-                        sg.Window("Error", [
-                            [sg.Text("Containers could not be started",
-                                     )],
-                            [sg.OK(button_color=cst.B_C_ERR)]
-                        ], element_justification=cst.J_C,
-                                  auto_close=True, keep_on_top=True,
-                                  icon=cst.ICO).read(close=True)
+            if event == 'GIFSTOP':
+                if gif is not None:
+                    gif.stop()
+                gif = None
 
-                if event == 'STOP':
-                    if values[event] == cst.NOERROR:
-                        sg.Window('Success', [
-                            [sg.Text("AutoAuditor finished successfully.",
-                                     )],
-                            [sg.OK()]
-                        ], element_justification=cst.J_C,
-                                  auto_close=True, auto_close_duration=1,
-                                  keep_on_top=True, icon=cst.ICO
-                                  ).read(close=True)
-                    else:
-                        sg.Window("Error", [
-                            [sg.Text((f"AutoAuditor finished with error: "
-                                      f"{values[event]}"),
-                                     )],
-                            [sg.OK(button_color=cst.B_C_ERR)]
-                        ], element_justification=cst.J_C,
-                                  keep_on_top=True, icon=cst.ICO
-                                  ).read(close=True)
-                    job_run = False
+            if event == 'START':
+                msfcnt, stop = values[event]
+                if msfcnt is None and not stop:
+                    Window("Containers could not be started")
 
-                if event == 'CONNECT':
-                    error, is_wizard = values[event]
-                    if error == cst.NOERROR:
-                        if is_wizard:
-                            if window[cst.K_MAIN_RC_CB].enabled:
-                                modules = parse_rc_file(
-                                    window[cst.K_MAIN_IT_RC].Get(),
-                                    shared_msfcl,
-                                    ts)
-                            wizard_window(modules)
-                    else:
-                        sg.Window("Error", [
-                            [sg.Text((f"Error establishing connection "
-                                      f"with metasploit container: "
-                                      f"{values[event]}"),
-                                     )],
-                            [sg.OK(button_color=cst.B_C_ERR)]
-                        ], element_justification=cst.J_C,
-                                  auto_close=True, keep_on_top=True,
-                                  icon=cst.ICO).read(close=True)
+            if event == 'STOP':
+                if values[event] == cst.NOERROR:
+                    Window("AutoAuditor finished successfully.",
+                           title="Success", button_color=None,
+                           auto_close_duration=1)
+                else:
+                    Window(f"AutoAuditor finished with error: "
+                           f"{values[event]}")
+                job_run = False
+
+            if event == 'CONNECT':
+                error, is_wizard, msfcl = values[event]
+                if error == cst.NOERROR:
+                    if is_wizard:
+                        if window[cst.K_MAIN_RC_CB].enabled:
+                            modules = parse_rc_file(
+                                window[cst.K_MAIN_IT_RC].Get(),
+                                msfcl,
+                                ts)
+                        wizard_window(modules)
+                else:
+                    Window(f"Error connecting with metasploit container: "
+                           f"{values[event]}")
 
         if window == WIN[WZ]:
             if event == sg.WIN_CLOSED:
@@ -1583,8 +1541,8 @@ def main():
             else:
                 if event == cst.K_WIZ_MODT:
                     mtype = values[cst.K_WIZ_MODT]
-                    if shared_msfcl is not None:
-                        mods = [''] + wizard.get_modules(shared_msfcl, mtype)
+                    if msfcl is not None:
+                        mods = [''] + wizard.get_modules(msfcl, mtype)
                     else:
                         mods = ['Error loading list. '
                                 'Wait until metasploit container starts.']
@@ -1603,7 +1561,7 @@ def main():
                 if event == cst.K_WIZ_MODN_INFO:
                     if window[cst.K_WIZ_MODN].Get():
                         tmp_mod = wizard.get_module(
-                            shared_msfcl,
+                            msfcl,
                             window[cst.K_WIZ_MODT].Get(),
                             window[cst.K_WIZ_MODN].Get())
                         info_window(tmp_mod)
@@ -1612,57 +1570,30 @@ def main():
                     mname = values[cst.K_WIZ_MODN]
                     if mtype and mname:
                         if mname.startswith('Error'):
-                            sg.Window("Error", [
-                                    [sg.Text(("Choose module type again "
-                                              "to reload module names list."),
-                                             )],
-                                    [sg.OK(button_color=cst.B_C_ERR)]
-                                ], element_justification=cst.J_C,
-                                      auto_close=True, keep_on_top=True,
-                                      icon=cst.ICO).read(close=True)
+                            Window("Choose module type again "
+                                   "to reload module names list.")
                         else:
                             if ts.available_ticket():
                                 ticket = ts.get_ticket()
-                                tmp_mod = Module(shared_msfcl,
+                                tmp_mod = Module(msfcl,
                                                  mtype, mname, ticket)
                                 tmp_modules[ticket] = tmp_mod
 
                                 mopts_window(tmp_mod)
                             else:
-                                sg.Window("Error", [
-                                    [sg.Text((f"Maximum modules allowed "
-                                              f"({cst.MAX_MODS})."),
-                                             )],
-                                    [sg.Text(
-                                        ("Limit can be changed in "
-                                         "utils.py:cst.MAX_MODS"),
-                                        )],
-                                    [sg.OK(button_color=cst.B_C_ERR)]
-                                ], element_justification=cst.J_C,
-                                          auto_close=True, keep_on_top=True,
-                                          icon=cst.ICO).read(close=True)
+                                Window(f"Maximum modules allowed "
+                                       f"({cst.MAX_MODS}).",
+                                       "Limit can be changed in "
+                                       "utils.py:cst.MAX_MODS")
                     else:
-                        sg.Window("Error", [
-                            [sg.Text("Module type/name not selected.")],
-                            [sg.Text(
-                                ("Choose a module type and module name "
-                                 "from dropdown list."), )],
-                            [sg.OK(button_color=cst.B_C_ERR)]
-                        ], element_justification=cst.J_C,
-                                  auto_close=True, keep_on_top=True,
-                                  icon=cst.ICO).read(close=True)
+                        Window("Module type/name not selected.",
+                               "Choose module type and module name "
+                               "from dropdown list.")
 
                 if event == 'MOD_NEW':
                     ticket, modstate = values[event]
                     if ticket not in tmp_modules and ticket not in modules:
-                        sg.Window("Error", [
-                            [sg.Text(
-                                "Error processing module. Try again.",
-                                )],
-                            [sg.OK(button_color=cst.B_C_ERR)]
-                        ], element_justification=cst.J_C,
-                                  auto_close=True, keep_on_top=True,
-                                  icon=cst.ICO).read(close=True)
+                        Window("Error processing module. Try again.")
                     elif ticket in tmp_modules:
                         modules[ticket] = tmp_modules[ticket]
                         del tmp_modules[ticket]
@@ -1670,23 +1601,14 @@ def main():
                 if wiz_medit_re.match(event):
                     ticket = int(event.split('_')[2])  # kwiz_mname_xxx
                     if ticket in WIN[MO]:
-                        sg.Window("Error", [
-                            [sg.Text("Module window already open.",
-                                     )],
-                            [sg.Text(font=cst.FNT_P)],
-                            [sg.OK(button_color=cst.B_C_ERR)]
-                        ], element_justification=cst.J_C,
-                                  icon=cst.ICO).read(close=True)
+                        Window("Module window already open.")
                     else:
                         mopts_window(modules[ticket], edit=True)
 
                 if wiz_mrem_re.match(event):
                     ticket = int(event.split('_')[2])  # kwiz_mrem_xxx
+                    window[f'{cst.K_WIZ_MFRAME}{ticket}'](visible=False)
                     window[f'{cst.K_WIZ_MFRAME}{ticket}'].hide_row()
-                    # workaround to hide row after removal
-                    # window[f'{cst.K_WIZ_MFRAME}{ticket}'](visible=False)
-                    # window[f'{cst.K_WIZ_MFRAME}{ticket}'
-                    #        ].ParentRowFrame.configure(width=0, height=1)
                     rm_cancel_mod(ticket, remove=True)
                     # Update column scrollbar
                     window.visibility_changed()
@@ -1700,7 +1622,7 @@ def main():
                     info_window(mod)
 
                 if event == cst.K_WIZ_EXIT:
-                    cmd_queue.put(('stop', ()))
+                    cmd_queue.put(('msfstop', (True,)))
                     window.close()
                     WIN[WZ] = None
                     modules = {}
@@ -1710,11 +1632,11 @@ def main():
 
                 if event == cst.K_WIZ_GEN:
                     ev, _ = sg.Window("Warning", [
-                        [sg.Text((f"You are overwriting "
-                                  f"{WIN[MN][cst.K_MAIN_IT_RC].Get()}."),
+                        [sg.Text(f"You are going to override "
+                                 f"{WIN[MN][cst.K_MAIN_IT_RC].Get()}.",
                                  pad=cst.P_N_R,
                                  justification=cst.J_C)],
-                        [sg.Text("Do you want to continue?",
+                        [sg.Text("Are you sure?",
                                  font=cst.FNT_B, pad=cst.P_N_L,
                                  justification=cst.J_C)],
                         [sg.Text(font=cst.FNT_P,
@@ -1732,29 +1654,24 @@ def main():
                             'succg',
                             f"Resources script generated in {rc_out}")
                         sg.Window('Success', [
-                            [sg.Text(
-                                "Resources script generated in",
-                                )],
-                            [sg.Text(f"{rc_out}",
-                                     )],
+                            [sg.Text("Resources script generated in")],
+                            [sg.Text(f"{rc_out}")],
                             [sg.OK()]
                         ], element_justification=cst.J_C,
-                                  auto_close=True, auto_close_duration=2,
+                                  auto_close=True, auto_close_duration=1,
                                   keep_on_top=True,
                                   icon=cst.ICO).read(close=True)
                         sev, _ = sg.Window("Shutdown", [
                             [sg.Text("Close wizard and shutdown containers?",
-                                     pad=cst.P_N_R,
-                                     justification=cst.J_C)],
-                            [sg.Text(cst.T_N,
-                                     font=cst.FNT_P,
+                                     pad=cst.P_N_R, justification=cst.J_C)],
+                            [sg.Text(cst.T_N, font=cst.FNT_P,
                                      justification=cst.J_C)],
                             [sg.Ok(button_color=cst.B_C_ERR),
                              sg.Cancel()]
                         ], element_justification=cst.J_C,
                                            icon=cst.ICO).read(close=True)
                         if sev == 'Ok':
-                            cmd_queue.put(('stop', ()))
+                            cmd_queue.put(('msfstop', (True,)))
                             close_wizard()
                             modules = {}
                             tmp_modules = {}
@@ -1787,24 +1704,11 @@ def main():
                             window[cst.K_MOPTS_PINFO](disabled=True)
                     if event == cst.K_MOPTS_PADD:
                         if not window[cst.K_MOPTS_PDD].Get():
-                            sg.Window("Error", [
-                                [sg.Text(
-                                    "Payload not selected.", )],
-                                [sg.Text(
-                                    "Choose payload from dropdown list.",
-                                    )],
-                                [sg.OK(button_color=cst.B_C_ERR)]
-                            ], element_justification=cst.J_C,
-                                      icon=cst.ICO).read(close=True)
+                            Window("Payload not selected. "
+                                   "Choose payload from dropdown list.")
                         else:
                             if ticket in WIN[PO]:
-                                sg.Window("Error", [
-                                    [sg.Text("Payload window already open.",
-                                             )],
-                                    [sg.Text(font=cst.FNT_P)],
-                                    [sg.OK(button_color=cst.B_C_ERR)]
-                                ], element_justification=cst.J_C,
-                                          icon=cst.ICO).read(close=True)
+                                Window("Payload window already open.")
                             else:
                                 popts_window(module,
                                              modstate,
@@ -1812,13 +1716,7 @@ def main():
 
                     if event == cst.K_MOPTS_PEDIT:
                         if ticket in WIN[PO]:
-                            sg.Window("Error", [
-                                [sg.Text("Payload window already open.",
-                                         )],
-                                [sg.Text(font=cst.FNT_P)],
-                                [sg.OK(button_color=cst.B_C_ERR)]
-                            ], element_justification=cst.J_C,
-                                      icon=cst.ICO).read(close=True)
+                            Window("Payload window already open.")
                         else:
                             popts_window(module, modstate)
 
@@ -1833,69 +1731,18 @@ def main():
                     if event == cst.K_MOPTS_PINFO:
                         if window[cst.K_MOPTS_PDD].Get():
                             tmp_pay = wizard.get_payload(
-                                shared_msfcl, window[cst.K_MOPTS_PDD].Get())
+                                msfcl, window[cst.K_MOPTS_PDD].Get())
                             info_window(tmp_pay, ticket=ticket)
 
                     if event == cst.K_MOPTS_ACPT:
-                        ax_opts, _ = module.options()
+                        tmp_opts, inv_miss = gen_tmp_opts(window, module)
 
-                        tmp_opts = {}
-                        for idx, opt in enumerate(ax_opts):
-                            opt_val = utils.correct_type(
-                                window[f'{cst.K_MOPTS_VAL}{idx}'].Get(),
-                                module.opt_info(
-                                    window[f'{cst.K_MOPTS}{idx}'].Get())
-                            )
-                            if ax_opts[opt] != opt_val:
-                                tmp_opts[idx] = (opt, opt_val)
-
-                        invalid = []
-                        missing = []
-                        invmis_idx = []
-                        for idx in tmp_opts:
-                            if isinstance(tmp_opts[idx][1], str):
-                                if tmp_opts[idx][1].startswith('Invalid'):
-                                    invalid.append(
-                                        (tmp_opts[idx][0],
-                                         tmp_opts[idx][1].split('. ')[1]))
-                                    invmis_idx.append(idx)
-                                elif tmp_opts[idx][1].startswith('Missing'):
-                                    missing.append(tmp_opts[idx][0])
-                                    invmis_idx.append(idx)
-                        if invalid or missing:
-                            invmis_lay = []
-                            if invalid:
-                                invmis_lay.extend([
-                                    [sg.Text("Invalid value in options:",
-                                             )],
-                                    [sg.Text(f"{invalid}",
-                                             )]])
-                            if invalid and missing:
-                                invmis_lay.extend([
-                                    [sg.Text(font=cst.FNT_P)]])
-                            if missing:
-                                invmis_lay.extend([
-                                    [sg.Text("Missing value in options:",
-                                             )],
-                                    [sg.Text(f"{missing}",
-                                             )]])
-                            invmis_lay.extend([
-                                [sg.Text(font=cst.FNT_P)],
-                                [sg.OK(button_color=cst.B_C_ERR)]])
-
-                            for idx in invmis_idx:
-                                window[f'{cst.K_MOPTS}{idx}'](
-                                    text_color=cst.C['red'])
-
-                            sg.Window("Error", invmis_lay,
-                                      element_justification=cst.J_C,
-                                      keep_on_top=True,
-                                      icon=cst.ICO).read(close=True)
+                        if inv_miss['inv'] or inv_miss['mis']:
+                            oerror_window(window, inv_miss)
                         else:
                             cur_opts = module.mopts()
-
-                            for idx in tmp_opts:
-                                cur_opts[tmp_opts[idx][0]] = tmp_opts[idx][1]
+                            for topt in tmp_opts.values():
+                                cur_opts[topt[0]] = topt[1]
 
                             WIN[WZ][f'{cst.K_WIZ_MNAME}{ticket}'](
                                 value=(f"Module "
@@ -1917,13 +1764,7 @@ def main():
                             del WIN[MO][ticket]
                             close_popups(ticket, MO, PO)
                 else:
-                    sg.Window("Error", [
-                        [sg.Text(
-                            "Error processing module. Add module again.",
-                            )],
-                        [sg.OK(button_color=cst.B_C_ERR)]
-                    ], element_justification=cst.J_C,
-                              icon=cst.ICO, auto_close=True).read(close=True)
+                    Window("Error processing module. Try again.")
                     window.close()
                     del WIN[MO][ticket]
                     close_popups(ticket, MO)
@@ -1951,66 +1792,20 @@ def main():
                         oinfo_window(module, popt, payload=True)
 
                     if event == cst.K_POPTS_ACPT:
-                        try:
-                            ax_popts, _ = module.payload.options()
-                        except AttributeError:
-                            sg.Window("Error", [
-                                [sg.Text(
-                                    "Missing payload in module.",
-                                    )],
-                                [sg.OK(button_color=cst.B_C_ERR)]
-                            ], element_justification=cst.J_C,
-                                      icon=cst.ICO).read(close=True)
+                        if module.payload is None:
+                            Window("Missing payload in module.")
                             window.close()
                             del WIN[PO][ticket]
                             close_popups(ticket, PO)
                         else:
-                            tmp_popts = {}
-                            for idx, popt in enumerate(ax_popts):
-                                popt_val = utils.correct_type(
-                                        window[cst.K_POPTS_VAL+str(idx)].Get(),
-                                        module.payload.opt_info(
-                                            window[cst.K_POPTS+str(idx)].Get()
-                                        ))
-                                if ax_popts[popt] != popt_val:
-                                    tmp_popts[popt] = popt_val
-
-                            invalid = []
-                            missing = []
-                            for popt in tmp_popts:
-                                if isinstance(tmp_popts[popt], str):
-                                    if tmp_popts[popt].startswith('Invalid'):
-                                        invalid.append(popt)
-                                    elif tmp_popts[popt].startswith('Missing'):
-                                        missing.append(popt)
-                            if invalid or missing:
-                                invmis_lay = []
-                                if invalid:
-                                    invmis_lay.extend([
-                                        [sg.Text("Invalid value in options:",
-                                                 )],
-                                        [sg.Text(f"{invalid}",
-                                                 )]])
-                                if invalid and missing:
-                                    invmis_lay.extend([
-                                        [sg.Text(font=cst.FNT_P)]])
-                                if missing:
-                                    invmis_lay.extend([
-                                        [sg.Text("Missing value in options:",
-                                                 )],
-                                        [sg.Text(f"{missing}",
-                                                 )]])
-                                invmis_lay.extend([
-                                    [sg.Text(font=cst.FNT_P)],
-                                    [sg.OK(button_color=cst.B_C_ERR)]])
-                                sg.Window("Error", invmis_lay,
-                                          element_justification=cst.J_C,
-                                          keep_on_top=True,
-                                          icon=cst.ICO).read(close=True)
+                            tmp_popts, pinv_miss = gen_tmp_opts(window, module,
+                                                                payload=True)
+                            if pinv_miss['inv'] or pinv_miss['mis']:
+                                oerror_window(window, pinv_miss, payload=True)
                             else:
                                 cur_popts = module.payload.mopts()
-                                for popt in tmp_popts:
-                                    cur_popts[popt] = tmp_popts[popt]
+                                for tpopt in tmp_popts.values():
+                                    cur_popts[tpopt[0]] = tpopt[1]
 
                                 WIN[MO][ticket][cst.K_MOPTS_PDD](
                                     disabled=True)
@@ -2024,13 +1819,7 @@ def main():
                                 del WIN[PO][ticket]
                                 close_popups(ticket, PO)
             else:
-                sg.Window("Error", [
-                    [sg.Text(
-                        "Error processing module. Add module again.",
-                        )],
-                    [sg.OK(button_color=cst.B_C_ERR)]
-                ], element_justification=cst.J_C,
-                          icon=cst.ICO, auto_close=True).read(close=True)
+                Window("Error processing payload. Try again.")
                 window.close()
                 del WIN[PO][ticket]
                 close_popups(ticket, PO)
