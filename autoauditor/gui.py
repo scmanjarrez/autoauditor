@@ -117,7 +117,7 @@ class Window(sg.Window):
     def __init__(self, *text, title="Error", button_color=cst.B_C_ERR,
                  auto_close_duration=4):
         layout = [
-            [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
+            [sg.Text(font=cst.FNT_P)],
             [sg.OK(button_color=button_color)]
         ]
         for t in text[::-1]:
@@ -374,16 +374,16 @@ def autoauditor_window():
          Browser(key=cst.K_MAIN_RC_FB, tooltip=cst.TT_MAIN_FB,
                  target=cst.K_MAIN_IT_RC),
          Button(key=cst.K_MAIN_RCINFO, tooltip=cst.TT_MAIN_RC)],
-        [ImageCheckBox(key=cst.K_MAIN_RC_CB, pad=cst.P_N_R2),
+        [ImageCheckBox(key=cst.K_MAIN_RC_CB, pad=cst.P_N_R),
          sg.Text(cst.T_MAIN_RC_CB, key=cst.K_MAIN_RC_CB_T,
-                 font=cst.FNT_B, pad=cst.P_N_R3, enable_events=True)],
+                 font=cst.FNT_B, pad=cst.P_N_R2, enable_events=True)],
         [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)]
     ]
 
     vpn_layout = [
-        [ImageCheckBox(key=cst.K_MAIN_VPN_CB, pad=cst.P_N_R2),
+        [ImageCheckBox(key=cst.K_MAIN_VPN_CB, pad=cst.P_N_R),
          sg.Text(cst.T_MAIN_VPN_CB, key=cst.K_MAIN_VPN_CB_T,
-                 font=cst.FNT_B, pad=cst.P_N_R3, enable_events=True)],
+                 font=cst.FNT_B, pad=cst.P_N_R2, enable_events=True)],
         [sg.Text(cst.T_MAIN_VPN_CF, key=cst.K_MAIN_VPN_CF_T,
                  size=cst.T_DESC_SZ2, font=cst.FNT_B,
                  text_color=cst.C['grey']),
@@ -397,9 +397,9 @@ def autoauditor_window():
     ]
 
     blockchain_layout = [
-        [ImageCheckBox(key=cst.K_MAIN_BC_CB, pad=cst.P_N_R2),
+        [ImageCheckBox(key=cst.K_MAIN_BC_CB, pad=cst.P_N_R),
          sg.Text(cst.T_MAIN_BC_CB, key=cst.K_MAIN_BC_CB_T,
-                 font=cst.FNT_B, pad=cst.P_N_R3, enable_events=True)],
+                 font=cst.FNT_B, pad=cst.P_N_R2, enable_events=True)],
         [sg.Text(cst.T_MAIN_BC_CF, key=cst.K_MAIN_BC_CF_T,
                  size=cst.T_DESC_SZ2, font=cst.FNT_B,
                  text_color=cst.C['grey']),
@@ -419,9 +419,9 @@ def autoauditor_window():
          Button(key=cst.K_MAIN_BC_LFINFO,
                 tooltip=cst.TT_MAIN_BC_LF, disabled=True)],
         [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
-        [ImageCheckBox(key=cst.K_MAIN_SC_CB, pad=cst.P_N_R2, enabled=True),
+        [ImageCheckBox(key=cst.K_MAIN_SC_CB, pad=cst.P_N_R, enabled=True),
          sg.Text(cst.T_MAIN_SC_CB, key=cst.K_MAIN_SC_CB_T,
-                 font=cst.FNT_B, pad=cst.P_N_R3, enable_events=True)]
+                 font=cst.FNT_B, pad=cst.P_N_R2, enable_events=True)]
     ]
 
     button_layout = [
@@ -848,7 +848,10 @@ def info_window(module, ticket=None):
         ], key=cst.K_MINFO_COL, size=cst.C_SZ3,
                    element_justification=cst.J_C,
                    scrollable=True, vertical_scroll_only=True)]
-    ] + [[sg.OK()]]
+    ] + [
+        [sg.Text(font=cst.FNT_P)],
+        [sg.OK()]
+    ]
 
     win = WIN[POP][WZ]
     if ticket is not None:
@@ -903,7 +906,10 @@ def oinfo_window(module, option, payload=False):
                                   disabled=True)]
                     for idx, opt in enumerate(info)],
                    border_width=cst.N_WDTH)]
-         ] + [[sg.OK()]]
+         ] + [
+             [sg.Text(font=cst.FNT_P)],
+             [sg.OK()]
+         ]
 
     if tckt not in win:
         win[tckt] = []
@@ -980,10 +986,9 @@ def oerror_window(opt_window, invalid_missing, payload=False):
 def help_window(title, text, path):
     hw = sg.Window(title, [
         [sg.Text(text)],
-        [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
         [sg.Text("Default:", font=cst.FNT_B),
          sg.InputText(path, key=cst.K_MAIN_INFO_DEF, disabled=True)],
-        [sg.Text(font=cst.FNT_P, pad=cst.P_N_TB)],
+        [sg.Text(font=cst.FNT_P)],
         [sg.OK()]
     ], element_justification=cst.J_C, icon=cst.ICO_I, finalize=True)
     color_select_input(hw, cst.K_MAIN_INFO_DEF)
@@ -1634,18 +1639,15 @@ def main():
                     ev, _ = sg.Window("Warning", [
                         [sg.Text(f"You are going to override "
                                  f"{WIN[MN][cst.K_MAIN_IT_RC].Get()}.",
-                                 pad=cst.P_N_R,
                                  justification=cst.J_C)],
                         [sg.Text("Are you sure?",
                                  font=cst.FNT_B, pad=cst.P_N_L,
                                  justification=cst.J_C)],
-                        [sg.Text(font=cst.FNT_P,
-                                 justification=cst.J_C)],
-                        [sg.Ok(button_color=cst.B_C_ERR),
-                         sg.Cancel()]
+                        [sg.Text(font=cst.FNT_P)],
+                        [sg.OK(button_color=cst.B_C_ERR), sg.Cancel()]
                     ], element_justification=cst.J_C,
                                       icon=cst.ICO).read(close=True)
-                    if ev == 'Ok':
+                    if ev == 'OK':
                         rc_dict = dump_modules(modules)
                         rc_out = WIN[MN][cst.K_MAIN_IT_RC].Get()
                         with open(rc_out, 'w') as f:
@@ -1656,6 +1658,7 @@ def main():
                         sg.Window('Success', [
                             [sg.Text("Resources script generated in")],
                             [sg.Text(f"{rc_out}")],
+                            [sg.Text(font=cst.FNT_P)],
                             [sg.OK()]
                         ], element_justification=cst.J_C,
                                   auto_close=True, auto_close_duration=1,
@@ -1663,14 +1666,14 @@ def main():
                                   icon=cst.ICO).read(close=True)
                         sev, _ = sg.Window("Shutdown", [
                             [sg.Text("Close wizard and shutdown containers?",
-                                     pad=cst.P_N_R, justification=cst.J_C)],
+                                     justification=cst.J_C)],
                             [sg.Text(cst.T_N, font=cst.FNT_P,
                                      justification=cst.J_C)],
-                            [sg.Ok(button_color=cst.B_C_ERR),
+                            [sg.OK(button_color=cst.B_C_ERR),
                              sg.Cancel()]
                         ], element_justification=cst.J_C,
                                            icon=cst.ICO).read(close=True)
-                        if sev == 'Ok':
+                        if sev == 'OK':
                             cmd_queue.put(('msfstop', (True,)))
                             close_wizard()
                             modules = {}

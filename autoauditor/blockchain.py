@@ -49,6 +49,11 @@ CHAINCODENAME = "autoauditor"
 NEWREPORTFUNC = "NewReport"
 NEWREPKEYWORD = "report"
 
+_tmp_outf = None
+_tmp_outd = None
+_tmp_msfcont = None
+_tmp_shutdown = False
+
 modregex = re.compile(r'^\#{5}\s(?P<modname>[\w\d_\/]+)\s#{5}$')
 modendregex = re.compile(r'^#{10,}$')
 rprtdateregex = re.compile(r'^#{14}\s(?P<date>[\d:\-\s\+\.]+)\s#{14}$')
@@ -182,9 +187,15 @@ def cache(db, mod, data, update_cache=False):
 
 
 def get_cve(exploit):
+    global _tmp_msfcont
+    if _tmp_msfcont is None:
+        utils.check_file_dir(_tmp_outf, _tmp_outd)
+        _tmp_msfcont = metasploit.start_msfrpcd(_tmp_outd)
+
     exp = exploit.split('/')
     cl = metasploit.get_msf_connection(cst.DEF_MSFRPC_PWD)
     mod = wizard.get_module(cl, exp[0], "/".join(exp[1:]))
+
     return wizard.get_module_references(mod)
 
 
@@ -478,9 +489,10 @@ def main():
 
     utils.copyright()
 
-    utils.check_file_dir(args.outfile, args.outdir)
-
-    msfcont = metasploit.start_msfrpcd(args.outdir)
+    global _tmp_outd, _tmp_outf, _tmp_shutdown
+    _tmp_outd = args.outdir
+    _tmp_outf = args.outfile
+    _tmp_shutdown = True
 
     if not os.path.isfile(args.outfile):
         utils.log(
@@ -501,7 +513,8 @@ def main():
     store_report(info, args.outfile, args.hyperledgerout,
                  args.force_update_cache)
 
-    utils.shutdown(msfcont)
+    if _tmp_shutdown and _tmp_msfcont is not None:
+        utils.shutdown(_tmp_msfcont)
 
 
 if __name__ == '__main__':

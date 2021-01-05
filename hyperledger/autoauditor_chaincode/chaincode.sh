@@ -661,9 +661,9 @@ if [ -n "$cmd" ]; then
 fi
 
 if [ -n "$up" ]; then
-    echo -e "${BLUE} Starting hyperledger fabric test-network."
+    echo -e "${BLUE} Starting hyperledger fabric test-network.$NC"
     start
-    echo -e "${BLUE} Starting docker-resolver container."
+    echo -e "${BLUE} Starting docker-resolver container.$NC"
     docker run --rm -d --name docker-resolver -v /var/run/docker.sock:/tmp/docker.sock -v /etc/hosts:/tmp/hosts dvdarias/docker-hoster > /dev/null
 fi
 
@@ -689,9 +689,9 @@ if [ -n "$all" ]; then
 fi
 
 if [ -n "$down" ]; then
-    echo -e "${BLUE} Stopping hyperledger fabric test-network."
+    echo -e "${BLUE} Stopping hyperledger fabric test-network.$NC"
     stop
-    echo -e "${BLUE} Stopping docker-resolver container."
+    echo -e "${BLUE} Stopping docker-resolver container.$NC"
     docker container stop docker-resolver > /dev/null
     exit
 fi

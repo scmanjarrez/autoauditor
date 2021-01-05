@@ -13,7 +13,7 @@ se encuentran en una subred privada accesible a través de un servidor VPN.
 
     `cd config && ./setup_test_environment.sh`
 
-
+> Vídeo de la preparación del entorno de pruebas, subtitulado: https://youtu.be/XYmzdHH_G-o
 ### Opcional (permite el uso de Hyperledger Fabric)
 - Descarga los binarios y los ficheros de prueba para crear la red de HLF.
 
@@ -52,6 +52,7 @@ de los nodos.
     - -b: (Opcional) Permite que los contenedores se queden iniciados, no deteniéndolos tras la ejecución de AutoAuditor.
 
 
+> Vídeo de la ejecución de AutoAuditor mediante CLI: https://youtu.be/Ogwj8wcaxTI
 - Ejecución individual de la función wizard de AutoAuditor.
 
     `python ../autoauditor/autoauditor.py -g rc.myfile.json`
@@ -61,6 +62,7 @@ de los nodos.
     - -g: Ejecuta la función de wizard de AutoAuditor, el fichero generado se guardará bajo el nombre **rc.myfile.json**.
 
 
+> Vídeo del asistente para creación de ficheros de automatización (CLI): https://youtu.be/dCyeBbZZxI8
 - Ejecución individual de la función blockchain de AutoAuditor.
 
     `python ../autoauditor/blockchain.py -o output/msf.log -hc network.example.json -ho output/blockchain.log`
@@ -68,6 +70,7 @@ de los nodos.
     - -hc: Configuración de la red de HLF presente en el fichero **network.example.json**.
     - -ho: (Opcional) Guarda una copia de los reportes almacenados en la blockchain en el fichero **output/blockchain.log**.
 
+> Vídeo del almacenamiento de reportes en la blockchain (CLI): https://youtu.be/I9PQNNX6Tdg
 - Ejecución individual de la función query de AutoAuditor.
 
     `python ../autoauditor/query.py -q date -t 2020-12 -c network.example.json`
@@ -75,11 +78,13 @@ de los nodos.
     - -t: Indica la fecha **2020-12** como fecha a filtrar en la búsqueda.
     - -c: Configuración de la red de HLF presente en el fichero **network.example.json**.
 
+> Vídeo de la búsqueda de reportes (CLI), subtitulado: https://youtu.be/WXEsy2r9mJ8
 
 ### Ejecución mediante GUI
 - Ejecución de la interfaz gráfica de AutoAuditor.
 
     `python ../autoauditor/gui.py`
+
     <details>
         <summary> Captura de la ventana de AutoAuditor. </summary>
         <div align="center">
@@ -118,54 +123,57 @@ de los nodos.
             </details>
         2. Store: Sube únicamente los reportes a la blockchain de HLF.
         3. Wizard: Inicia el programa de ayuda para la creación de ficheros RC.
-            <details>
-                <summary> Captura de la ventana del wizard. </summary>
-                <div align="center">
-                    <img alt="wizard" src="autoauditor/gui_files/screenshots/6.wizard.png" width="75%"/>
-                </div>
-            </details>
-            <details>
-                <summary> Captura de la ventana de información del módulo. </summary>
-                <div align="center">
-                    <img alt="module_info" src="autoauditor/gui_files/screenshots/7.module_info.png" width="75%"/>
-                </div>
-            </details>
-            <details>
-                <summary> Captura de la ventana de opciones del módulo. </summary>
-                <div align="center">
-                    <img alt="module_options" src="autoauditor/gui_files/screenshots/8.module_options.png" width="75%"/>
-                </div>
-            </details>
-            <details>
-                <summary> Captura de la ventana de error de una opción del módulo. </summary>
-                <div align="center">
-                    <img alt="moption_info" src="autoauditor/gui_files/screenshots/9.moption_error.png" width="50%"/>
-                </div>
-            </details>
-            <details>
-                <summary> Captura de la ventana de información de una opción del módulo. </summary>
-                <div align="center">
-                    <img alt="moption_info" src="autoauditor/gui_files/screenshots/10.moption_info.png" width="50%"/>
-                </div>
-            </details>
-            <details>
-                <summary> Captura de la ventana de información del payload. </summary>
-                <div align="center">
-                    <img alt="payload_info" src="autoauditor/gui_files/screenshots/11.payload_info.png" width="75%"/>
-                </div>
-            </details>
-            <details>
-                <summary> Captura de la ventana de opciones del payload. </summary>
-                <div align="center">
-                    <img alt="payload_options" src="autoauditor/gui_files/screenshots/12.payload_options.png" width="75%"/>
-                </div>
-            </details>
-            <details>
-                <summary> Captura de la ventana de información de una opción del payload. </summary>
-                <div align="center">
-                    <img alt="poption_info" src="autoauditor/gui_files/screenshots/13.poption_info.png" width="50%"/>
-                </div>
-            </details>
+           <details>
+               <summary> Capturas de la ventana del wizard. </summary>
+               <details>
+                   <summary> Captura de la ventana del wizard. </summary>
+                   <div align="center">
+                       <img alt="wizard" src="autoauditor/gui_files/screenshots/6.wizard.png" width="75%"/>
+                   </div>
+               </details>
+               <details>
+                   <summary> Captura de la ventana de información del módulo. </summary>
+                   <div align="center">
+                       <img alt="module_info" src="autoauditor/gui_files/screenshots/7.module_info.png" width="75%"/>
+                   </div>
+               </details>
+               <details>
+                   <summary> Captura de la ventana de opciones del módulo. </summary>
+                   <div align="center">
+                       <img alt="module_options" src="autoauditor/gui_files/screenshots/8.module_options.png" width="75%"/>
+                  </div>
+               </details>
+               <details>
+                   <summary> Captura de la ventana de error de una opción del módulo. </summary>
+                   <div align="center">
+                       <img alt="moption_info" src="autoauditor/gui_files/screenshots/9.moption_error.png" width="50%"/>
+                   </div>
+               </details>
+               <details>
+                   <summary> Captura de la ventana de información de una opción del módulo. </summary>
+                   <div align="center">
+                       <img alt="moption_info" src="autoauditor/gui_files/screenshots/10.moption_info.png" width="50%"/>
+                   </div>
+               </details>
+               <details>
+                   <summary> Captura de la ventana de información del payload. </summary>
+                   <div align="center">
+                       <img alt="payload_info" src="autoauditor/gui_files/screenshots/11.payload_info.png" width="75%"/>
+                   </div>
+               </details>
+               <details>
+                   <summary> Captura de la ventana de opciones del payload. </summary>
+                   <div align="center">
+                       <img alt="payload_options" src="autoauditor/gui_files/screenshots/12.payload_options.png" width="75%"/>
+                   </div>
+               </details>
+               <details>
+                   <summary> Captura de la ventana de información de una opción del payload. </summary>
+                   <div align="center">
+                       <img alt="poption_info" src="autoauditor/gui_files/screenshots/13.poption_info.png" width="50%"/>
+                   </div>
+               </details>
+           </details>
 
         4. Stop: Detiene los contenedores iniciados durante la ejecución de AutoAuditor o el programa de ayuda.
             <details>
@@ -175,7 +183,9 @@ de los nodos.
                 </div>
             </details>
 
-
+> Vídeo de la ejecución de AutoAuditor (GUI): https://youtu.be/lD7-3q-duTw<br>
+> Vídeo del almacenamiento de reportes en la blockchain (GUI): https://youtu.be/RcQymDZJFYM<br>
+> Vídeo del asistente para creación de ficheros de automatización (GUI): https://youtu.be/nIKc0-E-2bU<br>
 
 # Salida
 - Se conservará una copia del registro de ejecución de metasploit framework (community), separado por módulos, en el fichero **output/msf.log**.

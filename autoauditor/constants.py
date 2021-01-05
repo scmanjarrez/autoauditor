@@ -692,7 +692,7 @@ under certain conditions; check below for details.
 
 # MAIN Window
 MAIN_ABOUT_NAME = 'AutoAuditor'
-MAIN_ABOUT_VER = 'v2.3'
+MAIN_ABOUT_VER = 'v2.4'
 MAIN_ABOUT_AUTHOR = 'Sergio Chica Manjarrez'
 MAIN_ABOUT_LAB = 'Pervasive Computing Laboratory'
 MAIN_ABOUT_DEPT = "Telematic Engineering Department"
@@ -907,9 +907,8 @@ P_N = ((0, 0), (0, 0))
 P_N_TB = ((5, 5), (0, 0))
 P_N_LR = ((0, 0), (5, 5))
 P_N_L = ((0, 5), (5, 5))
-P_N_R = ((5, 0), (5, 5))
-P_N_R2 = ((7, 0), (5, 5))
-P_N_R3 = ((5, 0), (3, 0))
+P_N_R = ((7, 0), (5, 5))
+P_N_R2 = ((5, 0), (3, 0))
 P_N_RTB = ((12, 4), (0, 0))
 P_N_TB3 = ((14, 0), (0, 0))
 P_N_LRT = ((0, 0), (0, 5))

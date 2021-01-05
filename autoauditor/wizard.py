@@ -174,7 +174,7 @@ def generate_resources_file(client, rc_out):
             mod = None
             while mod is None:
                 mtype = input(
-                    f"[*] Module type ({'|'.join(cst.MODULE_TYPES)}): ")
+                    f"[*] Module type ({'|'.join(cst.MOD_TYPES)}): ")
                 mname = input("[*] Module: ")
                 try:
                     mod = get_module(client, mtype, mname)
