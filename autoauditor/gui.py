@@ -288,6 +288,7 @@ class AutoauditorThread(threading.Thread):
 
     def msfrun(self, rc, log):
         metasploit.launch_metasploit(self.msfcl, rc, log)
+        self.window.write_event_value('JOB_STOP', (self.msfcl))
 
     def hlfloadconfig(self, cfg):
         _asyncio.set_event_loop(self.async_loop)
@@ -1170,7 +1171,6 @@ def main():
     cmd_thread.start()
 
     gif = None
-    job_run = False
 
     while True:
         window, event, values = sg.read_all_windows()
@@ -1278,146 +1278,140 @@ def main():
                                       win_out_sz_hidden)
 
             if event in (cst.K_MAIN_RAA_B, cst.K_MAIN_RAA_T):
-                if not job_run:
-                    error = False
-                    utils.set_logger(window)
+                error = False
+                utils.set_logger(window)
 
-                    lf = window[cst.K_MAIN_IT_LF].Get()
-                    ld = window[cst.K_MAIN_IT_LD].Get()
+                lf = window[cst.K_MAIN_IT_LF].Get()
+                ld = window[cst.K_MAIN_IT_LD].Get()
 
-                    errcode = utils.check_file_dir(lf, ld)
+                errcode = utils.check_file_dir(lf, ld)
+                if errcode is not None:
+                    Window(f"Log file/directory path "
+                           f"cannot be created: {errcode}.")
+                    error = True
+
+                rc = window[cst.K_MAIN_IT_RC].Get()
+                if not os.path.isfile(rc):
+                    Window(f"File {rc} does not exist.")
+                    error = True
+
+                if window[cst.K_MAIN_VPN_CB].enabled:
+                    vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
+                    if not os.path.isfile(vpncf):
+                        Window(f"File {vpncf} does not exist.")
+                        error = True
+
+                if window[cst.K_MAIN_BC_CB].enabled:
+                    hc = window[cst.K_MAIN_IT_BC_CF].Get()
+                    if not os.path.isfile(hc):
+                        Window(f"File {hc} does not exist.")
+                        error = True
+
+                    ho = window[cst.K_MAIN_IT_BC_LF].Get()
+                    errcode = utils.check_file_dir(ho)
                     if errcode is not None:
-                        Window(f"Log file/directory path "
+                        Window(f"File path {ho} "
                                f"cannot be created: {errcode}.")
                         error = True
 
-                    rc = window[cst.K_MAIN_IT_RC].Get()
-                    if not os.path.isfile(rc):
-                        Window(f"File {rc} does not exist.")
-                        error = True
+                if not error:
+                    if not window[cst.K_MAIN_LOG_CB].enabled:
+                        shrink_enlarge_window(
+                            window[cst.K_MAIN_LOG],
+                            window[cst.K_MAIN_LOG_CB],
+                            win_out_sz,
+                            win_out_sz_hidden)
 
                     if window[cst.K_MAIN_VPN_CB].enabled:
-                        vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
-                        if not os.path.isfile(vpncf):
-                            Window(f"File {vpncf} does not exist.")
-                            error = True
+                        cmd_queue.put(('vpnstart',
+                                       (vpncf,
+                                        False)))  # stop
+
+                    cmd_queue.put(('msfstart',
+                                   (ld,
+                                    window[cst.K_MAIN_VPN_CB].enabled,
+                                    False)))  # stop
+                    cmd_queue.put(('msfconnect',
+                                   (cst.DEF_MSFRPC_PWD,
+                                    False)))  # wizard
+                    cmd_queue.put(('msfrun', (rc, lf)))
 
                     if window[cst.K_MAIN_BC_CB].enabled:
-                        hc = window[cst.K_MAIN_IT_BC_CF].Get()
-                        if not os.path.isfile(hc):
-                            Window(f"File {hc} does not exist.")
-                            error = True
-
-                        ho = window[cst.K_MAIN_IT_BC_LF].Get()
-                        errcode = utils.check_file_dir(ho)
-                        if errcode is not None:
-                            Window(f"File path {ho} "
-                                   f"cannot be created: {errcode}.")
-                            error = True
-
-                    if not error:
-                        if not window[cst.K_MAIN_LOG_CB].enabled:
-                            shrink_enlarge_window(
-                                window[cst.K_MAIN_LOG],
-                                window[cst.K_MAIN_LOG_CB],
-                                win_out_sz,
-                                win_out_sz_hidden)
-
-                        if window[cst.K_MAIN_VPN_CB].enabled:
-                            cmd_queue.put(('vpnstart',
-                                           (vpncf,
-                                            False)))  # stop
-
-                        cmd_queue.put(('msfstart',
-                                       (ld,
-                                        window[cst.K_MAIN_VPN_CB].enabled,
-                                        False)))  # stop
-                        cmd_queue.put(('msfconnect',
-                                       (cst.DEF_MSFRPC_PWD,
-                                        False)))  # wizard
-                        cmd_queue.put(('msfrun', (rc, lf)))
-
-                        if window[cst.K_MAIN_BC_CB].enabled:
-                            cmd_queue.put(('hlfloadconfig', (hc,)))
-                            cmd_queue.put(('hlfstore', (lf, ho)))
-
-                        cmd_queue.put(('msfstop',
-                                       (window[cst.K_MAIN_SC_CB].enabled,)
-                                       ))
-
-                        job_run = True
-
-            if event in (cst.K_MAIN_RBC_B, cst.K_MAIN_RBC_T):
-                if not job_run:
-                    error = False
-                    utils.set_logger(window)
-
-                    ld = window[cst.K_MAIN_IT_LD].Get()
-                    lf = window[cst.K_MAIN_IT_LF].Get()
-
-                    if not os.path.isfile(lf):
-                        Window("Autoauditor log does not exist.")
-                        error = True
-
-                    errcode = utils.check_file_dir(lf, ld)
-                    if errcode is not None:
-                        Window(f"Log file/directory path "
-                               f"cannot be created: {errcode}.")
-                        error = True
-
-                    if window[cst.K_MAIN_VPN_CB].enabled:
-                        vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
-                        if not os.path.isfile(vpncf):
-                            Window(f"File {vpncf} does not exist.")
-                            error = True
-
-                    if not window[cst.K_MAIN_BC_CB].enabled:
-                        Window("Blockchain must be enabled.")
-                        error = True
-                    else:
-                        hc = window[cst.K_MAIN_IT_BC_CF].Get()
-                        if not os.path.isfile(hc):
-                            Window(f"File {hc} does not exist.")
-                            error = True
-
-                        ho = window[cst.K_MAIN_IT_BC_LF].Get()
-                        errcode = utils.check_file_dir(ho)
-                        if errcode is not None:
-                            Window(f"File path {ho} "
-                                   f"cannot be created: {errcode}.")
-                            error = True
-
-                    if not error:
-                        if not window[cst.K_MAIN_LOG_CB].enabled:
-                            shrink_enlarge_window(
-                                window[cst.K_MAIN_LOG],
-                                window[cst.K_MAIN_LOG_CB],
-                                win_out_sz,
-                                win_out_sz_hidden)
-
-                        if window[cst.K_MAIN_VPN_CB].enabled:
-                            cmd_queue.put(('vpnstart',
-                                           (vpncf,
-                                            False)))  # stop
-
-                        cmd_queue.put(('msfstart',
-                                       (ld,
-                                        window[cst.K_MAIN_VPN_CB].enabled,
-                                        False)))  # stop
-                        cmd_queue.put(('msfconnect',
-                                       (cst.DEF_MSFRPC_PWD,
-                                        False)))  # wizard
                         cmd_queue.put(('hlfloadconfig', (hc,)))
                         cmd_queue.put(('hlfstore', (lf, ho)))
 
-                        cmd_queue.put(('msfstop',
-                                       (window[cst.K_MAIN_SC_CB].enabled,)
-                                       ))
+                    cmd_queue.put(('msfstop',
+                                   (window[cst.K_MAIN_SC_CB].enabled,)
+                                   ))
 
-                        job_run = True
+            if event in (cst.K_MAIN_RBC_B, cst.K_MAIN_RBC_T):
+                error = False
+                utils.set_logger(window)
+
+                ld = window[cst.K_MAIN_IT_LD].Get()
+                lf = window[cst.K_MAIN_IT_LF].Get()
+
+                if not os.path.isfile(lf):
+                    Window("Autoauditor log does not exist.")
+                    error = True
+
+                errcode = utils.check_file_dir(lf, ld)
+                if errcode is not None:
+                    Window(f"Log file/directory path "
+                           f"cannot be created: {errcode}.")
+                    error = True
+
+                if window[cst.K_MAIN_VPN_CB].enabled:
+                    vpncf = window[cst.K_MAIN_IT_VPN_CF].Get()
+                    if not os.path.isfile(vpncf):
+                        Window(f"File {vpncf} does not exist.")
+                        error = True
+
+                if not window[cst.K_MAIN_BC_CB].enabled:
+                    Window("Blockchain must be enabled.")
+                    error = True
+                else:
+                    hc = window[cst.K_MAIN_IT_BC_CF].Get()
+                    if not os.path.isfile(hc):
+                        Window(f"File {hc} does not exist.")
+                        error = True
+
+                    ho = window[cst.K_MAIN_IT_BC_LF].Get()
+                    errcode = utils.check_file_dir(ho)
+                    if errcode is not None:
+                        Window(f"File path {ho} "
+                               f"cannot be created: {errcode}.")
+                        error = True
+
+                if not error:
+                    if not window[cst.K_MAIN_LOG_CB].enabled:
+                        shrink_enlarge_window(
+                            window[cst.K_MAIN_LOG],
+                            window[cst.K_MAIN_LOG_CB],
+                            win_out_sz,
+                            win_out_sz_hidden)
+
+                    if window[cst.K_MAIN_VPN_CB].enabled:
+                        cmd_queue.put(('vpnstart',
+                                       (vpncf,
+                                        False)))  # stop
+
+                    cmd_queue.put(('msfstart',
+                                   (ld,
+                                    window[cst.K_MAIN_VPN_CB].enabled,
+                                    False)))  # stop
+                    cmd_queue.put(('msfconnect',
+                                   (cst.DEF_MSFRPC_PWD,
+                                    False)))  # wizard
+                    cmd_queue.put(('hlfloadconfig', (hc,)))
+                    cmd_queue.put(('hlfstore', (lf, ho)))
+
+                    cmd_queue.put(('msfstop',
+                                   (window[cst.K_MAIN_SC_CB].enabled,)
+                                   ))
 
             if event in (cst.K_MAIN_WIZ_B, cst.K_MAIN_WIZ_T):
-                if WIN[WZ] is None and not job_run:
+                if WIN[WZ] is None:
                     if not window[cst.K_MAIN_LOG_CB].enabled:
                         shrink_enlarge_window(window[cst.K_MAIN_LOG],
                                               window[cst.K_MAIN_LOG_CB],
@@ -1467,7 +1461,6 @@ def main():
                         cmd_queue.put(('msfconnect',
                                        (cst.DEF_MSFRPC_PWD,
                                         True)))  # wizard
-                        job_run = True
 
             if event in (cst.K_MAIN_STP_B, cst.K_MAIN_STP_T):
                 if not window[cst.K_MAIN_LOG_CB].enabled:
@@ -1521,7 +1514,6 @@ def main():
                 else:
                     Window(f"AutoAuditor finished with error: "
                            f"{values[event]}")
-                job_run = False
 
             if event == 'CONNECT':
                 error, is_wizard, msfcl = values[event]
@@ -1541,7 +1533,6 @@ def main():
             if event == sg.WIN_CLOSED:
                 window.close()
                 WIN[WZ] = None
-                job_run = False
                 close_wizard()
             else:
                 if event == cst.K_WIZ_MODT:
@@ -1632,7 +1623,6 @@ def main():
                     WIN[WZ] = None
                     modules = {}
                     tmp_modules = {}
-                    job_run = False
                     close_wizard()
 
                 if event == cst.K_WIZ_GEN:

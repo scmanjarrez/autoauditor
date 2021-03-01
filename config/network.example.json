@@ -1,6 +1,6 @@
 {
     "client": {
-        "description": "wallet where user ID are stored",
+        "description": "wallet where user ID is stored",
         "id": "User1",
         "wallet": {
             "description": "File system wallet where user ID is stored",

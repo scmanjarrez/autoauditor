@@ -240,9 +240,16 @@ def main():
                         default='/tmp/output',
                         help="Temporary metasploit RPC service directory.")
 
+    parser.add_argument('--no-color',
+                        action='store_true',
+                        help="Disable ANSI color output.")
+
     args = parser.parse_args()
 
     utils.copyright()
+
+    if args.no_color:
+        utils.disable_ansi_colors()
 
     msfcont = metasploit.start_msfrpcd(args.outdir)
     msfclient = metasploit.get_msf_connection(cst.DEF_MSFRPC_PWD)

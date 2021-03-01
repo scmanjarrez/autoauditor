@@ -41,6 +41,7 @@ import logging
 import sqlite3
 import wizard
 import metasploit
+import otsclient.args
 
 
 CVEDETAILS = "https://www.cvedetails.com/cve/"
@@ -313,7 +314,11 @@ def store_report(info, rep_file, out_file, update_cache=False, loop=None):
     rep = {'id': rhash,
            'org': user.org,
            'date': privdate,
-           'nvuln': nvuln}
+           'nvuln': nvuln,
+           'report': {},
+           'private': True}
+
+    uploaded = 0
 
     with open(out_file, 'w') as out:
         utils.log(
@@ -321,20 +326,19 @@ def store_report(info, rep_file, out_file, update_cache=False, loop=None):
             f"Blockchain output log: {out_file}")
 
         for r in reports:
-            rep['report'] = reports[r]  # dump report to log file
-            _type = 'public'
+            trep = rep.copy()
+            _type = 'private'
+            trep['report'] = reports[r]  # dump report to log file
 
-            if r == 'privrep':
-                rep['private'] = True
-                _type = 'private'
-                out.write(json.dumps(rep, indent=4) + ',\n')
-            else:
-                rep['private'] = False
-                rep['date'] = pubdate
-                out.write(json.dumps(rep, indent=4) + '\n')
+            if r == 'pubrep':
+                trep['private'] = False
+                trep['date'] = pubdate
+                _type = 'public'
 
-            rep['report'] = json.dumps(reports[r])  # must be serialized
-            tmprep = json.dumps(rep).encode()
+            out.write(json.dumps(trep, indent=4) + '\n')
+
+            trep['report'] = json.dumps(reports[r])  # must be serialized
+            trans_map = json.dumps(trep).encode()
 
             utils.log(
                 'succb',
@@ -348,7 +352,7 @@ def store_report(info, rep_file, out_file, update_cache=False, loop=None):
                     fcn=NEWREPORTFUNC,
                     args=None,
                     cc_name=CHAINCODENAME,
-                    transient_map={NEWREPKEYWORD: tmprep}
+                    transient_map={NEWREPKEYWORD: trans_map}
                 ))
             except Exception as e:
                 utils.log(
@@ -360,6 +364,7 @@ def store_report(info, rep_file, out_file, update_cache=False, loop=None):
                     utils.log(
                         'succg',
                         f"{_type.capitalize()} report stored successfully.")
+                    uploaded += 1
                 elif 'already' in resp:
                     utils.log(
                         'warn',
@@ -375,8 +380,14 @@ def store_report(info, rep_file, out_file, update_cache=False, loop=None):
                         "Unknown error storing {_type} report {rhash}: {resp}",
                         errcode=cst.EHLFCONN)
 
+    if uploaded == 2:
+        opentimestamp_format()
+        utils.log('succb', "Creating report timestamp...")
+        args = otsclient.args.parse_ots_args(['stamp', out_file])
+        args.cmd_func(args)
 
-def get_net_info(config, *key_path):
+
+def _get_network_info(config, *key_path):
     if config:
         for k in key_path:
             try:
@@ -392,8 +403,11 @@ def get_net_info(config, *key_path):
 def load_config(config, loop=None):
     if loop is None:
         loop = _asyncio.get_event_loop()
-    _logger = logging.getLogger('hfc.fabric.client')
-    _logger.setLevel(logging.NOTSET)
+    _loggcl = logging.getLogger('hfc.fabric.client')
+    _loggcl.setLevel(logging.WARN)
+
+    _loggdisc = logging.getLogger('hfc.fabric.channel.channel')
+    _loggdisc.setLevel(logging.WARN)
 
     client_discovery = Client()
 
@@ -406,7 +420,8 @@ def load_config(config, loop=None):
                        f"Check {utils.NET_TEMPLATE}."),
                       errcode=cst.EBADNETFMT)
 
-    peer_config = get_net_info(network, 'network', 'organization', 'peer')
+    peer_config = _get_network_info(network,
+                                    'network', 'organization', 'peer')
     tls_cacerts = peer_config['tls_cacerts']
     opts = (('grpc.ssl_target_name_override', peer_config['server_hostname']),)
     endpoint = peer_config['grpc_request_endpoint']
@@ -420,12 +435,17 @@ def load_config(config, loop=None):
                             "TLS CA certs missing."), errcode=cst.ENOENT)
         return
 
-    channel_name = get_net_info(network, 'network', 'channel')
+    channel_name = _get_network_info(network,
+                                     'network', 'channel')
 
-    wpath = get_net_info(network, 'client', 'wallet', 'path')
-    userId = get_net_info(network, 'client', 'id')
-    org = get_net_info(network, 'network', 'organization', 'name')
-    mspId = get_net_info(network, 'network', 'organization', 'mspid')
+    wpath = _get_network_info(network,
+                              'client', 'wallet', 'path')
+    userId = _get_network_info(network,
+                               'client', 'id')
+    org = _get_network_info(network,
+                            'network', 'organization', 'name')
+    mspId = _get_network_info(network,
+                              'network', 'organization', 'mspid')
 
     wal = wallet.FileSystenWallet(wpath)
 
@@ -433,11 +453,13 @@ def load_config(config, loop=None):
         user = wal.create_user(userId, org, mspId)
     else:
         with open(
-                get_net_info(network, 'client', 'credentials', 'cert'),
+                _get_network_info(network,
+                                  'client', 'credentials', 'cert'),
                 'rb') as f:
             crt = f.read()
         with open(
-                get_net_info(network, 'client', 'credentials', 'private_key'),
+                _get_network_info(network,
+                                  'client', 'credentials', 'private_key'),
                 'rb') as f:
             pk = load_pem_private_key(
                 f.read(), password=None, backend=default_backend())
@@ -454,6 +476,59 @@ def load_config(config, loop=None):
                                              channel_name))
 
     return (user, client_discovery, peer, channel_name)
+
+
+def opentimestamp_format():
+    class OpenTimeStampFormatter(logging.Formatter):
+        err_fmt = f"{utils._RED}[!]{utils._CLEANC} %(msg)s"
+        warn_fmt = f"{utils._YELLOW}[-]{utils._CLEANC} %(msg)s"
+        dbg_fmt = f"{utils._BLUE}[*]{utils._CLEANC} %(msg)s"
+        info_fmt = f"{utils._GREEN}[+]{utils._CLEANC} %(msg)s"
+
+        def __init__(self):
+            super().__init__(fmt="[*] %(msg)s", datefmt=None, style='%')
+
+        def format(self, record):
+            # Backup initial style
+            format_orig = self._style._fmt
+
+            if record.levelno == logging.DEBUG:
+                self._style._fmt = OpenTimeStampFormatter.dbg_fmt
+
+            elif record.levelno == logging.INFO:
+                self._style._fmt = OpenTimeStampFormatter.info_fmt
+
+            elif record.levelno == logging.WARN:
+                self._style._fmt = OpenTimeStampFormatter.warn_fmt
+
+            elif record.levelno == logging.ERROR:
+                self._style._fmt = OpenTimeStampFormatter.err_fmt
+
+            # Process log with custom format
+            result = logging.Formatter.format(self, record)
+
+            # Restore initial style
+            self._style._fmt = format_orig
+
+            return result
+
+    class OpenTimeStampGUIHandler(logging.StreamHandler):
+        def __init__(self):
+            logging.StreamHandler.__init__(self)
+
+        def emit(self, record):
+            msg = self.format(record)
+            utils.WINDOW.write_event_value('LOG', msg)
+
+    ots = OpenTimeStampFormatter()
+    if utils.WINDOW:
+        ots_handler = OpenTimeStampGUIHandler()
+    else:
+        ots_handler = logging.StreamHandler(sys.stdout)
+
+    ots_handler.setFormatter(ots)
+    logging.root.addHandler(ots_handler)
+    logging.root.setLevel(logging.INFO)
 
 
 def main():
@@ -485,6 +560,10 @@ def main():
                         help=("Force cache update. "
                               "Data will be downloaded again."))
 
+    parser.add_argument('--no-color',
+                        action='store_true',
+                        help="Disable ANSI color output.")
+
     args = parser.parse_args()
 
     utils.copyright()
@@ -493,6 +572,9 @@ def main():
     _tmp_outd = args.outdir
     _tmp_outf = args.outfile
     _tmp_shutdown = True
+
+    if args.no_color:
+        utils.disable_ansi_colors()
 
     if not os.path.isfile(args.outfile):
         utils.log(

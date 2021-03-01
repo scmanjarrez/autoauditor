@@ -141,10 +141,17 @@ if __name__ == '__main__':
                         metavar='hyperledger_config_file', required=True,
                         help="Blockchain network configuration file.")
 
+    parser.add_argument('--no-color',
+                        action='store_true',
+                        help="Disable ANSI color output.")
+
     args = parser.parse_args()
     verify_arguments(args)
 
     utils.copyright()
+
+    if args.no_color:
+        utils.disable_ansi_colors()
 
     if not os.path.isfile(args.hyperledgercfg):
         utils.log(

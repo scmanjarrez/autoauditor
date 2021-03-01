@@ -52,7 +52,7 @@ de los nodos.
     - -b: (Opcional) Permite que los contenedores se queden iniciados, no deteniéndolos tras la ejecución de AutoAuditor.
 
 
-> Vídeo de la ejecución de AutoAuditor mediante CLI: https://youtu.be/Ogwj8wcaxTI
+> Vídeo de la ejecución de AutoAuditor (CLI): https://youtu.be/Ogwj8wcaxTI
 - Ejecución individual de la función wizard de AutoAuditor.
 
     `python ../autoauditor/autoauditor.py -g rc.myfile.json`
