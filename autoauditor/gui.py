@@ -2,7 +2,7 @@
 
 # gui - Graphic User Interface module.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -21,20 +21,20 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 from copy import deepcopy
+import asyncio as _asyncio
 import PySimpleGUI as sg
 import constants as cst
-import asyncio as _asyncio
-import utils
-import metasploit
-import wizard
-import re
-import vpn
-import json
 import blockchain
-import os
-import queue
+import metasploit
 import threading
+import wizard
+import queue
+import utils
+import json
 import time
+import vpn
+import os
+import re
 
 sg.theme('Reddit')
 

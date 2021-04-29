@@ -2,7 +2,7 @@
 
 # autoauditor - Main program.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -21,14 +21,14 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 import constants as cst
-import sys
-import os
-import argparse
-import metasploit
-import wizard
-import vpn
-import utils
 import blockchain
+import metasploit
+import argparse
+import wizard
+import utils
+import sys
+import vpn
+import os
 
 
 def main():

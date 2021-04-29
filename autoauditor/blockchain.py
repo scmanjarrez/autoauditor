@@ -2,7 +2,7 @@
 
 # blockchain - Blockchain module.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -20,28 +20,29 @@
 # You should have received a copy of the GNU General Public License
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
-from hfc.fabric import Client
-from hfc.fabric_network import wallet
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.backends import default_backend
 from hfc.fabric_ca.caservice import Enrollment
 from hfc.fabric.peer import create_peer
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from hfc.fabric_network import wallet
+from hfc.fabric import Client
 from bs4 import BeautifulSoup
-import constants as cst
 import asyncio as _asyncio
+import constants as cst
+import otsclient.args
+import metasploit
 import argparse
 import requests
-import re
-import os
-import utils
 import hashlib
-import json
-import sys
 import logging
 import sqlite3
 import wizard
-import metasploit
-import otsclient.args
+import utils
+import copy
+import json
+import os
+import re
+import sys
 
 
 CVEDETAILS = "https://www.cvedetails.com/cve/"
@@ -320,65 +321,68 @@ def store_report(info, rep_file, out_file, update_cache=False, loop=None):
 
     uploaded = 0
 
-    with open(out_file, 'w') as out:
+    log_rep = {"public": None, "private": None}
+
+    for r in reports:
+        tmp_rep = rep.copy()
+        _type = 'private'
+        tmp_rep['report'] = reports[r]  # dump report to log file
+
+        if r == 'pubrep':
+            tmp_rep['private'] = False
+            tmp_rep['date'] = pubdate
+            _type = 'public'
+
+        log_rep[_type] = copy.deepcopy(tmp_rep)
+
+        tmp_rep['report'] = json.dumps(reports[r])  # must be serialized
+        trans_map = json.dumps(tmp_rep).encode()
+
         utils.log(
             'succb',
-            f"Blockchain output log: {out_file}")
+            f"Storing {_type} report: {rhash}")
 
-        for r in reports:
-            trep = rep.copy()
-            _type = 'private'
-            trep['report'] = reports[r]  # dump report to log file
-
-            if r == 'pubrep':
-                trep['private'] = False
-                trep['date'] = pubdate
-                _type = 'public'
-
-            out.write(json.dumps(trep, indent=4) + '\n')
-
-            trep['report'] = json.dumps(reports[r])  # must be serialized
-            trans_map = json.dumps(trep).encode()
-
+        try:
+            resp = loop.run_until_complete(client.chaincode_invoke(
+                requestor=user,
+                channel_name=channel_name,
+                peers=[peer],
+                fcn=NEWREPORTFUNC,
+                args=None,
+                cc_name=CHAINCODENAME,
+                transient_map={NEWREPKEYWORD: trans_map}
+            ))
+        except Exception as e:
             utils.log(
-                'succb',
-                f"Storing {_type} report: {rhash}")
-
-            try:
-                resp = loop.run_until_complete(client.chaincode_invoke(
-                    requestor=user,
-                    channel_name=channel_name,
-                    peers=[peer],
-                    fcn=NEWREPORTFUNC,
-                    args=None,
-                    cc_name=CHAINCODENAME,
-                    transient_map={NEWREPKEYWORD: trans_map}
-                ))
-            except Exception as e:
+                'error',
+                f"Error storing {_type} report {rhash}: {e}",
+                errcode=cst.EHLFCONN)
+        else:
+            if not resp:
+                utils.log(
+                    'succg',
+                    f"{_type.capitalize()} report stored successfully.")
+                uploaded += 1
+            elif 'already' in resp:
+                utils.log(
+                    'warn',
+                    f"{_type.capitalize()} report already in blockchain.")
+            elif 'failed' in resp:
                 utils.log(
                     'error',
-                    f"Error storing {_type} report {rhash}: {e}",
+                    f"Error storing {_type} report {rhash}: {resp}",
                     errcode=cst.EHLFCONN)
             else:
-                if not resp:
-                    utils.log(
-                        'succg',
-                        f"{_type.capitalize()} report stored successfully.")
-                    uploaded += 1
-                elif 'already' in resp:
-                    utils.log(
-                        'warn',
-                        f"{_type.capitalize()} report already in blockchain.")
-                elif 'failed' in resp:
-                    utils.log(
-                        'error',
-                        f"Error storing {_type} report {rhash}: {resp}",
-                        errcode=cst.EHLFCONN)
-                else:
-                    utils.log(
-                        'error',
-                        "Unknown error storing {_type} report {rhash}: {resp}",
-                        errcode=cst.EHLFCONN)
+                utils.log(
+                    'error',
+                    "Unknown error storing {_type} report {rhash}: {resp}",
+                    errcode=cst.EHLFCONN)
+    utils.log(
+        'succb',
+        f"Blockchain output log: {out_file}")
+
+    with open(out_file, 'w') as out:
+        out.write(json.dumps(log_rep, indent=4))
 
     if uploaded == 2:
         opentimestamp_format()

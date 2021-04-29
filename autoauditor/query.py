@@ -2,7 +2,7 @@
 
 # query - Blockchain Query module.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -23,10 +23,10 @@
 from blockchain import load_config
 import constants as cst
 import argparse
-import utils
-import os
 import asyncio
+import utils
 import json
+import os
 
 
 CHAINCODENAME = "autoauditor"

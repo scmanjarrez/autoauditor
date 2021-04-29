@@ -1,6 +1,6 @@
 # metasploit - Metasploit helper module.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -22,12 +22,12 @@ from pymetasploit3.msfrpc import MsfRpcClient, MsfRpcError, MsfAuthError
 from datetime import datetime
 from io import BytesIO
 import constants as cst
+import requests
+import docker
 import utils
 import json
-import os
-import docker
 import time
-import requests
+import os
 
 
 def get_msf_connection(passwd):

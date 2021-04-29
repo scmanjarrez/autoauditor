@@ -1,6 +1,6 @@
 # vpn - VPN module.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -19,8 +19,8 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 import constants as cst
-import utils
 import docker
+import utils
 import os
 
 

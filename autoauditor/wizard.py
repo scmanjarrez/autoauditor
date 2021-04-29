@@ -2,7 +2,7 @@
 
 # wizard - Wizard module.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -23,12 +23,12 @@
 from pymetasploit3.msfrpc import MsfRpcError, ExploitModule
 from copy import deepcopy
 import constants as cst
+import metasploit
+import argparse
+import readline # noqa
 import utils
 import json
-import argparse
-import metasploit
 import sys
-import readline # noqa
 
 
 YES = ['y', 'yes']

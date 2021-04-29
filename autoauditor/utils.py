@@ -1,6 +1,6 @@
 # utils - Utilities module.
 
-# Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -19,12 +19,12 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 from distutils.util import strtobool
-import ipaddress
 import constants as cst
-import sys
-import pwd
-import grp
+import ipaddress
 import docker
+import grp
+import pwd
+import sys
 import os
 
 
