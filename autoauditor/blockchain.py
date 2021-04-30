@@ -26,7 +26,6 @@ from hfc.fabric_ca.caservice import Enrollment
 from hfc.fabric.peer import create_peer
 from hfc.fabric_network import wallet
 from hfc.fabric import Client
-from bs4 import BeautifulSoup
 import asyncio as _asyncio
 import constants as cst
 import otsclient.args

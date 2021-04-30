@@ -256,11 +256,6 @@ ICO_ABOUT = (b'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAh'
              b'PhMqqCUW0oH3tfscae/BSNAr7hScXkcW04jUsVa6zia3FwTjCQR338bhljSOCqY'
              b'7RkEUdpSpfKyCOO1ZZHXNfMntgS3HYtzKr/a7Yn7PZJrR6CgezglcP3R1+wWm2c'
              b'qlI41YbBGeH3/JzB7HaFi6VrRH8fhn9QlcxM55dRyAAAAABJRU5ErkJggg==')
-ICO_C_S = (b'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAYCAYAAAAlBadpAAAABHNCSVQICAgIfAhki'
-           b'AAAAAlwSFlzAAAAsQAAALEBxi1JjQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYX'
-           b'BlLm9yZ5vuPBoAAABbSURBVDiN7c0xCoRAEAXRh55NkF1QD+5pFHbVRKNJZJCezGA'
-           b'KOuig6lOpBOjxx1lwP3QNFrSFgy3W9HywBVd3TPdaJHDkxEjgUUx8M4GQmAsUiYkR'
-           b'M4ZSsfI6LsddNmrLM3dAAAAAAElFTkSuQmCC')
 ICO_C_S = (b'iVBORw0KGgoAAAANSUhEUgAAABAAAAAJCAYAAAA7KqwyAAAABHNCSVQICAgIfAhki'
            b'AAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYX'
            b'BlLm9yZ5vuPBoAAABoSURBVCiRndBNCsJADIbhB08hWgfb+y/tNXRVF/2h9SS6sTC'
@@ -702,7 +697,7 @@ LOADING = '../autoauditor/gui_files/loading.gif'
 # Copyright
 
 COPYRIGHT = """
-AutoAuditor  Copyright (C) 2020 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+AutoAuditor  Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 Universidad Carlos III de Madrid.
 This program comes with ABSOLUTELY NO WARRANTY; for details check below.
 This is free software, and you are welcome to redistribute it

@@ -173,6 +173,7 @@ def launch_metasploit(msfcl, rc_file, log_file):
                         f.write(msfcl.consoles.console(
                             cid).run_module_with_output(mod, payload=pay))
                         f.write(f"\n######{'#'*len(exp)}######\n\n")
+                        f.flush()
                         msfcl.consoles.destroy(cid)
 
 
