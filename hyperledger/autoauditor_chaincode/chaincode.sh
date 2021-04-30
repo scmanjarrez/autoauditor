@@ -628,7 +628,7 @@ if [ -z "$queryid" ]; then
 fi
 
 if [ -z "$companyid" ]; then
-    companyid="ACME"
+    companyid="org1"
 fi
 
 if [ -z "$date" ]; then
