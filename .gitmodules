@@ -1,0 +1,3 @@
+[submodule "config/fabric-sdk-py"]
+	path = config/fabric-sdk-py
+	url = https://github.com/hyperledger/fabric-sdk-py.git
