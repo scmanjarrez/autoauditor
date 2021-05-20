@@ -149,8 +149,8 @@ groupsig/
 *.log
 *.out
 *.ctb
-test2_*/
-test5_*/
+performance/autoauditor_performance/test2cve/test2_*/
+performance/autoauditor_performance/test5cve/test5_*/
 gui_files/fontawesome-free-5.13.1-desktop/
 gui_files/gif/
 gui_files/png/
