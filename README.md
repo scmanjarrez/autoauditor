@@ -21,11 +21,11 @@ se encuentran en una subred privada accesible a través de un servidor VPN.
 
 - Copia el script de configuración de la red HLF.
 
-    `cp ../hyperledger/autoauditor_chaincode/chaincode.sh fabric-samples/test-network`
+    `cp ../hlfabric/chaincode.sh fabric-samples/test-network`
 
 - Copia los ficheros con el chaincode de AutoAuditor.
 
-    `cp -r ../hyperledger/autoauditor_chaincode/ fabric-samples/chaincode`
+    `cp -r ../hlfabric/autoauditor fabric-samples/chaincode`
 
 - Ejecuta el script encargado de instalar el SmartContract en los nodos de HLF. Este scrip levanta todos los componentes
 de la red de pruebas de HLF e inicia un contenedor que cumple la función de DNS local para resolver las direcciones
@@ -42,7 +42,7 @@ de los nodos.
 ### Ejecución mediante CLI
 - Ejecución completa de AutoAuditor.
 
-    `python ../autoauditor/autoauditor.py -r rc.example.5vuln.json -v client.example.ovpn -o output/msf.log -d output/loot -hc network.example.json -ho output/blockchain.log -b`
+    `python ../autoauditor.py -r rc.example.5vuln.json -v client.example.ovpn -o output/msf.log -d output/loot -hc network.example.json -ho output/blockchain.log -b`
     - -r: Ejecuta AutoAuditor usando los módulos listados en **rc.example.5vuln.json**.
     - -v: Crea un túnel VPN con la configuración presente en **client.example.ovpn**.
     - -o: (Opcional) Guarda un registro de ejecución en el fichero **output/msf.log**.
@@ -55,9 +55,9 @@ de los nodos.
 > Vídeo de la ejecución de AutoAuditor (CLI): https://youtu.be/Ogwj8wcaxTI
 - Ejecución individual de la función wizard de AutoAuditor.
 
-    `python ../autoauditor/autoauditor.py -g rc.myfile.json`
+    `python ../autoauditor.py -g rc.myfile.json`
 
-    `python ../autoauditor/wizard.py -g rc.myfile.json`
+    `python ../wizard.py -g rc.myfile.json`
 
     - -g: Ejecuta la función de wizard de AutoAuditor, el fichero generado se guardará bajo el nombre **rc.myfile.json**.
 
@@ -65,7 +65,7 @@ de los nodos.
 > Vídeo del asistente para creación de ficheros de automatización (CLI): https://youtu.be/dCyeBbZZxI8
 - Ejecución individual de la función blockchain de AutoAuditor.
 
-    `python ../autoauditor/blockchain.py -o output/msf.log -hc network.example.json -ho output/blockchain.log`
+    `python ../blockchain.py -o output/msf.log -hc network.example.json -ho output/blockchain.log`
     - -o: Analiza el fichero **output/msf.log** y obtiene los reportes que se almacenarán en la blockchain.
     - -hc: Configuración de la red de HLF presente en el fichero **network.example.json**.
     - -ho: (Opcional) Guarda una copia de los reportes almacenados en la blockchain en el fichero **output/blockchain.log**.
@@ -73,7 +73,7 @@ de los nodos.
 > Vídeo del almacenamiento de reportes en la blockchain (CLI): https://youtu.be/I9PQNNX6Tdg
 - Ejecución individual de la función query de AutoAuditor.
 
-    `python ../autoauditor/query.py -q date -t 2020-12 -c network.example.json`
+    `python ../query.py -q date -t 2020-12 -c network.example.json`
     - -q: Indica el tipo de petición a realizar, en este caso **date**.
     - -t: Indica la fecha **2020-12** como fecha a filtrar en la búsqueda.
     - -c: Configuración de la red de HLF presente en el fichero **network.example.json**.
@@ -83,24 +83,24 @@ de los nodos.
 ### Ejecución mediante GUI
 - Ejecución de la interfaz gráfica de AutoAuditor.
 
-    `python ../autoauditor/gui.py`
+    `python ../gui.py`
 
     <details>
         <summary> Captura de la ventana de AutoAuditor. </summary>
         <div align="center">
-            <img alt="main" src="autoauditor/gui_files/screenshots/1.main.png" width="75%"/>
+            <img alt="main" src="gui_files/screenshots/1.main.png" width="75%"/>
         </div>
     </details>
     <details>
         <summary> Captura de la pestaña Acerca de. </summary>
         <div align="center">
-            <img alt="main_about" src="autoauditor/gui_files/screenshots/2.main_about.png" width="75%"/>
+            <img alt="main_about" src="gui_files/screenshots/2.main_about.png" width="75%"/>
         </div>
     </details>
     <details>
         <summary> Captura de la pestaña Licencia. </summary>
         <div align="center">
-            <img alt="main_license" src="autoauditor/gui_files/screenshots/3.main_license.png" width="75%"/>
+            <img alt="main_license" src="gui_files/screenshots/3.main_license.png" width="75%"/>
         </div>
     </details>
 
@@ -109,7 +109,7 @@ de los nodos.
         <details>
             <summary> Captura de la ventana de ayuda. </summary>
             <div align="center">
-                <img alt="main_info" src="autoauditor/gui_files/screenshots/4.main_info.png" width="50%"/>
+                <img alt="main_info" src="gui_files/screenshots/4.main_info.png" width="50%"/>
             </div>
         </details>
 
@@ -118,7 +118,7 @@ de los nodos.
             <details>
                 <summary> Captura de la ventana de AutoAuditor ejecutándose. </summary>
                 <div align="center">
-                    <img alt="main_running" src="autoauditor/gui_files/screenshots/5.main_running.png" width="75%"/>
+                    <img alt="main_running" src="gui_files/screenshots/5.main_running.png" width="75%"/>
                 </div>
             </details>
         2. Store: Sube únicamente los reportes a la blockchain de HLF.
@@ -128,49 +128,49 @@ de los nodos.
                <details>
                    <summary> Captura de la ventana del wizard. </summary>
                    <div align="center">
-                       <img alt="wizard" src="autoauditor/gui_files/screenshots/6.wizard.png" width="75%"/>
+                       <img alt="wizard" src="gui_files/screenshots/6.wizard.png" width="75%"/>
                    </div>
                </details>
                <details>
                    <summary> Captura de la ventana de información del módulo. </summary>
                    <div align="center">
-                       <img alt="module_info" src="autoauditor/gui_files/screenshots/7.module_info.png" width="75%"/>
+                       <img alt="module_info" src="gui_files/screenshots/7.module_info.png" width="75%"/>
                    </div>
                </details>
                <details>
                    <summary> Captura de la ventana de opciones del módulo. </summary>
                    <div align="center">
-                       <img alt="module_options" src="autoauditor/gui_files/screenshots/8.module_options.png" width="75%"/>
+                       <img alt="module_options" src="gui_files/screenshots/8.module_options.png" width="75%"/>
                   </div>
                </details>
                <details>
                    <summary> Captura de la ventana de error de una opción del módulo. </summary>
                    <div align="center">
-                       <img alt="moption_info" src="autoauditor/gui_files/screenshots/9.moption_error.png" width="50%"/>
+                       <img alt="moption_info" src="gui_files/screenshots/9.moption_error.png" width="50%"/>
                    </div>
                </details>
                <details>
                    <summary> Captura de la ventana de información de una opción del módulo. </summary>
                    <div align="center">
-                       <img alt="moption_info" src="autoauditor/gui_files/screenshots/10.moption_info.png" width="50%"/>
+                       <img alt="moption_info" src="gui_files/screenshots/10.moption_info.png" width="50%"/>
                    </div>
                </details>
                <details>
                    <summary> Captura de la ventana de información del payload. </summary>
                    <div align="center">
-                       <img alt="payload_info" src="autoauditor/gui_files/screenshots/11.payload_info.png" width="75%"/>
+                       <img alt="payload_info" src="gui_files/screenshots/11.payload_info.png" width="75%"/>
                    </div>
                </details>
                <details>
                    <summary> Captura de la ventana de opciones del payload. </summary>
                    <div align="center">
-                       <img alt="payload_options" src="autoauditor/gui_files/screenshots/12.payload_options.png" width="75%"/>
+                       <img alt="payload_options" src="gui_files/screenshots/12.payload_options.png" width="75%"/>
                    </div>
                </details>
                <details>
                    <summary> Captura de la ventana de información de una opción del payload. </summary>
                    <div align="center">
-                       <img alt="poption_info" src="autoauditor/gui_files/screenshots/13.poption_info.png" width="50%"/>
+                       <img alt="poption_info" src="gui_files/screenshots/13.poption_info.png" width="50%"/>
                    </div>
                </details>
            </details>
@@ -179,7 +179,7 @@ de los nodos.
             <details>
                 <summary> Captura de la ventana de AutoAuditor durante la detención de los contenedores. </summary>
                 <div align="center">
-                    <img alt="main_stop" src="autoauditor/gui_files/screenshots/14.main_stop.png" width="75%"/>
+                    <img alt="main_stop" src="gui_files/screenshots/14.main_stop.png" width="75%"/>
                 </div>
             </details>
 

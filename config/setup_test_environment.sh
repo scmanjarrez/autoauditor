@@ -1,6 +1,6 @@
 #!/bin/bash
 
-aa="../autoauditor/autoauditor.py"
+aa="../autoauditor.py"
 venv="virtualenv"
 aa_venv="autoauditor_venv"
 wallet="wallet-test"

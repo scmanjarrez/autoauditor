@@ -80,8 +80,8 @@ ATNETAEND = "Removing attacker_network ... error. Active endpoints."
 GENREP = "Generating report ..."
 GENREPDONE = "Generating report ... done"
 MOD_TYPES = ['auxiliary', 'encoder', 'exploit', 'nop', 'payload', 'post']
-RC_TEMPLATE = '../config/rc.template.json'
-NET_TEMPLATE = '../config/network.template.json'
+RC_TEMPLATE = 'config/rc.template.json'
+NET_TEMPLATE = 'config/network.template.json'
 
 # GUI
 
@@ -692,7 +692,7 @@ ICO_POI = (b'iVBORw0KGgoAAAANSUhEUgAAABgAAAAfCAYAAAD9cg1AAAAABHNCSVQICAgIfAhki'
            b'47yyog/44SyZFInjPvq5nn6O63A6oSWws03AX+OtAGPNddLrXbrzLAIKfTG6ULrhO'
            b'HVID6yuNaY80JdzQcfOke0f8YWAVc7r4yu/253CrTHTZUssRXGETJb7bYqoDse8Df'
            b'BUz9fL8CtgO7gQRuNXcDUAls+C9j2PAQ2V1dxQAAAABJRU5ErkJggg==')
-LOADING = '../autoauditor/gui_files/loading.gif'
+LOADING = 'gui_files/loading.gif'
 
 # Copyright
 
@@ -802,11 +802,11 @@ T_MAIN_RBC = 'Store'
 
 DEF_MAIN_LF = os.path.abspath('output/msf.log')
 DEF_MAIN_LD = os.path.abspath('output')
-DEF_MAIN_RC = os.path.abspath('../config/rc.example.5vuln.json')
-DEF_MAIN_VPN_CF = os.path.abspath('../config/client.example.ovpn')
-DEF_MAIN_BC_CF = os.path.abspath('../config/network.example.json')
+DEF_MAIN_RC = os.path.abspath('config/rc.example.5vuln.json')
+DEF_MAIN_VPN_CF = os.path.abspath('config/client.example.ovpn')
+DEF_MAIN_BC_CF = os.path.abspath('config/network.example.json')
 DEF_MAIN_BC_LF = os.path.abspath('output/blockchain.log')
-DEF_MAIN_LIC = os.path.abspath('../LICENSE')
+DEF_MAIN_LIC = os.path.abspath('LICENSE')
 
 # WIZ Window
 K_WIZ_MODT = 'kwiz_mtype'

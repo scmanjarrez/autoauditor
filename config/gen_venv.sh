@@ -1,7 +1,7 @@
 #!/bin/bash
 
 venv="virtualenv"
-aa="../autoauditor/autoauditor.py"
+aa="../autoauditor.py"
 aa_venv="autoauditor_venv"
 tmp_hfc="backup/channel.py"
 tmp_pysg="backup/PySimpleGUI.py"
