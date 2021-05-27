@@ -149,6 +149,7 @@ groupsig/
 *.log
 *.out
 *.ctb
+related/
 performance/autoauditor_performance/test2cve/test2_*/
 performance/autoauditor_performance/test5cve/test5_*/
 gui_files/fontawesome-free-5.13.1-desktop/

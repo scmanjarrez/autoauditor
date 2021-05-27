@@ -1,15 +1,15 @@
 [
  {
-   "name": "colAaRep",
-   "policy": "OR('Org1MSP.member', 'Org2MSP.member')",
+   "name": "evidences",
+   "policy": "OR('allsafeMSP.member', 'ecorpMSP.member')",
    "requiredPeerCount": 0,
    "maxPeerCount": 3,
    "blockToLive": 0,
    "memberOnlyRead": true
 },
  {
-   "name": "colAaRepPriv",
-   "policy": "OR('Org1MSP.member')",
+   "name": "evidencesPriv",
+   "policy": "OR('allsafeMSP.member')",
    "requiredPeerCount": 0,
    "maxPeerCount": 3,
    "blockToLive": 0,
