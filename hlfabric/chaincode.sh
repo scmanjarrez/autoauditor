@@ -23,6 +23,7 @@ CC_VER=1
 CC_POLICY="OR('allsafeMSP.member','ecorpMSP.member')"
 
 ORDERER="orderer.deus-group.com"
+ORDERER_CA=${PWD}/organizations/ordererOrganizations/deus-group.com/orderers/orderer.deus-group.com/msp/tlscacerts/tlsca.deus-group.com-cert.pem
 
 declare -A FN=(["help"]="Help" ["store"]="NewReport" ["delete"]="DeleteReport" ["hash"]="GetReportHash" ["id"]="GetReportById"
                ["org"]="GetReportsByOrganization" ["torg"]="GetTotalReportsByOrganization" ["orgid"]="GetReportsIdByOrganization"
@@ -31,14 +32,13 @@ declare -A FN=(["help"]="Help" ["store"]="NewReport" ["delete"]="DeleteReport" [
 T_STORE="report"
 T_DELETE="report_delete"
 
-
-export ORDERER_CA=${PWD}/organizations/ordererOrganizations/deus-group.com/orderers/orderer.deus-group.com/msp/tlscacerts/tlsca.deus-group.com-cert.pem
-
-tls () {
+tls ()
+{
     echo ${PWD}/groupsig/organizations/peerOrganizations/${1}.com/peers/peer0.${1}.com/tls/ca.crt
 }
 
-msp () {
+msp ()
+{
     echo ${PWD}/groupsig/organizations/peerOrganizations/${1}.com/users/Admin@${1}.com/msp
 }
 
@@ -50,55 +50,55 @@ set_globals ()
     export CORE_PEER_ADDRESS=$URL${PORTS[$1]}
 }
 
-execute_as ()
+execute ()
 {
-    case "$1" in
-        package) command=package_chaincode ;;
-        installed) command=installed_chaincode ;;
-        install) command=install_chaincode ;;
-        approve) command=approve_chaincode_definition ;;
-        commit) command=commit_chaincode_definition ;;
-        store) command=store_data ;;
+    case $1 in
         help) command=show_help ;;
-        query) command=query_data ;;
-        queryhash) command=query_data_hash ;;
-        queryorg) command=query_data_org ;;
-        querytotalorg) command=query_total_data_org ;;
-        queryorgids) command=query_data_org_ids ;;
-        querydate) command=query_data_date ;;
-        querytotaldate) command=query_total_data_date ;;
-        querydateids) command=query_data_date_ids ;;
-        delete) command=delete_data ;;
-        *) echo -e "$RED Invalid command: package, install, approve, store, query, queryhash\n" \
-                "\t   queryorg, querytotalorg, queryorgids, querydate, querytotaldate, querydateids, delete.$NC"; exit 1 ;;
+        pack) command=pack_cc ;;
+        install) command=install_cc ;;
+        installed) command=installed_cc ;;
+        approve) command=approve_cc_definition ;;
+        commit) command=commit_cc_definition ;;
+        store) command=store ;;
+        delete) command=delete ;;
+        queryhash) command=query_hash ;;
+        queryid) command=query_id ;;
+        queryorg) command=query_org ;;
+        querytorg) command=query_torg ;;
+        queryorgid) command=query_orgid ;;
+        querydate) command=query_date ;;
+        querytdate) command=query_tdate ;;
+        querydateid) command=query_dateid ;;
+        *) echo -e "$RED Invalid command.$NC"; usage 1;;
     esac
 
-    case "$2" in
-        all) "$command" "allsafe" "$3" "$4" "$5"; "$command" "ecorp" "$3" "$4" "$5" ;;
-        allsafe) "$command" "allsafe" "$3" "$4" "$5" ;;
-        ecorp) "$command" "ecorp" "$3" "$4" "$5" ;;
-        *) echo -e "$RED Invalid organization: all, allsafe, ecorp.$NC"; exit 1 ;;
+    case $2 in
+        all) $command allsafe; $command ecorp ;;
+        allsafe) $command allsafe ;;
+        ecorp) $command ecorp ;;
+        *) echo -e "$RED Invalid organization.$NC"; usage 1 ;;
     esac
 }
 
 show_help ()
 {
     set_globals $1
+    fn=${FN["help"]}
 
     output=$(peer chaincode query \
         -C $CHANNEL_NAME \
         -n $CC_NAME \
-        -c "{\"Args\":[\"$FN_HELP\"]}")
+        -c "{\"Args\":[\"$fn\"]}")
 
     [[ -n "$output" ]] \
         && echo $output && prefix=$GREEN \
         || prefix=$RED
-    echo -e "$prefix $FN_HELP -> $1.$NC"
+    echo -e "$prefix $fn -> $1.$NC"
 }
 
-package_chaincode ()
+pack_cc ()
 {
-    as_allsafe
+    set_globals $1
 
     peer lifecycle chaincode package $CC_TAR \
         --path $CC_PATH \
@@ -112,7 +112,7 @@ package_chaincode ()
     echo -e "$prefix Package ($CC_NAME) -> $CC_TAR.$NC"
 }
 
-install_chaincode ()
+install_cc ()
 {
     set_globals $1
 
@@ -124,7 +124,7 @@ install_chaincode ()
     echo -e "$prefix Install ($CC_NAME) -> $1.$NC"
 }
 
-installed_chaincode ()
+installed_cc ()
 {
     set_globals $1
 
@@ -136,7 +136,7 @@ installed_chaincode ()
     echo -e "$prefix QueryInstalled ($CC_NAME) -> $1.$NC"
 }
 
-approve_chaincode_definition ()
+approve_cc_definition ()
 {
     set_globals $1
 
@@ -161,7 +161,7 @@ approve_chaincode_definition ()
     echo -e "$prefix ApproveDefinition ($CC_NAME) -> $1.$NC"
 }
 
-commit_chaincode_definition ()
+commit_cc_definition ()
 {
     set_globals $1
 
@@ -187,7 +187,8 @@ commit_chaincode_definition ()
     echo -e "$prefix Commit ($CC_NAME) -> $1.$NC"
 }
 
-invoke () {
+_invoke ()
+{
     peer chaincode invoke \
          -o $URL${PORT["orderer"]} \
          --ordererTLSHostnameOverride $ORDERER \
@@ -205,198 +206,177 @@ invoke () {
     echo -e "$prefix $1 (Transient: report::$4) -> $1.${NC}"
 }
 
-store_data ()
+store ()
 {
     set_globals $1
-
-    id=$2
-    org=$3
-    date=$4
 
     rep=$(echo -n "{\"id\": \"$id\", \"org\": \"$org\", \"date\": \"${date:0:7}\", \"nvuln\": 5, \"report\": \"dummy_report\"}" | base64 | tr -d \\n)
-    invoke ${FN["store"]} $T_STORE $REP "report (public)"
+    _invoke ${FN["store"]} $T_STORE $REP "report (public)"
 
     priv=$(echo -n "{\"id\": \"$id\", \"private\": true, \"org\": \"$org\", \"date\": \"$date\", \"nvuln\": 5, \"report\": \"dummy_report_priv\"}" | base64 | tr -d \\n)
-    invoke ${FN["store"]} $T_STORE $PRIV "report (private)"
+    _invoke ${FN["store"]} $T_STORE $PRIV "report (private)"
 }
 
-delete_data ()
+delete ()
 {
     set_globals $1
-    id=$2
 
     del=$(echo -n "{\"id\":\"$id\"}" | base64 | tr -d \\n)
-
-    invoke ${FN["delete"]} $T_DELETE $del "report_delete"
+    _invoke ${FN["delete"]} $T_DELETE $del "report_delete"
 }
 
-query () {
+_query ()
+{
     if [ $# -eq 2 ]; then
-        cmd="{\"Args\":[\"$1\", \"$2\"]}"
-        msg="($2)"
+        q_cmd="{\"Args\":[\"$1\", \"$2\"]}"
+        q_msg="($2)"
     elif [ $# -eq 3 ]; then
-        cmd="{\"Args\":[\"$1\", \"$2\", \"$3\"]}"
-        msg="($2, $3)"
+        q_cmd="{\"Args\":[\"$1\", \"$2\", \"$3\"]}"
+        q_msg="($2, $3)"
     else
-        cmd="{\"Args\":[\"$1\", \"$2\", \"$3\", \"$4\"]}"
-        msg="($2, $3, $4)"
+        q_cmd="{\"Args\":[\"$1\", \"$2\", \"$3\", \"$4\"]}"
+        q_msg="($2, $3, $4)"
     fi
     output=$(peer chaincode query \
         -C $CHANNEL_NAME \
         -n $CC_NAME \
-        -c $cmd)
+        -c $q_cmd)
 
     [[ -n "$output" ]] \
         && echo $output && prefix=$GREEN \
         || prefix=$RED
-    echo -e "$prefix $1 $msg -> $1.${NC}"
+    echo -e "$prefix $1 $q_msg -> $1.${NC}"
 }
 
-query_data ()
+query_hash ()
 {
     set_globals $1
 
-    id=$2
-
-    query ${FN["id"]} $id
-    query ${FN["id"]} $id "public"
-    query ${FN["id"]} $id "private"
+    _query${FN["hash"]} $id
+    _query${FN["hash"]} $id "public"
+    _query${FN["hash"]} $id "private"
 }
 
-query_data_hash ()
+query_id ()
 {
     set_globals $1
 
-    id=$2
-
-    query ${FN["query"]} $id
-    query ${FN["query"]} $id "public"
-    query ${FN["query"]} $id "private"
+    _query${FN["id"]} $id
+    _query${FN["id"]} $id "public"
+    _query${FN["id"]} $id "private"
 }
 
-query_data_org ()
+query_org ()
 {
     set_globals $1
-    org=$3
 
-    query ${FN["org"]} $org
-    query ${FN["org"]} $org "public"
-    query ${FN["org"]} $org "private"
+    _query${FN["org"]} $org
+    _query${FN["org"]} $org "public"
+    _query${FN["org"]} $org "private"
 }
 
-query_total_data_org ()
+query_torg ()
 {
     set_globals $1
-    org=$3
 
-    query ${FN["torg"]} $org
+    _query${FN["torg"]} $org
 }
 
-query_data_org_ids ()
+query_orgid ()
 {
     set_globals $1
-    org=$3
 
-    query ${FN["orgid"]} $org
+    _query${FN["orgid"]} $org
 }
 
-query_data_date ()
+query_date ()
 {
     set_globals $1
-    org=$3
-    date=${4:0:7}
 
-    query ${FN["date"]} $date
-    query ${FN["date"]} $date "public"
-    query ${FN["date"]} $date "private"
+    _query${FN["date"]} ${date:0:7}
+    _query${FN["date"]} ${date:0:7} "public"
+    _query${FN["date"]} ${date:0:7} "private"
 
-    query ${FN["date"]} $date $org
-    query ${FN["date"]} $date $org "public"
-    query ${FN["date"]} $date $org "private"
+    _query${FN["date"]} ${date:0:7} $org
+    _query${FN["date"]} ${date:0:7} $org "public"
+    _query${FN["date"]} ${date:0:7} $org "private"
 }
 
-query_total_data_date ()
+query_tdate ()
 {
     set_globals $1
-    org=$3
-    date=${4:0:7}
 
-    query ${FN["tdate"]} $date
-    query ${FN["tdate"]} $date $org
+    _query${FN["tdate"]} ${date:0:7}
+    _query${FN["tdate"]} ${date:0:7} $org
 }
 
-query_data_date_ids ()
+query_dateid ()
 {
     set_globals $1
-    org=$3
-    date=${4:0:7}
 
-    query ${FN["dateid"]} $date
-    query ${FN["dateid"]} $date $org
+    _query${FN["dateid"]} ${date:0:7}
+    _query${FN["dateid"]} ${date:0:7} $org
+}
+
+query_all ()
+{
+    execute queryhash $node
+    execute queryid $node
+    execute queryorg $node
+    execute querytorg $node
+    execute queryorgid $node
+    execute querydate $node
+    execute querytdate $node
+    execute querydateid $node
 }
 
 usage ()
 {
-    echo "Usage:"
-    echo "    $0 -h"
-    echo "                             (Help): Show this help."
+    echo "Usage: $0 [MODE] FLAGS [BC_OPTIONS|CMD_OPTIONS]"
+    echo "    -h, --help          Show this help."
     echo ""
-    echo "    $0 -u"
-    echo "                             (Up): Test network up."
+    echo "MODE:"
+    echo "    -u, --up            Network up."
+    echo "    -d, --down          Network down."
     echo ""
-    echo "    $0 -d"
-    echo "                             (Down): Test network down."
+    echo "FLAGS:"
+    echo "    -a, --all           Pack, install, approve and commit chaincode."
+    echo "    -c, --cmd           Execute given CMD from peer NODE."
+    echo "    -q, --query         Execute QUERY functions."
+    echo "    -s, --store         Execute STORE function."
     echo ""
-    echo "    $0 -a"
-    echo "                             (All): Pack, install, approve and commit chaincode."
+    echo "BC_OPTIONS:"
+    echo "    -f, --fill          Fill blockchain with test data."
+    echo "    -m, --ccname        Chaincode name."
+    echo "    -p, --ccpath        Chaincode path."
+    echo "    -g, --cccfg         Chaincode collection config path."
+    echo "    -v, --ccver         Chaincode version."
     echo ""
-    echo "    $0 -f"
-    echo "                             (Fill): Fill blockchain with test data."
+    echo "COMMANDS:"
+    echo "     help               Show $CC_NAME chaincode functions."
+    echo "     pack               Pack $CC_NAME chaincode."
+    echo "     install            Install $CC_NAME chaincode."
+    echo "     installed          Retrieve installed chaincodes in peer."
+    echo "     approve            Approve $CC_NAME chaincode definition."
+    echo "     commit             Commit $CC_NAME chaincode definition."
+    echo "     store              Store report."
+    echo "     delete             Delete report."
+    echo "     queryhash          Query report hash."
+    echo "     queryid            Query report."
+    echo "     queryorg           Query reports by organization."
+    echo "     querytorg          Query total reports by organization."
+    echo "     queryorgid         Query reports ids by organization."
+    echo "     querydate          Query reports by date [, organization]."
+    echo "     querytdate         Query total reports by date [, organization]."
+    echo "     querydateid        Query reports ids by date [, organization]."
     echo ""
-    echo "    $0 -c CMD -n NODE [-i ID] [-o ORG] [-t date]"
-    echo "                             (Command): Execute given CMD from peer NODE."
+    echo "CMD_OPTIONS:"
+    echo "    -n                  Peer node. Possible values: all, allsafe, ecorp."
+    echo "    -i                  Report ID. Format: sha256."
+    echo "    -o                  Organization. Possible values: allsafe, ecorp."
+    echo "    -t                  Date. Format: yyyy-mm-dd."
     echo ""
-    echo "    $0 -q"
-    echo "                             (Query): Execute QUERY functions."
-    echo ""
-    echo "    $0 -s"
-    echo "                             (Store): Execute STORE function."
-    echo ""
-    echo "    $0 -m"
-    echo "                             (naMe): Change chaincode name."
-    echo ""
-    echo "    $0 -p"
-    echo "                             (Path): Change chaincode path."
-    echo ""
-    echo "    $0 -g"
-    echo "                             (confiG): Modify chaincode collection config path."
-    echo ""
-    echo "    $0 -v"
-    echo "                             (Version): Change chaincode version."
-    echo ""
-    echo "Commands:"
-    echo "       -c help               Show $CC_NAME chaincode functions."
-    echo "       -c package            Pack $CC_NAME chaincode."
-    echo "       -c install            Install $CC_NAME chaincode."
-    echo "       -c installed          Retrieve installed chaincodes in peer."
-    echo "       -c approve            Approve $CC_NAME chaincode definition."
-    echo "       -c commit             Commit $CC_NAME chaincode definition."
-    echo "       -c store              Store report."
-    echo "       -c query              Query report."
-    echo "       -c queryhash          Query report hash."
-    echo "       -c queryorg           Query reports by organization."
-    echo "       -c querytotalorg      Query total reports by organization."
-    echo "       -c queryorgids        Query reports ids by organization."
-    echo "       -c querydate          Query reports by date [, organization]."
-    echo "       -c querytotaldate     Query total reports by date [, organization]."
-    echo "       -c querydateids       Query reports id by date [, organization]."
-    echo "       -c delete             Delete report."
-    echo ""
-    echo "Nodes:"
-    echo "       -n all                Execute command from all peers."
-    echo "       -n allsafe            Execute command from allsafe peer."
-    echo "       -n ecorp              Execute command from ecorp peer."
-    exit
+    exit $1
 }
 
 start ()
@@ -417,14 +397,16 @@ stop ()
     fi
 }
 
-network_up () {
+network_up ()
+{
     echo -e "$BLUE Starting Hyperledger Fabric Groupsig Network.$NC"
     start
     echo -e "$BLUE Starting docker-resolver container.$NC"
     docker run --rm -d --name docker-resolver -v /var/run/docker.sock:/tmp/docker.sock -v /etc/hosts:/tmp/hosts dvdarias/docker-hoster > /dev/null
 }
 
-network_down () {
+network_down ()
+{
     echo -e "$BLUE Stopping Hyperledger Fabric Groupsig Network.$NC"
     stop
     echo -e "$BLUE Stopping docker-resolver container.$NC"
@@ -446,20 +428,49 @@ node=all
 id=report007
 org=allsafe
 date="2020-05-21 17:37:27.910352+02:00"
+f_cnt=0
 
 while [[ $# -gt 0 ]]; do
     key=$1
     case "$key" in
         -a|--all)
-            deploy=YES
+            deploy=YES; ((f_cnt=f_cnt+1))
+            shift
+            ;;
+        -c|--cmd)
+            cmd=$2; ((f_cnt=f_cnt+1))
+            shift
+            shift
+            ;;
+        -q|--query)
+            query=YES; ((f_cnt=f_cnt+1))
+            shift
+            ;;
+        -s|--store)
+            store=YES; ((f_cnt=f_cnt+1))
             shift
             ;;
         -f|--fill)
             fill=YES
             shift
             ;;
-        -c|--cmd)
-            cmd=$2
+        -m|--ccname)
+            CC_NAME=$2; CC_TAR=${CC_NAME}.tar.gz;
+            shift
+            shift
+            ;;
+        -p|--ccpath)
+            CC_PATH=$2
+            shift
+            shift
+            ;;
+        -g|--cccfg)
+            CC_CFG=$2
+            shift
+            shift
+            ;;
+        -v|--ccver)
+            CC_VER=$2
             shift
             shift
             ;;
@@ -483,115 +494,41 @@ while [[ $# -gt 0 ]]; do
             shift
             shift
             ;;
-        -q|--query)
-            query=YES
-            shift
-            ;;
-        -s|--store)
-            store=YES
-            shift
-            ;;
-        -m|--ccname)
-            CC_NAME=$2; CC_TAR=${CC_NAME}.tar.gz;
-            shift
-            shift
-            ;;
-        -p|--ccpath)
-            CC_PATH=$2
-            shift
-            shift
-            ;;
-        -g|--cccfg)
-            CC_CFG=$2
-            shift
-            shift
-            ;;
-        -v|--ccver)
-            CC_VER=$2
-            shift
-            shift
-            ;;
+        *) shift ;;
     esac
 done
 
-# while getopts ":ac:o:hudfi:qv:g:p:n:sm:t:" opt; do
-#     case ${opt} in
-#         u) up="yes" ;;
-#         d) down="yes" ;;
-#         a) all="yes" ;;
-#         f) full="yes" ;;
-#         c) cmd=$OPTARG ;;
-#         o) org=$OPTARG ;;
-#         i) queryid=$OPTARG ;;
+if [[ $f_cnt -eq 0 ]]; then
+    echo -e "$RED -a/-c/-q/-s required.\n$NC"
+    usage 1
+elif [[ $f_cnt -gt 1 ]]; then
+    echo -e "$RED -a/-c/-q/-s are mutually exclusive.\n$NC"
+    usage 1
+fi
 
-#         q) query="yes" ;;
-#         s) store="yes" ;;
-#         m) companyid=$OPTARG ;;
-#         t) date=$OPTARG ;;
-#         v) CC_VER=$OPTARG ;;
-#         g) CC_CFG=$OPTARG ;;
-#         n) CC_NAME=$OPTARG;CC_TAR="${CC_NAME}.tar.gz" ;;
-#         p) CC_PATH=$OPTARG ;;
-#         h) usage;;
-#         \?) usage;;
-#     esac
-# done
+if [[ $node != all && $node != allsafe && $node != ecorp ]]; then
+    echo -e "$RED NODE must be all, allsafe or ecorp.\n$NC"
+    usage 1
+fi
 
-# if [ -z "$queryid" ]; then
-#     queryid="report007"
-# fi
-
-# if [ -z "$companyid" ]; then
-#     companyid="allsafe"
-# fi
-
-# if [ -z "$date" ]; then
-#     date="2020-05-21 17:37:27.910352+02:00"
-# fi
-
-# if [ -z "$org" ]; then
-#     org="all"
-# fi
-
-# if [ -n "$store" ]; then
-#     execute_as "store" "allsafe" "$queryid" "$companyid" "$date"
-# fi
-
-# if [ -n "$query" ]; then
-#     execute_as "query" "$org" "$queryid"
-#     execute_as "queryhash" "$org" "$queryid"
-#     execute_as "queryorg" "$org" "$queryid" "$companyid"
-#     execute_as "querytotalorg" "$org" "$queryid" "$companyid"
-#     execute_as "queryorgids" "$org" "$queryid" "$companyid"
-#     execute_as "querydate" "$org" "$queryid" "$companyid" "$date"
-#     execute_as "querytotaldate" "$org" "$queryid" "$companyid" "$date"
-#     execute_as "querydateids" "$org" "$queryid" "$companyid" "$date"
-#     exit
-# fi
-
-# if [ -n "$cmd" ]; then
-#     execute_as "$cmd" "$org" "$queryid" "$companyid" "$date"
-#     exit
-# fi
-
-
-# if [ -n "$all" ]; then
-#     execute_as "package" "allsafe"
-#     execute_as "install" "all"
-#     execute_as "installed" "all"
-#     execute_as "approve" "all"
-#     execute_as "commit" "allsafe"
-#     if [ -z "$raw" ]; then
-#         echo -e "$BLUE Waiting transactions processing.$NC"; sleep 3 # wait time to process transaction
-#         execute_as "store" "allsafe" "$queryid" "$companyid" "$date"
-#         echo -e "$BLUE Waiting transactions processing.$NC"; sleep 3 # wait time to process transaction
-#         execute_as "query" "$org" "$queryid"
-#         execute_as "queryhash" "$org" "$queryid"
-#         execute_as "queryorg" "$org" "$queryid" "$companyid"
-#         execute_as "querytotalorg" "$org" "$queryid" "$companyid"
-#         execute_as "queryorgids" "$org" "$queryid" "$companyid"
-#         execute_as "querydate" "$org" "$queryid" "$companyid" "$date"
-#         execute_as "querytotaldate" "$org" "$queryid" "$companyid" "$date"
-#         execute_as "querydateids" "$org" "$queryid" "$companyid" "$date"
-#     fi
-# fi
+if [[ -n $all ]]; then
+    execute pack allsafe
+    execute install all
+    execute installed all
+    execute approve all
+    execute commit allsafe
+    if [[ -n $fill ]]; then
+        echo -e "$BLUE Waiting transactions processing.$NC";
+        sleep 3 # wait time to process transaction
+        execute store allsafe
+        echo -e "$BLUE Waiting transactions processing.$NC;"
+        sleep 3 # wait time to process transaction
+        query_all
+    fi
+elif [[ -n $cmd ]]; then
+    execute $cmd $node $id $org $date
+elif [[ -n $query ]]; then
+    query_all
+elif [[ -n $store ]]; then
+    execute store allsafe $id $org $date
+fi
