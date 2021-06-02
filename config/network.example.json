@@ -8,22 +8,22 @@
         },
         "credentials": {
             "description": "optionally, a credential path can be used if user ID can't be loaded from wallet",
-            "cert": "fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/User1@org1.example.com-cert.pem",
-            "private_key": "fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/priv_sk"
+            "cert": "hlfabric/organizations/peerOrganizations/allsafe.com/users/User1@allsafe.com/msp/signcerts/User1@allsafe.com-cert.pem",
+            "private_key": "hlfabric/organizations/peerOrganizations/allsafe.com/users/User1@allsafe.com/msp/keystore/priv_sk"
         }
     },
     "network": {
-        "description": "test-network, 1 peer needed to use discovery service, 1 client to operate and 1 channel where peer is a member",
-        "name": "test-network",
-        "channel": "mychannel",
+        "description": "groupsig-network, 1 anchor peer (discovery), 1 channel",
+        "name": "groupsig-network",
+        "channel": "evidences",
         "organization": {
             "description": "organization information where user ID belongs to",
-            "name": "Org1",
-            "mspid": "Org1MSP",
+            "name": "Allsafe",
+            "mspid": "allsafeMSP",
             "peer": {
-                "grpc_request_endpoint": "localhost:7051",
-                "server_hostname": "peer0.org1.example.com",
-                "tls_cacerts": "fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/msp/tlscacerts/tlsca.org1.example.com-cert.pem"
+                "grpc_request_endpoint": "peer0.allsafe.com:8051",
+                "server_hostname": "peer0.allsafe.com",
+                "tls_cacerts": "hlfabric/organizations/peerOrganizations/allsafe.com/msp/tlscacerts/tlsca.allsafe.com-cert.pem"
             }
         }
     }

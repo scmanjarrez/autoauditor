@@ -1,7 +1,6 @@
 #!/bin/bash
 
 aa="../autoauditor.py"
-venv="virtualenv"
 aa_venv="autoauditor_venv"
 wallet="wallet-test"
 tmp_hfc="backup/channel.py"
@@ -15,7 +14,7 @@ blue="\033[94m[*] "
 yellow="\033[0;33m[-] "
 nc="\033[0m"
 inst="\033[0;92m installed$nc"
-not_inst="\033[0;91m not installed$nc"
+not_inst="\033[0;91m missing$nc"
 hfc_sdk_py="fabric-sdk-py"
 no_ansi=""
 
@@ -221,28 +220,28 @@ chk_req_pkgs()
     all_pk=1
 
     echo -n "git            ... "
-    command -v git > /dev/null
+    command -v git > /dev/null 2>&1
 
     [[ $? -eq 0 ]] \
         && echo -e $inst  \
             || { echo -e $not_inst; all_pk=0; }
 
     echo -n "docker         ... "
-    command -v docker > /dev/null
+    command -v docker > /dev/null 2>&1
 
     [[ $? -eq 0 ]] \
         && echo -e $inst  \
             || { echo -e $not_inst; all_pk=0; }
 
     echo -n "docker-compose ... "
-    command -v docker-compose > /dev/null
+    command -v docker-compose > /dev/null 2>&1
 
     [[ $? -eq 0 ]] \
         && echo -e $inst  \
             || { echo -e $not_inst; all_pk=0; }
 
-    echo -n "virtualenv     ... "
-    command -v virtualenv > /dev/null
+    echo -n "python3-venv   ... "
+    python3 -c 'import venv' > /dev/null 2>&1
 
     [[ $? -eq 0 ]] \
         && echo -e $inst  \
@@ -252,12 +251,6 @@ chk_req_pkgs()
         echo -e "${red} Mandatory package is missing."
         exit 1
     fi
-}
-
-gen_venv()
-{
-
-    source gen_venv.sh
 }
 
 stop()
@@ -297,22 +290,22 @@ disable_ansi_color()
 }
 
 while getopts ":shn" opt; do
-  case ${opt} in
-      s) ax_stop="yes" ;;
-      n) disable_ansi_color ;;
-      h) ax_usage="yes" ;;
-  esac
+    case ${opt} in
+        s) ax_stop="yes" ;;
+        n) disable_ansi_color ;;
+        h) ax_usage="yes" ;;
+    esac
 done
 
 if [ -n "$ax_stop" ]; then
-   stop
+    stop
 fi
 
 if [ -n "$ax_usage" ]; then
-   usage
+    usage
 fi
 
 check_privileges
 chk_req_pkgs
 start
-source gen_venv.sh
+./gen_venv.sh
