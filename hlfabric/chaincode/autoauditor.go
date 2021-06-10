@@ -12,8 +12,8 @@ type SmartContract struct {
 	contractapi.Contract
 }
 
-var publicCollection = "evidences"
-var privateCollection = "evidencesPriv"
+var publicCollection = "colAaRep"
+var privateCollection = "colAaRepPriv"
 
 type Report struct {
 	ObjectType   string `json:"docType"`
