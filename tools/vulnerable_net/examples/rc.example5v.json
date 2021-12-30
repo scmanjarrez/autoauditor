@@ -1,0 +1,37 @@
+{
+  "auxiliary": {
+    "scanner/http/coldfusion_locale_traversal": [
+      {
+        "RHOSTS": "10.10.0.3",
+        "RPORT": "8500",
+        "FILE": "/etc/passwd"
+      }
+    ],
+    "scanner/http/apache_mod_cgi_bash_env": [
+      {
+        "RHOSTS": "10.10.0.4",
+        "TARGETURI": "/victim.cgi"
+      }
+    ],
+    "scanner/ssh/libssh_auth_bypass": [
+      {
+        "RHOSTS": "10.10.0.10",
+        "CMD": "id",
+        "ACTION": "Execute"
+      }
+    ],
+    "scanner/ssh/ssh_enumusers": [
+      {
+        "RHOSTS": "10.10.0.11",
+        "USERNAME": "root"
+      }
+    ],
+    "gather/rails_doubletap_file_read": [
+      {
+        "RHOSTS": "10.10.0.12",
+        "RPORT": "3000",
+        "ROUTE": "/robots"
+      }
+    ]
+  }
+}

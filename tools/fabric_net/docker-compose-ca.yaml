@@ -1,0 +1,90 @@
+version: '3'
+
+services:
+  dns:
+    image: dvdarias/docker-hoster:latest
+    container_name: autoauditor_dns
+    hostname: dns.example.com
+    labels:
+      autoauditor: fabric_net
+    volumes:
+        - /var/run/docker.sock:/tmp/docker.sock
+        - /etc/hosts:/tmp/hosts
+    networks:
+      - fabric_net
+
+  ca_orderer:
+    image: hyperledger/fabric-ca:1.5.2
+    container_name: autoauditor_ca_orderer
+    hostname: ca.example.com
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    labels:
+      autoauditor: fabric_net
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-orderer
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7050
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:7060
+    volumes:
+      - ./network/ca/orderer:/etc/hyperledger/fabric-ca-server
+    ports:
+      - "7050:7050"
+      - "7060:7060"
+    networks:
+      - fabric_net
+    depends_on:
+      - dns
+
+  ca_org1:
+    image: hyperledger/fabric-ca:1.5.2
+    container_name: autoauditor_ca_org1
+    hostname: ca.org1.example.com
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    labels:
+      autoauditor: fabric_net
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-org1
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=8050
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:8060
+    volumes:
+      - ./network/ca/org1:/etc/hyperledger/fabric-ca-server
+    ports:
+      - "8050:8050"
+      - "8060:8060"
+    networks:
+      - fabric_net
+    depends_on:
+      - dns
+
+  ca_org2:
+    image: hyperledger/fabric-ca:1.5.2
+    container_name: autoauditor_ca_org2
+    hostname: ca.org2.example.com
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    labels:
+      autoauditor: fabric_net
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-org2
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=9050
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:9060
+    volumes:
+      - ./network/ca/org2:/etc/hyperledger/fabric-ca-server
+    ports:
+      - "9050:9050"
+      - "9060:9060"
+    networks:
+      - fabric_net
+    depends_on:
+      - dns
+
+networks:
+  fabric_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24

@@ -1,0 +1,17 @@
+{
+  "auxiliary": {
+    "scanner/http/coldfusion_locale_traversal": [
+      {
+        "RHOSTS": "10.10.0.3",
+        "RPORT": "8500",
+        "FILE": "/etc/passwd"
+      }
+    ],
+    "scanner/http/apache_mod_cgi_bash_env": [
+      {
+        "RHOSTS": "10.10.0.4",
+        "TARGETURI": "/victim.cgi"
+      }
+    ]
+  }
+}

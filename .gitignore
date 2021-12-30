@@ -1,3 +1,15 @@
+## Own ignore
+.idea/
+tmp/
+pdfs/
+output/
+*.db
+tools/fabric_net/chaincode/vendor/
+tools/variables.sh
+tools/fabric_net/network/
+third_party/fabric/
+wallet-test/
+
 ## Default python ignore
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -139,34 +151,3 @@ dmypy.json
 cython_debug/
 
 
-## Own ignore
-.idea/
-temp/
-wallet-test/
-output/
-groupsig/
-*.aux
-*.log
-*.out
-*.ctb
-related/
-performance/autoauditor_performance/test2cve/test2_*/
-performance/autoauditor_performance/test5cve/test5_*/
-gui_files/fontawesome-free-5.13.1-desktop/
-gui_files/gif/
-gui_files/png/
-gui_files/screenshots.zip
-gui_files/svg/
-hlfabric/connection-org1.json
-hlfabric/node_modules/
-hlfabric/package-lock.json
-hlfabric/query.js
-hlfabric/wallet/
-videos/resumen.pdf
-videos/resumen.tex
-config/backup/iptables.bk
-config/network.example.local.json
-config/rc.example.new.json
-config/rc.example.noworking.json
-config/sdkpy.network.json
-config/sdkpy.network.json.bk

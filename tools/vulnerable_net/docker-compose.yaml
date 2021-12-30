@@ -1,0 +1,132 @@
+version: '3'
+
+services:
+  coldfusion_10_2861:
+    image: vulhub/coldfusion:8.0.1
+    container_name: autoauditor_coldfusion_10_2861
+    labels:
+      autoauditor: vulnerable_net
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.3
+
+  http_14_6271:
+    image: vulhub/bash:4.3.0-with-httpd
+    container_name: autoauditor_http_14_6271
+    labels:
+      autoauditor: vulnerable_net
+    volumes:
+      - ../../third_party/vulhub/CVE-2014-6271/victim.cgi:/var/www/html/victim.cgi
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.4
+
+  struts2_16_3081:
+    image: vulhub/struts2:2.3.28
+    container_name: autoauditor_struts2_16_3081
+    labels:
+      autoauditor: vulnerable_net
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.5
+
+  structs2_17_5638:
+    image: vulhub/struts2:2.3.30
+    container_name: autoauditor_structs2_17_5638
+    labels:
+      autoauditor: vulnerable_net
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.6
+
+  weblogic_17_10271:
+    image: vulhub/weblogic
+    container_name: autoauditor_weblogic_17_10271
+    labels:
+      autoauditor: vulnerable_net
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.7
+
+  supervisor_17_11610:
+    build:
+      context: ../../third_party/vulhub/CVE-2017-11610
+    container_name: autoauditor_supervisor_17_11610
+    labels:
+      autoauditor: vulnerable_net
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.8
+
+  goahead_17_17562:
+    image: vulhub/goahead:3.6.4
+    container_name: autoauditor_goahead_17_17562
+    labels:
+      autoauditor: vulnerable_net
+    volumes:
+      - ../../third_party/vulhub/CVE-2017-17562/index:/var/www/goahead/cgi-bin/index
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.9
+
+  ssh_18_10933:
+    image: vulhub/libssh:0.8.1
+    container_name: autoauditor_ssh_18_10933
+    labels:
+      autoauditor: vulnerable_net
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.10
+
+  ssh_18_15473:
+    build:
+      context: ../../third_party/vulhub/CVE-2018-15473
+    container_name: autoauditor_ssh_18_15473
+    labels:
+      autoauditor: vulnerable_net
+    environment:
+      - ROOT_PASSWORD=vulhub
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.11
+
+  rails_19_5418:
+    build:
+      context: ../../third_party/vulhub/CVE-2019-5418
+    container_name: autoauditor_rails_19_5418
+    labels:
+      autoauditor: vulnerable_net
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.12
+
+  vpn_server:
+    image: kylemanna/openvpn
+    container_name: autoauditor_vpn_server
+    labels:
+      autoauditor: vulnerable_net
+    volumes:
+      - ./vpn-server/conf:/etc/openvpn
+    cap_add:
+      - NET_ADMIN
+    networks:
+      vulnerable_net:
+        ipv4_address: 10.10.0.2
+    depends_on:
+      - coldfusion_10_2861
+      - http_14_6271
+      - struts2_16_3081
+      - structs2_17_5638
+      - weblogic_17_10271
+      - supervisor_17_11610
+      - goahead_17_17562
+      - ssh_18_10933
+      - ssh_18_15473
+      - rails_19_5418
+
+networks:
+  vulnerable_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.0.0/24

@@ -1,0 +1,6 @@
+opentimestamps-client
+docker
+bs4
+PySimpleGUI
+third_party/pymetasploit3/pymetasploit3-1.0-py3-none-any.whl
+third_party/fabric_sdk/fabric_sdk_py-0.9.0-py3-none-any.whl

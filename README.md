@@ -1,240 +1,353 @@
-# Descripción
-Auto auditor de vulnerabilidades en un entorno dockerizado.
-- Los módulos a probar se pueden encontrar en los ficheros **rc.example.\*vuln.json**.
-- Los ficheros de configuración de los contenedores están en el directorio **VulMach**.
+<!-- # WORK IN PROGRESS - TODO: videos -->
+# Description
+Semiautomatic vulnerabilities auditor using docker containers.
+- Resources scripts examples: **tools/vulnerable\_net/examples/rc.example\*.json**.
+- Dockerfiles used in vulnerable network: **third_party/vulhub**.
+- Vulnerable network docker compose: **tools/vulnerable_net/docker-compose.yaml**.
+- Fabric network docker compose: **tools/fabric_net/docker-compose\*.yaml**.
 
-# Requisitos
-La cuenta desde la cual se ejecuta el script debe pertenecer al grupo **docker** de manera
-que pueda acceder a la API sin permisos de superusuario.
+**Contents:**
+  - [Requirements](#requirements)
+  - [Pre-execution (optional)](#pre-execution-optional)
+    - [Vulnerable network](#vulnerable-network)
+    - [Fabric network](#fabric-network)
+    - [Python virtual environment](#python-virtual-environment)
+  - [Execution](#execution)
+    - [Command line interface](#command-line-interface)
+      - [Normal execution](#normal-execution)
+      - [Wizard](#wizard)
+      - [Store](#store)
+      - [Stop](#stop)
+      - [Query](#query)
+    - [Graphical user interface](#graphical-user-interface)
+      - [Normal execution](#normal-execution-1)
+      - [Wizard](#wizard-1)
+      - [Store](#store-1)
+      - [Stop](#stop-1)
+  - [Output](#output)
+  - [Post-execution (optional)](#post-execution-optional)
+    - [Vulnerable network](#vulnerable-network-1)
+    - [Hyperledger Fabric network](#hyperledger-fabric-network-1)
+    - [Python virtual environment](#python-virtual-environment-1)
+  - [Errors and fixes](#errors-and-fixes)
+    - [Invalid credentials](#invalid-credentials)
+    - [File or directory not found](#file-or-directory-not-found)
+    - [DNS resolution failed](#dns-resolution-failed)
+  - [License](#license)
 
-# Preparación del entorno de pruebas
-- Prepara el entorno de pruebas. Este entorno consta de 15 contenedores vulnerables, todos ellos
-se encuentran en una subred privada accesible a través de un servidor VPN.
+# Requirements
+- git
+- docker
+- docker-compose
+- python3-venv
 
-    `cd config && ./setup_test_environment.sh`
+# Pre-execution (optional)
+## Vulnerable network
+We have prepared a containerized environment with vulnerable machines: vulnerable_net
 
-> Vídeo de la preparación del entorno de pruebas, subtitulado: https://youtu.be/XYmzdHH_G-o
-### Opcional (permite el uso de Hyperledger Fabric)
-- Descarga los binarios y los ficheros de prueba para crear la red de HLF.
+**Features**:
+- Isolated network: autoauditor\_vulnerable\_net
+- <details>
+    <summary>Ten vulnerable containers + VPN server container</summary>
+    <ul>
+        <li>autoauditor_vpn_server</li>
+        <li>autoauditor_coldfusion_10_2861</li>
+        <li>autoauditor_http_14_6271</li>
+        <li>autoauditor_struts2_16_3081</li>
+        <li>autoauditor_structs2_17_5638</li>
+        <li>autoauditor_weblogic_17_10271</li>
+        <li>autoauditor_supervisor_17_11610</li>
+        <li>autoauditor_goahead_17_17562</li>
+        <li>autoauditor_ssh_18_10933</li>
+        <li>autoauditor_ssh_18_15473</li>
+        <li>autoauditor_rails_19_5418</li>
+    </ul>
+  </details>
+- VPN server to allow external access: autoauditor\_vpn\_server
 
-    `curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.1.1 1.4.7`
+**Run**:
+```bash
+tools/vulnerable_net.sh
+```
 
-- Copia el script de configuración de la red HLF.
+<!-- > Test environment set up: https://youtu.be/XYmzdHH_G-o -->
 
-    `cp ../hlfabric/chaincode.sh fabric-samples/test-network`
+## Fabric network
+We have prepared a containerized environment mimicking hyperledger fabric network: fabric\_net
 
-- Copia los ficheros con el chaincode de AutoAuditor.
+**Features**:
+- Isolated network: autoauditor\_fabric\_net
+- <details>
+    <summary>Nine containers + DNS container</summary>
+    <ul>
+        <li>autoauditor_dns</li>
+        <li>autoauditor_ca_orderer</li>
+        <li>autoauditor_orderer</li>
+        <li>autoauditor_ca_org1</li>
+        <li>autoauditor_peer0_org1</li>
+        <li>autoauditor_couchdb_org1</li>
+        <li>autoauditor_ca_org2</li>
+        <li>autoauditor_peer0_org2</li>
+        <li>autoauditor_couchdb_org2</li>
+        <li>autoauditor_cli</li>
+    </ul>
+  </details>
+- Three organizations:
+  - Org1: Peer + CA
+    - Users: admin, user1
+  - Org2: Peer + CA
+    - Users: admin, user1
+  - Orderer: Orderer + CA
+    - Users: admin
+- Autoauditor smart contract installed in Org1
+- One DNS resolver.
 
-    `cp -r ../hlfabric/autoauditor fabric-samples/chaincode`
+**Run**:
+```bash
+$ tools/fabric_net.sh
+```
 
-- Ejecuta el script encargado de instalar el SmartContract en los nodos de HLF. Este scrip levanta todos los componentes
-de la red de pruebas de HLF e inicia un contenedor que cumple la función de DNS local para resolver las direcciones
-de los nodos.
+## Python virtual environment
+In order to enable the virtual environment generated in previous, run:
 
-    `cd fabric-samples/test-network && ./chaincode.sh -u -a -r && cd -`
+```bash
+$ source .venv/bin/activate
+```
+Or install requirements manually:
+```bash
+$ pip install -r requirements.txt
+```
 
+# Execution
+The account that runs autoauditor must be part of **docker** group
+in order to access docker API without sudo.
+## Command line interface
+### List of commands and parameters
+```bash
+$ python -m autoauditor --help
+$ python -m autoauditor.query --help
+```
 
-# Ejecución
-- Activa el entorno virtual de Python creado en los pasos anteriores.
+### Normal execution
+```bash
+$ python -m autoauditor --cli -r tools/vulnerable_net/examples/rc.example5v.json -v tools/vulnerable_net/examples/vpn.example.ovpn -b tools/vulnerable_net/examples/network.example.json
+```
+- **--cli**: Run autoauditor (command line interface).
+- **-r**: Path to the resources script.
+- **-v**: Path to the VPN configuration.
+- **-b**: Path to the HLF configuration.
 
-    `source autoauditor_venv/bin/activate`
+<!-- > Run autoauditor (CLI): https://youtu.be/Ogwj8wcaxTI -->
 
-### Ejecución mediante CLI
-- Ejecución completa de AutoAuditor.
+### Wizard
+```bash
+$ python -m autoauditor --wizard -r myrc.json
+```
+- **--wizard**: Run resources script creation tool.
+- **-r**: Output path of resources script.
 
-    `python ../autoauditor.py -r rc.example.5vuln.json -v client.example.ovpn -o output/msf.log -d output/loot -hc network.example.json -ho output/blockchain.log -b`
-    - -r: Ejecuta AutoAuditor usando los módulos listados en **rc.example.5vuln.json**.
-    - -v: Crea un túnel VPN con la configuración presente en **client.example.ovpn**.
-    - -o: (Opcional) Guarda un registro de ejecución en el fichero **output/msf.log**.
-    - -d: (Opcional) El botín recolectado de los objetivos se almacenará en el directorio **output/loot**.
-    - -hc: Almacena el reporte generado en la blockchain de HLF indicada en el fichero de configuración **network.example.json**.
-    - -ho: (Opcional) Guarda una copia de los reportes almacenados en la blockchain en el fichero **output/blockchain.log**.
-    - -b: (Opcional) Permite que los contenedores se queden iniciados, no deteniéndolos tras la ejecución de AutoAuditor.
+<!-- > Wizard (CLI): https://youtu.be/dCyeBbZZxI8 -->
 
+### Store
+```bash
+$ python -m autoauditor --store -b tools/vulnerable_net/examples/network.example.json
+```
+- **--store**: Store reports in blockchain without running autoauditor.
+- **-b**: Path to the HLF configuration.
 
-> Vídeo de la ejecución de AutoAuditor (CLI): https://youtu.be/Ogwj8wcaxTI
-- Ejecución individual de la función wizard de AutoAuditor.
+<!-- > Reports storage in the blockchain (CLI): https://youtu.be/I9PQNNX6Tdg -->
 
-    `python ../autoauditor.py -g rc.myfile.json`
+### Stop
+```bash
+$ python -m autoauditor --stop
+```
 
-    `python ../wizard.py -g rc.myfile.json`
+<!-- > Stop containers (CLI): https://youtu.be/WXEsy2r9mJ8 -->
 
-    - -g: Ejecuta la función de wizard de AutoAuditor, el fichero generado se guardará bajo el nombre **rc.myfile.json**.
+### Query
+```bash
+$ python -m autoauditor.query --query date -qd 2020-12 -b tools/vulnerable_net/examples/network.example.json
+```
+- **--query**: Type of query. Query by date.
+- **-qd**: Filtering date.
+- **-b**: Path to the HLF configuration.
 
+<!-- > Search reports (CLI): https://youtu.be/WXEsy2r9mJ8 -->
 
-> Vídeo del asistente para creación de ficheros de automatización (CLI): https://youtu.be/dCyeBbZZxI8
-- Ejecución individual de la función blockchain de AutoAuditor.
+## Graphical user interface
+```bash
+$ python -m autoauditor --gui
+```
+<details>
+  <summary>Screenshots</summary>
+  <details>
+    <summary>Main screen</summary>
+    <div align="center">
+      <img alt="main screen" src="images/1.main.png" width="75%"/>
+    </div>
+  </details>
+  <details>
+    <summary>About</summary>
+    <div align="center">
+      <img alt="about" src="images/2.main_about.png" width="75%"/>
+    </div>
+  </details>
+  <details>
+    <summary>License</summary>
+    <div align="center">
+      <img alt="license" src="images/3.main_license.png" width="75%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Option information</summary>
+    <div align="center">
+      <img alt="option information" src="images/4.main_info.png" width="50%"/>
+    </div>
+  </details>
+</details>
 
-    `python ../blockchain.py -o output/msf.log -hc network.example.json -ho output/blockchain.log`
-    - -o: Analiza el fichero **output/msf.log** y obtiene los reportes que se almacenarán en la blockchain.
-    - -hc: Configuración de la red de HLF presente en el fichero **network.example.json**.
-    - -ho: (Opcional) Guarda una copia de los reportes almacenados en la blockchain en el fichero **output/blockchain.log**.
+### Normal execution
+<details>
+  <summary>Screenshots</summary>
+  <details>
+    <summary>Executing</summary>
+    <div align="center">
+      <img alt="autoauditor running" src="images/5.main_running.png" width="75%"/>
+    </div>
+  </details>
+</details>
 
-> Vídeo del almacenamiento de reportes en la blockchain (CLI): https://youtu.be/I9PQNNX6Tdg
-- Ejecución individual de la función query de AutoAuditor.
+### Wizard
+<details>
+  <summary>Screenshots</summary>
+  <details>
+    <summary>Wizard screen</summary>
+    <div align="center">
+      <img alt="wizard" src="images/7.wizard.png" width="75%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Module information</summary>
+    <div align="center">
+      <img alt="module information" src="images/8.module_info.png" width="75%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Module options</summary>
+    <div align="center">
+      <img alt="module options" src="images/9.module_options.png" width="75%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Module option error</summary>
+    <div align="center">
+      <img alt="module option error" src="images/10.moption_error.png" width="50%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Module option help</summary>
+    <div align="center">
+      <img alt="module option information" src="images/11.moption_info.png" width="50%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Payload information</summary>
+    <div align="center">
+      <img alt="payload information" src="images/12.payload_info.png" width="75%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Payload options</summary>
+    <div align="center">
+      <img alt="payload options" src="images/13.payload_options.png" width="75%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Payload option help</summary>
+    <div align="center">
+      <img alt="payload option information" src="images/14.poption_info.png" width="50%"/>
+    </div>
+  </details>
+</details>
 
-    `python ../query.py -q date -t 2020-12 -c network.example.json`
-    - -q: Indica el tipo de petición a realizar, en este caso **date**.
-    - -t: Indica la fecha **2020-12** como fecha a filtrar en la búsqueda.
-    - -c: Configuración de la red de HLF presente en el fichero **network.example.json**.
+### Store
+<details>
+  <summary>Screenshots</summary>
+  <details>
+    <summary>Storing reports</summary>
+    <div align="center">
+      <img alt="storing reports" src="images/6.main_store.png" width="75%"/>
+    </div>
+  </details>
+</details>
 
-> Vídeo de la búsqueda de reportes (CLI), subtitulado: https://youtu.be/WXEsy2r9mJ8
+### Stop
+<details>
+  <summary>Screenshots</summary>
+  <details>
+    <summary>Stopping containers</summary>
+    <div align="center">
+      <img alt="stopping containers" src="images/15.main_stop.png" width="75%"/>
+    </div>
+  </details>
+</details>
 
-### Ejecución mediante GUI
-- Ejecución de la interfaz gráfica de AutoAuditor.
+<!-- > Run of autoauditor (GUI): https://youtu.be/lD7-3q-duTw<br> -->
+<!-- > Reports storage (GUI): https://youtu.be/RcQymDZJFYM<br> -->
+<!-- > Wizard (GUI): https://youtu.be/nIKc0-E-2bU<br> -->
 
-    `python ../gui.py`
+# Output
+- Autoauditor log: **output/msf.log**.
+- Autoauditor loot directory: **output**.
+- Autoauditor blockchain log: **output/blockchain.log**.
+> Output files can be changed with: **-of**, **-od** and **-ob** arguments.
 
-    <details>
-        <summary> Captura de la ventana de AutoAuditor. </summary>
-        <div align="center">
-            <img alt="main" src="gui_files/screenshots/1.main.png" width="75%"/>
-        </div>
-    </details>
-    <details>
-        <summary> Captura de la pestaña Acerca de. </summary>
-        <div align="center">
-            <img alt="main_about" src="gui_files/screenshots/2.main_about.png" width="75%"/>
-        </div>
-    </details>
-    <details>
-        <summary> Captura de la pestaña Licencia. </summary>
-        <div align="center">
-            <img alt="main_license" src="gui_files/screenshots/3.main_license.png" width="75%"/>
-        </div>
-    </details>
+> Stored reports idenfitifed by ID(sha256(orgName+reportDate)).
 
+# Post-execution (optional)
+## Vulnerable network
+Stop vulnerable network
+```bash
+$ tools/vulnerable_net.sh --down
+```
 
-    - Cada opción de la interfaz tiene un botón de ayuda en caso de dudas acerca de su funcionamiento.
-        <details>
-            <summary> Captura de la ventana de ayuda. </summary>
-            <div align="center">
-                <img alt="main_info" src="gui_files/screenshots/4.main_info.png" width="50%"/>
-            </div>
-        </details>
+## Hyperledger Fabric network
+Stop fabric network
+```bash
+$ tools/fabric_net.sh --down
+```
 
-    - Tienes a disposición 4 funciones:
-        1. Start: Ejecuta AutoAuditor.
-            <details>
-                <summary> Captura de la ventana de AutoAuditor ejecutándose. </summary>
-                <div align="center">
-                    <img alt="main_running" src="gui_files/screenshots/5.main_running.png" width="75%"/>
-                </div>
-            </details>
-        2. Store: Sube únicamente los reportes a la blockchain de HLF.
-        3. Wizard: Inicia el programa de ayuda para la creación de ficheros RC.
-           <details>
-               <summary> Capturas de la ventana del wizard. </summary>
-               <details>
-                   <summary> Captura de la ventana del wizard. </summary>
-                   <div align="center">
-                       <img alt="wizard" src="gui_files/screenshots/6.wizard.png" width="75%"/>
-                   </div>
-               </details>
-               <details>
-                   <summary> Captura de la ventana de información del módulo. </summary>
-                   <div align="center">
-                       <img alt="module_info" src="gui_files/screenshots/7.module_info.png" width="75%"/>
-                   </div>
-               </details>
-               <details>
-                   <summary> Captura de la ventana de opciones del módulo. </summary>
-                   <div align="center">
-                       <img alt="module_options" src="gui_files/screenshots/8.module_options.png" width="75%"/>
-                  </div>
-               </details>
-               <details>
-                   <summary> Captura de la ventana de error de una opción del módulo. </summary>
-                   <div align="center">
-                       <img alt="moption_info" src="gui_files/screenshots/9.moption_error.png" width="50%"/>
-                   </div>
-               </details>
-               <details>
-                   <summary> Captura de la ventana de información de una opción del módulo. </summary>
-                   <div align="center">
-                       <img alt="moption_info" src="gui_files/screenshots/10.moption_info.png" width="50%"/>
-                   </div>
-               </details>
-               <details>
-                   <summary> Captura de la ventana de información del payload. </summary>
-                   <div align="center">
-                       <img alt="payload_info" src="gui_files/screenshots/11.payload_info.png" width="75%"/>
-                   </div>
-               </details>
-               <details>
-                   <summary> Captura de la ventana de opciones del payload. </summary>
-                   <div align="center">
-                       <img alt="payload_options" src="gui_files/screenshots/12.payload_options.png" width="75%"/>
-                   </div>
-               </details>
-               <details>
-                   <summary> Captura de la ventana de información de una opción del payload. </summary>
-                   <div align="center">
-                       <img alt="poption_info" src="gui_files/screenshots/13.poption_info.png" width="50%"/>
-                   </div>
-               </details>
-           </details>
+## Python virtual environment
+Deactivate virtual environment
+```bash
+$ deactivate
+```
 
-        4. Stop: Detiene los contenedores iniciados durante la ejecución de AutoAuditor o el programa de ayuda.
-            <details>
-                <summary> Captura de la ventana de AutoAuditor durante la detención de los contenedores. </summary>
-                <div align="center">
-                    <img alt="main_stop" src="gui_files/screenshots/14.main_stop.png" width="75%"/>
-                </div>
-            </details>
-
-> Vídeo de la ejecución de AutoAuditor (GUI): https://youtu.be/lD7-3q-duTw<br>
-> Vídeo del almacenamiento de reportes en la blockchain (GUI): https://youtu.be/RcQymDZJFYM<br>
-> Vídeo del asistente para creación de ficheros de automatización (GUI): https://youtu.be/nIKc0-E-2bU<br>
-
-# Salida
-- Se conservará una copia del registro de ejecución de metasploit framework (community), separado por módulos, en el fichero **output/msf.log**.
-- Se almacenará el botín recolectado durante la ejecución en el directorio **output/loot**.
-- Se almacenarán los reportes generados en la blockchain indicada por **network.example.json** con identificador sha256(orgName+reportDate).
-- Se creará una copia de los reportes almacenados en la blockchain en **output/blockchain.log**.
-
-# Limpieza del entorno
-- Desactiva el entorno virtual de Python
-
-    `deactivate`
-- Ejecuta el script de preparación del entorno de pruebas. Detiene todos los contenedores, además, se elimina
-cualquier archivo temporal usado.
-
-    `./setup_test_environment.sh -s`
-
-- (Opcional) Ejecuta el script de la red de HLF. El script eliminará la red de HLF y detendrá el contenedor iniciado para el DNS local.
-
-    `cd fabric-samples/test-network && ./chaincode.sh -d && cd -`
-
-# Entornos virtuales
-La ejecución se realiza en un entorno virtual, sin embargo, es necesario que la cuenta de usuario desde
-la que se ejecuta la herramienta pertenezca al grupo **docker** para que se pueda comunicar
-con la API.
-
-# Posibles problemas, causas y soluciones
+# Errors and fixes
+## Invalid credentials
 > Missing 'proposalResponses' parameter in transaction request.
 
 > status = StatusCode.UNKNOWN<br>
-> details = "error validating proposal: access denied: channel [mychannel] creator org [Org1MSP]"
+> details = "error validating proposal: access denied: channel [channel1] creator org [Org1MSP]"
 
-- Errores que se obtienen al usar credenciales inválidas tras realizar alguna petición contra la blockchain.
+**Fix:** Remove wallet-test folder.
 
-**Solución:** Borrar la carpeta wallet-test del directorio de trabajo.
-
-<br>
-
+## File or directory not found
 > FileNotFoundError: [Errno 2] No such file or directory:
 
-- Error obtenido al ejecutar AutoAuditor.
+**Fix:** Check if fabric network is up. Check paths in network configuration file.
 
-**Solución:** Comprueba que la blockchain esté correctamente instanciada. Si es así, comprueba que las rutas en el fichero
-de configuración de la blockchain son correctas.
-
-<br>
-
+## DNS resolution failed
 > status = StatusCode.UNAVAILABLE<br>details = "DNS resolution failed"
 
-- Error al realizar cualquier petición contra la blockchain.
+**Fix:** Check connection to peers. If using fabric\_net, check that
+**autoauditor_dns** container is running.
 
-**Solución:** Comprueba que tienes conexión a los nodos de la red HLF. Si estás usando el entorno de pruebas,
-comprueba que el contenedor docker-resolver está ejecutándose.
+# License
+    autoauditor  Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+    Universidad Carlos III de Madrid.
+    This program comes with ABSOLUTELY NO WARRANTY; for details check below.
+    This is free software, and you are welcome to redistribute it
+    under certain conditions; check below for details.
+
+[LICENSE](LICENSE)
