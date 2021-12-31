@@ -344,7 +344,7 @@ $ deactivate
 **autoauditor_dns** container is running.
 
 # License
-    autoauditor  Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+    autoauditor  Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
     Universidad Carlos III de Madrid.
     This program comes with ABSOLUTELY NO WARRANTY; for details check below.
     This is free software, and you are welcome to redistribute it

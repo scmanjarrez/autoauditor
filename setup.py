@@ -1,9 +1,9 @@
 from setuptools import setup
+from pathlib import Path
 
-import pathlib
 import os
 
-_parent = pathlib.Path(__file__).parent.resolve()
+_parent = Path(__file__).parent.resolve()
 readme = (_parent / 'README.md').read_text(encoding='utf-8')
 
 
@@ -32,17 +32,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.8'
     ],
-    packages=[
-        'autoauditor',
-        'autoauditor.tools'
-    ],
-    package_dir={
-        'autoauditor.tools': 'tools'
-    },
-    package_data={
-        'autoauditor.tools': ['tools/*']
-    },
-    include_package_data=True,
+    packages=['autoauditor'],
     python_requires='>= 3.6',
     install_requires=[
         'opentimestamps-client',
@@ -60,7 +50,8 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'autoauditor=autoauditor.__main__:main'
+            'autoauditor=autoauditor.__main__:main',
+            'query=autoauditor.query:main'
         ]
     }
 )

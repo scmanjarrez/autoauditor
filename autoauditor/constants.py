@@ -2,7 +2,7 @@
 
 # constants - definitions file.
 
-# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -1285,7 +1285,7 @@ LOADING = (b'R0lGODlhgACAAMYAAAQ+dISivMTS3ERylKS6zOTq7GSKrCRahPT29JSuxLTG1Hyat'
 # Copyright
 
 COPYRIGHT = """
-AutoAuditor  Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+AutoAuditor  Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 Universidad Carlos III de Madrid.
 This program comes with ABSOLUTELY NO WARRANTY; for details check below.
 This is free software, and you are welcome to redistribute it

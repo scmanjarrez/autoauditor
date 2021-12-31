@@ -1,5 +1,5 @@
 # Fork
-https://github.com/scmanjarrez/fabric-sdk-py/tree/pypi\_1.0.0
+https://github.com/scmanjarrez/fabric-sdk-py/tree/pypi_1.0.0
 
 **Changelog**
  - Added b64decode to util/channel.py to fix discovery certificate reading.

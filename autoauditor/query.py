@@ -4,7 +4,7 @@
 
 # query - Blockchain Query module.
 
-# Copyright (C) 2021 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of AutoAuditor.
@@ -102,12 +102,12 @@ def verify_arguments(parser, args):
         if not args.qi:
             parser.error("the following arguments are required: -qi")
 
-
     ut.check_readf(args.b)
 
 
 def main():
     parser = argparse.ArgumentParser(
+        prog='python -m autoauditor.query',
         description="Autoauditor submodule to query reports in blockchain.")
     cmds = parser.add_argument_group("commands")
     cmds.add_argument('-q', '--query', required=True,
