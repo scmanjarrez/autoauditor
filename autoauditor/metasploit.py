@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# metasploit - Metasploit helper module.
+# metasploit - Metasploit module.
 
 # Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
-# This file is part of AutoAuditor.
+# This file is part of autoauditor.
 
-# AutoAuditor is free software: you can redistribute it and/or modify
+# autoauditor is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-# AutoAuditor is distributed in the hope that it will be useful,
+# autoauditor is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -30,7 +30,6 @@ import docker
 import errno
 import json
 import time
-import os
 
 
 def get_msf_connection(passwd):
@@ -48,13 +47,13 @@ def get_msf_connection(passwd):
                err=errno.ECONNREFUSED)
 
 
-def start_msf(loot_dir, ovpn=False, stop=False):
+def start_msf(loot_dir, ovpn=False):
     dcl = docker.from_env()
     msfcont = None
-    ut.log('succb', ct.MSSTAT, end='\r')
+    ut.log('info', ct.MSSTAT, end='\r')
     try:
         image = dcl.images.get('metasploitframework/metasploit-framework')
-        ut.log('succg', ct.MSEXIST)
+        ut.log('succ', ct.MSEXIST)
     except docker.errors.ImageNotFound:
         ut.log('warn', ct.MSDOWN, end='\r')
         try:
@@ -62,56 +61,52 @@ def start_msf(loot_dir, ovpn=False, stop=False):
                 'metasploitframework/metasploit-framework', 'latest')
         except docker.errors.APIError:
             ut.log('error', "Downloading error.", err=ct.EDDOWN)
-        ut.log('succg', ct.MSDONE)
-    ut.log('succb', ct.MSCSTAT, end='\r')
+        ut.log('succ', ct.MSDONE)
+    ut.log('info', ct.MSCSTAT, end='\r')
     cont_l = dcl.containers.list(filters={'name': ct.MSF_NAME})
     if cont_l:
-        ut.log('succg', ct.MSCR)
+        ut.log('succ', ct.MSCR)
         msfcont = cont_l[0]
     else:
-        if stop:  # if want to stop but already stopped, don't start again
-            ut.log('succg', ct.MSCNR)
+        ut.log('warn', ct.MSCSTART, end='\r')
+        if ovpn:
+            msfcont = dcl.containers.run(image,
+                                         '-c "ip route replace '
+                                         'default via 10.10.20.2 && '
+                                         './msfrpcd -P dummypass && '
+                                         'tail -f /dev/null"',
+                                         entrypoint='bash',
+                                         auto_remove=True,
+                                         detach=True, name=ct.MSF_NAME,
+                                         cap_add='NET_ADMIN',
+                                         labels=ct.LABEL,
+                                         network=ct.NET_NAME,
+                                         volumes={
+                                             loot_dir: {
+                                                 'bind': ('/root/'
+                                                          '.msf4/'
+                                                          'loot')
+                                             }
+                                         },
+                                         ports={
+                                             55553: 55553
+                                         })
         else:
-            ut.log('warn', ct.MSCSTART, end='\r')
-            loot = os.path.join(os.getcwd(), loot_dir)
-            if ovpn:
-                msfcont = dcl.containers.run(image,
-                                             '-c "ip route replace '
-                                             'default via 10.10.20.2 && '
-                                             './msfrpcd -P dummypass && '
-                                             'tail -f /dev/null"',
-                                             entrypoint='bash',
-                                             auto_remove=True,
-                                             detach=True, name=ct.MSF_NAME,
-                                             cap_add='NET_ADMIN',
-                                             labels=ct.LABEL,
-                                             network=ct.NET_NAME,
-                                             volumes={
-                                                 loot: {
-                                                     'bind': ('/root/'
-                                                              '.msf4/'
-                                                              'loot')
-                                                 }
-                                             },
-                                             ports={
-                                                 55553: 55553
-                                             })
-            else:
-                msfcont = dcl.containers.run(image,
-                                             '-c "./msfrpcd -P dummypass && '
-                                             'tail -f /dev/null"',
-                                             entrypoint='bash',
-                                             remove=True,
-                                             detach=True, name=ct.MSF_NAME,
-                                             labels=ct.LABEL,
-                                             volumes={
-                                                 loot: {'bind': ('/root/'
+            msfcont = dcl.containers.run(image,
+                                         '-c "./msfrpcd -P dummypass && '
+                                         'tail -f /dev/null"',
+                                         entrypoint='bash',
+                                         remove=True,
+                                         detach=True, name=ct.MSF_NAME,
+                                         labels=ct.LABEL,
+                                         volumes={
+                                             loot_dir: {'bind': ('/root/'
                                                                  '.msf4/'
                                                                  'loot')}
-                                             },
-                                             ports={55553: 55553})
-            time.sleep(10)
-            ut.log('succg', ct.MSCDONE)
+                                         },
+                                         ports={55553: 55553})
+        time.sleep(10)
+        ut.log('succ', ct.MSCDONE)
     return msfcont
 
 
@@ -130,7 +125,7 @@ def launch_metasploit(msfcl, rc_file, log_file):
         f.write(f"{header}\n")
         f.write(f"{off} {datetime.now().astimezone()} {off}\n")
         f.write(f"{header}\n\n")
-        ut.log('succb', f"Metasploit output log: {log_file}")
+        ut.log('info', f"Metasploit output log: {log_file}")
         for mtype in rc:
             for mname in rc[mtype]:
                 for opts in rc[mtype][mname]:
@@ -167,7 +162,7 @@ def launch_metasploit(msfcl, rc_file, log_file):
                                         f"Check {rc_file}."))
                         cid = msfcl.consoles.console().cid
                         exp = f"{mtype}/{mname}"
-                        ut.log('succg', f"Logging output: {exp}")
+                        ut.log('succ', f"Logging output: {exp}")
                         f.write(f"##### {exp} #####\n\n")
                         f.write(msfcl.consoles.console(
                             cid).run_module_with_output(mod, payload=pay))

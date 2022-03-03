@@ -2,19 +2,19 @@
 
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# autoauditor - Main program.
+# __main__ - Main program.
 
 # Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
-# This file is part of AutoAuditor.
+# This file is part of autoauditor.
 
-# AutoAuditor is free software: you can redistribute it and/or modify
+# autoauditor is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-# AutoAuditor is distributed in the hope that it will be useful,
+# autoauditor is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -27,18 +27,19 @@ from autoauditor import metasploit as ms
 from autoauditor import constants as ct
 from autoauditor import wizard as wz
 from autoauditor import utils as ut
-from autoauditor import gui
+from autoauditor.gui import gui
 from autoauditor import vpn
 
 import argparse
 import errno
+import sys
 
 
 def start_containers(args):
     if args.v is not None:
-        vpn.start_vpn(args.v, args.cmd == 'stop')
+        vpn.start_vpn(args.v)
     return ms.start_msf(
-        args.od, args.v is not None, args.cmd == 'stop')
+        args.od, args.v is not None)
 
 
 def verify_arguments(parser, args):
@@ -142,19 +143,20 @@ def main():
 
     if args.cmd != 'gui':
         ut.copyright()
-        msf = start_containers(args)
-        if msf is not None:
-            msfclient = ms.get_msf_connection(ct.DEF_MSFRPC_PWD)
-            if args.cmd == 'cli':
-                ms.launch_metasploit(msfclient, args.r, args.of)
-            elif args.cmd == 'wizard':
-                wz.generate_resources_file(msfclient, args.r)
+        if args.cmd != 'stop':
+            msf = start_containers(args)
+            if msf is not None:
+                msfclient = ms.get_msf_connection(ct.DEF_MSFRPC_PWD)
+                if args.cmd == 'cli':
+                    ms.launch_metasploit(msfclient, args.r, args.of)
+                elif args.cmd == 'wizard':
+                    wz.generate_resources_file(msfclient, args.r)
 
-            if args.cmd in ('cli', 'store') and args.b:
-                info = bc.load_config(args.b)
-                if info is not None:
-                    bc.store_report(info, args.of, args.ob)
-        if not args.background:
+                if args.cmd in ('cli', 'store') and args.b:
+                    info = bc.load_config(args.b)
+                    if info is not None:
+                        bc.store_report(info, args.of, args.ob)
+        if not args.background or args.cmd == 'stop':
             ut.shutdown()
     else:
         gui.main()
@@ -168,4 +170,4 @@ if __name__ == '__main__':
         ut.log('error',
                "Interrupted, exiting program. "
                "Containers still running...")
-        exit(errno.EINTR)
+        sys.exit(errno.EINTR)

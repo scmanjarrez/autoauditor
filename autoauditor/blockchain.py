@@ -7,14 +7,14 @@
 # Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
-# This file is part of AutoAuditor.
+# This file is part of autoauditor.
 
-# AutoAuditor is free software: you can redistribute it and/or modify
+# autoauditor is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-# AutoAuditor is distributed in the hope that it will be useful,
+# autoauditor is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -43,8 +43,8 @@ import logging
 import sqlite3
 import errno
 import json
-import re
 import sys
+import re
 
 
 CVEDETAILS = "https://www.cvedetails.com/cve/"
@@ -266,9 +266,9 @@ def store_report(info, outf, outbc, update_cache=False, loop=None):
         loop = _asyncio.get_event_loop()
     user, client, peer, channel = info
 
-    ut.log('succb', ct.GENREP, end='\r')
+    ut.log('info', ct.GENREP, end='\r')
     reports = generate_reports(outf, update_cache)
-    ut.log('succg', ct.GENREPDONE)
+    ut.log('succ', ct.GENREPDONE)
 
     privdate = reports.pop('date')  # yyyy-mm-dd hh:mm:ss.ffffff+tt:zz
     pubdate = privdate[:7]  # yyyy-mm
@@ -296,7 +296,7 @@ def store_report(info, outf, outbc, update_cache=False, loop=None):
         tmp_rep['report'] = json.dumps(reports[r])  # must be serialized
         trans_map = json.dumps(tmp_rep).encode()
 
-        ut.log('succb', f"Storing {_type} report: {rhash}")
+        ut.log('info', f"Storing {_type} report: {rhash}")
         try:
             resp = loop.run_until_complete(client.chaincode_invoke(
                 requestor=user,
@@ -315,7 +315,7 @@ def store_report(info, outf, outbc, update_cache=False, loop=None):
         else:
             if not resp:
                 ut.log(
-                    'succg',
+                    'succ',
                     f"{_type.capitalize()} report stored successfully.")
                 uploaded += 1
             elif 'already' in resp:
@@ -330,14 +330,17 @@ def store_report(info, outf, outbc, update_cache=False, loop=None):
                 ut.log('error',
                        "Unknown error storing {_type} report {rhash}: {resp}",
                        err=ct.EHLFST)
-    ut.log('succb', f"Blockchain output log: {outbc}")
+    ut.log('info', f"Blockchain output log: {outbc}")
     with open(outbc, 'w') as out:
         out.write(json.dumps(log_rep, indent=4))
     if uploaded == 2:
-        opentimestamp_format()
-        ut.log('succb', "Creating report timestamp...")
-        args = otsclient.args.parse_ots_args(['stamp', outbc])
-        args.cmd_func(args)
+        if ut.check_existf(f'{outbc}.ots'):
+            ut.log('warn', "Timestamp can not be created, already exists.")
+        else:
+            opentimestamp_format()
+            ut.log('info', "Creating report timestamp...")
+            args = otsclient.args.parse_ots_args(['stamp', outbc])
+            args.cmd_func(args)
 
 
 def _get_network_data(config, *key_path):
@@ -443,9 +446,9 @@ def opentimestamp_format():
 
         def emit(self, record):
             msg = self.format(record)
-            ut.WINDOW.write_event_value('LOG', msg)
+            ut.WINDOW.emit(msg)
     ots = OpenTimeStampFormatter()
-    if ut.WINDOW:
+    if ut.WINDOW is not None:
         ots_handler = OpenTimeStampGUIHandler()
     else:
         ots_handler = logging.StreamHandler(sys.stdout)

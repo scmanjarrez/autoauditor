@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# vulnerable_net - Vulnerable network, helper script.
+
+# Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Universidad Carlos III de Madrid.
+
+# This file is part of AutoAuditor.
+
+# AutoAuditor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# AutoAuditor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
 _R="\033[91m"
 _DR="\033[31m"
 _G="\033[92m"
@@ -120,28 +142,30 @@ check_required_pkgs ()
 
     local pkg=git
     command -v $pkg > /dev/null 2>&1
-
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=0; }
 
     pkg=docker
     command -v $pkg > /dev/null 2>&1
-
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=0; }
 
     pkg=docker-compose
     command -v $pkg > /dev/null 2>&1
+    [[ $? -eq 0 ]] \
+        && pkg_info $pkg 0  \
+            || { pkg_info $pkg 1; all_pk=0; }
 
+    pkg=python3-config
+    command -v $pkg > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=0; }
 
     pkg=python3-venv
     python3 -c 'import ensurepip' > /dev/null 2>&1
-
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=0; }
@@ -174,7 +198,7 @@ create_venv ()
     pip install -U pip --no-cache-dir > $OUT 2>&1
     pip install -r requirements.txt --no-cache-dir > $OUT 2>&1
 
-    log succ "Enable virtual environment with 'source $VENV_NAME/bin/activate' and run python3 -m autoauditor"
+    log succ "Enable virtual environment with 'source $VENV_NAME/bin/activate' and run 'python3 -m autoauditor'"
 }
 
 while [[ $# -gt 0 ]]; do

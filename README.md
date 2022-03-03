@@ -15,14 +15,14 @@ Semiautomatic vulnerabilities auditor using docker containers.
   - [Execution](#execution)
     - [Command line interface](#command-line-interface)
       - [Normal execution](#normal-execution)
-      - [Wizard](#wizard)
       - [Store](#store)
+      - [Wizard](#wizard)
       - [Stop](#stop)
       - [Query](#query)
     - [Graphical user interface](#graphical-user-interface)
       - [Normal execution](#normal-execution-1)
-      - [Wizard](#wizard-1)
       - [Store](#store-1)
+      - [Wizard](#wizard-1)
       - [Stop](#stop-1)
   - [Output](#output)
   - [Post-execution (optional)](#post-execution-optional)
@@ -33,6 +33,7 @@ Semiautomatic vulnerabilities auditor using docker containers.
     - [Invalid credentials](#invalid-credentials)
     - [File or directory not found](#file-or-directory-not-found)
     - [DNS resolution failed](#dns-resolution-failed)
+  - [Acknowledgements](#acknowledgements)
   - [License](#license)
 
 # Requirements
@@ -139,15 +140,6 @@ $ python -m autoauditor --cli -r tools/vulnerable_net/examples/rc.example5v.json
 
 <!-- > Run autoauditor (CLI): https://youtu.be/Ogwj8wcaxTI -->
 
-### Wizard
-```bash
-$ python -m autoauditor --wizard -r myrc.json
-```
-- **--wizard**: Run resources script creation tool.
-- **-r**: Output path of resources script.
-
-<!-- > Wizard (CLI): https://youtu.be/dCyeBbZZxI8 -->
-
 ### Store
 ```bash
 $ python -m autoauditor --store -b tools/vulnerable_net/examples/network.example.json
@@ -156,6 +148,15 @@ $ python -m autoauditor --store -b tools/vulnerable_net/examples/network.example
 - **-b**: Path to the HLF configuration.
 
 <!-- > Reports storage in the blockchain (CLI): https://youtu.be/I9PQNNX6Tdg -->
+
+### Wizard
+```bash
+$ python -m autoauditor --wizard -r myrc.json
+```
+- **--wizard**: Run resources script creation tool.
+- **-r**: Output path of resources script.
+
+<!-- > Wizard (CLI): https://youtu.be/dCyeBbZZxI8 -->
 
 ### Stop
 ```bash
@@ -181,27 +182,48 @@ $ python -m autoauditor --gui
 <details>
   <summary>Screenshots</summary>
   <details>
-    <summary>Main screen</summary>
+    <summary>Main window</summary>
     <div align="center">
-      <img alt="main screen" src="images/1.main.png" width="75%"/>
+      <img alt="main window" src="images/1.main.png" width="40%"/>
     </div>
   </details>
   <details>
     <summary>About</summary>
     <div align="center">
-      <img alt="about" src="images/2.main_about.png" width="75%"/>
+      <img alt="about" src="images/2.main_about.png" width="40%"/>
     </div>
   </details>
   <details>
     <summary>License</summary>
     <div align="center">
-      <img alt="license" src="images/3.main_license.png" width="75%"/>
+      <img alt="license" src="images/3.main_license.png" width="40%"/>
     </div>
+  </details>
+  <details>
+    <summary>Menubar</summary>
+    <details>
+      <summary>Windows menu</summary>
+      <div align="center">
+        <img alt="menubar windows menu" src="images/4.main_windows.png" width="40%"/>
+      </div>
+    </details>
+    <details>
+      <summary>Settings menu</summary>
+      <div align="center">
+        <img alt="menubar settings menu" src="images/5.main_settings.png" width="40%"/>
+      </div>
+    </details>
   </details>
   <details>
     <summary>Option information</summary>
     <div align="center">
-      <img alt="option information" src="images/4.main_info.png" width="50%"/>
+      <img alt="option information" src="images/6.main_info.png" width="40%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Console output</summary>
+    <div align="center">
+      <img alt="console output" src="images/17.console.png" width="40%"/>
     </div>
   </details>
 </details>
@@ -212,60 +234,7 @@ $ python -m autoauditor --gui
   <details>
     <summary>Executing</summary>
     <div align="center">
-      <img alt="autoauditor running" src="images/5.main_running.png" width="75%"/>
-    </div>
-  </details>
-</details>
-
-### Wizard
-<details>
-  <summary>Screenshots</summary>
-  <details>
-    <summary>Wizard screen</summary>
-    <div align="center">
-      <img alt="wizard" src="images/7.wizard.png" width="75%"/>
-    </div>
-  </details>
-  <details>
-    <summary>Module information</summary>
-    <div align="center">
-      <img alt="module information" src="images/8.module_info.png" width="75%"/>
-    </div>
-  </details>
-  <details>
-    <summary>Module options</summary>
-    <div align="center">
-      <img alt="module options" src="images/9.module_options.png" width="75%"/>
-    </div>
-  </details>
-  <details>
-    <summary>Module option error</summary>
-    <div align="center">
-      <img alt="module option error" src="images/10.moption_error.png" width="50%"/>
-    </div>
-  </details>
-  <details>
-    <summary>Module option help</summary>
-    <div align="center">
-      <img alt="module option information" src="images/11.moption_info.png" width="50%"/>
-    </div>
-  </details>
-  <details>
-    <summary>Payload information</summary>
-    <div align="center">
-      <img alt="payload information" src="images/12.payload_info.png" width="75%"/>
-    </div>
-  </details>
-  <details>
-    <summary>Payload options</summary>
-    <div align="center">
-      <img alt="payload options" src="images/13.payload_options.png" width="75%"/>
-    </div>
-  </details>
-  <details>
-    <summary>Payload option help</summary>
-    <div align="center">
-      <img alt="payload option information" src="images/14.poption_info.png" width="50%"/>
+      <img alt="autoauditor running" src="images/7.main_run.png" width="40%"/>
     </div>
   </details>
 </details>
@@ -276,7 +245,54 @@ $ python -m autoauditor --gui
   <details>
     <summary>Storing reports</summary>
     <div align="center">
-      <img alt="storing reports" src="images/6.main_store.png" width="75%"/>
+      <img alt="storing reports" src="images/8.main_store.png" width="40%"/>
+    </div>
+  </details>
+</details>
+
+### Wizard
+<details>
+  <summary>Screenshots</summary>
+    <details>
+    <summary>Opening wizard</summary>
+    <div align="center">
+      <img alt="opening wizard" src="images/9.main_wizard.png" width="40%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Wizard window</summary>
+    <div align="center">
+      <img alt="wizard window" src="images/11.wizard.png" width="40%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Module information</summary>
+    <div align="center">
+      <img alt="module information" src="images/12.module_info.png" width="40%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Module options</summary>
+    <div align="center">
+      <img alt="module options" src="images/13.module_options.png" width="40%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Module option information</summary>
+    <div align="center">
+      <img alt="module option information" src="images/14.module_option_info.png" width="40%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Module option error</summary>
+    <div align="center">
+      <img alt="module option error" src="images/15.module_option_error.png" width="40%"/>
+    </div>
+  </details>
+  <details>
+    <summary>Payload information</summary>
+    <div align="center">
+      <img alt="payload information" src="images/16.payload_info.png" width="40%"/>
     </div>
   </details>
 </details>
@@ -287,7 +303,7 @@ $ python -m autoauditor --gui
   <details>
     <summary>Stopping containers</summary>
     <div align="center">
-      <img alt="stopping containers" src="images/15.main_stop.png" width="75%"/>
+      <img alt="stopping containers" src="images/10.main_stop.png" width="40%"/>
     </div>
   </details>
 </details>
@@ -342,6 +358,11 @@ $ deactivate
 
 **Fix:** Check connection to peers. If using fabric\_net, check that
 **autoauditor_dns** container is running.
+
+# Acknowledgements
+**This work has been supported by National R&D Project TEC2017-84197-C4-1-R and by
+the Comunidad de Madrid project CYNAMON P2018/TCS-4566 and co-financed by European
+Structural Funds (ESF and FEDER)**
 
 # License
     autoauditor  Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.

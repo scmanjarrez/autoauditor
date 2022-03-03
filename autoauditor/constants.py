@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# constants - definitions file.
+# constants - Constant definitions file.
 
 # Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
-# This file is part of AutoAuditor.
+# This file is part of autoauditor.
 
-# AutoAuditor is free software: you can redistribute it and/or modify
+# autoauditor is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-# AutoAuditor is distributed in the hope that it will be useful,
+# autoauditor is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -21,8 +21,8 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import date
+from pathlib import Path
 
-import os
 
 # Error Codes
 # Docker related errors
@@ -90,9 +90,9 @@ MOD_TYPES = ['auxiliary', 'encoder', 'exploit', 'nop', 'payload', 'post']
 
 # Templates
 
-RC_TEMPLATE = os.path.abspath(f'{DEF_TEMPLATE}/rc.template')
-VPN_TEMPLATE = os.path.abspath(f'{DEF_TEMPLATE}/ovpn.template')
-NET_TEMPLATE = os.path.abspath(f'{DEF_TEMPLATE}/network.template')
+RC_TEMPLATE = Path(f'{DEF_TEMPLATE}/rc.template').absolute()
+VPN_TEMPLATE = Path(f'{DEF_TEMPLATE}/ovpn.template').absolute()
+NET_TEMPLATE = Path(f'{DEF_TEMPLATE}/network.template').absolute()
 
 # GUI
 
@@ -1285,7 +1285,7 @@ LOADING = (b'R0lGODlhgACAAMYAAAQ+dISivMTS3ERylKS6zOTq7GSKrCRahPT29JSuxLTG1Hyat'
 # Copyright
 
 COPYRIGHT = """
-AutoAuditor  Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+autoauditor  Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 Universidad Carlos III de Madrid.
 This program comes with ABSOLUTELY NO WARRANTY; for details check below.
 This is free software, and you are welcome to redistribute it
@@ -1293,7 +1293,7 @@ under certain conditions; check below for details.
 """
 
 # MAIN Window
-MAIN_ABOUT_NAME = 'AutoAuditor'
+MAIN_ABOUT_NAME = 'autoauditor'
 MAIN_ABOUT_VER = 'v2.4'
 MAIN_ABOUT_AUTHOR = 'Sergio Chica Manjarrez'
 MAIN_ABOUT_LAB = 'Pervasive Computing Laboratory'
@@ -1301,7 +1301,7 @@ MAIN_ABOUT_DEPT = "Telematic Engineering Department"
 MAIN_ABOUT_UC3M = 'Universidad Carlos III de Madrid, Leganés'
 MAIN_ABOUT_LOC = 'Madrid, Spain'
 MAIN_ABOUT_ACK = """This work has been supported by National R&D Projects TEC2017-84197-C4-1-R,
-TEC2014- 54335-C4-2-R, and by the Comunidad de Madrid project CYNAMON
+TEC2014-54335-C4-2-R, and by the Comunidad de Madrid project CYNAMON
 P2018/TCS-4566 and co-financed by European Structural Funds (ESF and FEDER)."""
 MAIN_ABOUT_YEAR = date.today().strftime('%Y')
 
@@ -1368,7 +1368,7 @@ TT_MAIN_BC_CF = 'Blockchain network configuration file path'
 TT_MAIN_BC_LF = 'Blockchain log file path'
 TT_MAIN_FB = 'File Browser'
 TT_MAIN_DB = 'Folder Browser'
-TT_MAIN_RAA = 'Run AutoAuditor'
+TT_MAIN_RAA = 'Run autoauditor'
 TT_MAIN_STP = 'Stop Containers'
 TT_MAIN_WIZ = 'Launch Helper'
 TT_MAIN_RBC = 'Store in Blockchain'
@@ -1388,13 +1388,13 @@ T_MAIN_WIZ = 'Wizard'
 T_MAIN_STP = 'Stop'
 T_MAIN_RBC = 'Store'
 
-DEF_MAIN_LF = os.path.abspath(DEF_OUT)
-DEF_MAIN_LD = os.path.abspath(DEF_DIR)
-DEF_MAIN_RC = os.path.abspath(f'{DEF_EX}/rc.example5v.json')
-DEF_MAIN_VPN_CF = os.path.abspath(f'{DEF_EX}/vpn.example.ovpn')
-DEF_MAIN_BC_CF = os.path.abspath(f'{DEF_EX}/network.example.json')
-DEF_MAIN_BC_LF = os.path.abspath(DEF_BLOCK)
-DEF_MAIN_LIC = os.path.abspath('LICENSE')
+DEF_MAIN_LF = Path(DEF_OUT).absolute()
+DEF_MAIN_LD = Path(DEF_DIR).absolute()
+DEF_MAIN_RC = Path(f'{DEF_EX}/rc.example5v.json').absolute()
+DEF_MAIN_VPN_CF = Path(f'{DEF_EX}/vpn.example.ovpn').absolute()
+DEF_MAIN_BC_CF = Path(f'{DEF_EX}/network.example.json').absolute()
+DEF_MAIN_BC_LF = Path(DEF_BLOCK).absolute()
+DEF_MAIN_LIC = Path('LICENSE').absolute()
 
 # WIZ Window
 K_WIZ_MODT = 'kwiz_mtype'

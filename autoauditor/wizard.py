@@ -7,14 +7,14 @@
 # Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
-# This file is part of AutoAuditor.
+# This file is part of autoauditor.
 
-# AutoAuditor is free software: you can redistribute it and/or modify
+# autoauditor is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-# AutoAuditor is distributed in the hope that it will be useful,
+# autoauditor is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -27,109 +27,188 @@ from autoauditor import constants as ct
 from autoauditor import utils as ut
 from copy import deepcopy
 
-import readline # noqa
+import readline
 import json
 
 
+readline.parse_and_bind("tab: complete")
+readline.set_completer_delims(' ')
+
 YES = ['y', 'yes']
+QUEST = {
+    'mod': "[*] Modify [y/N]: ",
+    'pay': "[*] Add payload [y/N]: ",
+    'end': "[*] Finish [y/N]: "
+}
 
 
-def get_modules(client, mtype):
+class Completer:
+    def set_client(self, client):
+        self.client = client
+
+    def complete_mtypes(self):
+        self.completions = ct.MOD_TYPES
+
+    def complete_yes_no(self):
+        self.completions = ['y', 'n']
+
+    def complete_mnames(self, mtype):
+        self.completions = mnames(self.client, mtype)
+
+    def complete_options(self, module):
+        self.completions = module.options()
+
+    def complete_optvalues(self, opt_info, action=False):
+        if action:
+            self.completions = opt_info.values()
+        else:
+            if opt_info['type'] == 'enum':
+                self.completions = opt_info['enums']
+            elif opt_info['type'] == 'bool':
+                self.completions = ['True', 'False']
+            else:
+                self.completions = []
+
+    def complete_payloads(self, module):
+        self.completions = module.payloads()
+
+    def complete(self, text, state):
+        res = None
+        comp = [x for x in self.completions if x.startswith(text)]
+        if state < len(comp):
+            res = comp[state]
+        return res
+
+
+completer = Completer()
+readline.set_completer(completer.complete)
+
+
+def mnames(client, mtype):
     if mtype in ['encoder', 'exploit', 'payload', 'nop']:
         mtype = mtype + 's'
     return getattr(client.modules, mtype)
 
 
-def get_module(client, mtype, mname):
-    return client.modules.use(mtype, mname)
+class Module:
+    def __init__(self, client, mtype, mname):
+        self.mod = client.modules.use(mtype, mname)
+        self.client = client
 
+    def info(self):
+        minfo = deepcopy(self.mod.info)
+        del minfo['options']
+        return minfo
 
-def get_module_info(module):
-    info = deepcopy(module.info)
-    del info['options']
-    return info
+    def references(self):
+        minfo = self.info()
+        if 'references' in minfo:
+            ref = ["-".join(rf) for rf in minfo['references']
+                   if rf[0].lower() == 'cve']
+        return ref if ref else ['CVE info not present']
 
+    def options(self):
+        return self.mod.options
 
-def get_module_references(module):
-    info = get_module_info(module)
-    if 'references' in info:
-        ref = ["-".join(rf) for rf in info['references']
-               if rf[0].lower() == 'cve']
-    return ref if ref else ['CVE info not present']
+    def opt_info(self, opt):
+        if opt == 'ACTION':
+            return self.mod.actions
+        return self.mod.optioninfo(opt)
 
-
-def get_module_options(module):
-    opts = {opt: module[opt] if module[opt] is not None else ''
-            for opt in module.options}
-    ropts = module.required
-    return opts, ropts
-
-
-def get_option_info(module, option):
-    if option == 'ACTION':
-        return module.actions
-    return module.optioninfo(option)
-
-
-def get_option_desc(module, option):
-    try:
-        if option == 'ACTION':
+    def opt_desc(self, opt):
+        if opt == 'ACTION':
             return 'Specifiy the action for this module'
-        return module.optioninfo(option)['desc']
-    except KeyError:
-        return ''
+        else:
+            try:
+                return self.mod.optioninfo(opt)['desc']
+            except KeyError:
+                return ''
+
+    def required(self):
+        return self.mod.required
+
+    def missing(self):
+        return self.mod.missing_required
+
+    def has_payloads(self):
+        return (isinstance(self.mod, ExploitModule) and
+                len(self.mod.payloads) > 0)
+
+    def payloads(self):
+        return self.mod.payloads
+
+    def payload(self, payload):
+        return self.client.modules.use('payload', payload)
+
+    def print_options(self):
+        ut.log('succ',
+               "Current options (missing+required: red, required: yellow)")
+        opts = self.options()
+        opts_req = self.required()
+        opts_mreq = self.missing()
+        for opt in sorted(opts):
+            sym = '- '
+            if opt == 'ACTION':
+                sym = f'{ut._YELLOW}* {ut._CLEANC}'
+                print(f"    {sym}{opt} (enum): {self.mod.action}")
+            else:
+                if opt in opts_req:
+                    sym = f'{ut._YELLOW}* {ut._CLEANC}'
+                    if opt in opts_mreq:
+                        sym = f'{ut._RED}! {ut._CLEANC}'
+                val = self.mod[opt] if self.mod[opt] is not None else ''
+                print(f"    {sym}{opt} ({self.opt_info(opt)['type']}): {val}")
 
 
-def has_payloads(module):
-    return isinstance(module, ExploitModule) and len(module.payloads) > 0
+def ask(atype='mod'):
+    completer.complete_yes_no()
+    return input(QUEST[atype]).lower() in YES
 
 
-def get_module_payloads(module):
-    return module.payloads
+def check_modify(mod):
+    modify = ask()
+    missing = mod.missing()
+    if not modify and missing:
+        ut.log('error', f"Following options missing: {', '.join(missing)}")
+        modify = ask()
+    return modify
 
 
-def get_payload(client, payload):
-    return client.modules.use('payload', payload)
-
-
-def set_options(mod):
+def set_options(module):
     mod_options = {}
-    adv = str.lower(input("[*] Advanced options [y/N]: ")) in YES
-    ut.log('succg',
-           "Current options: missing and required => red, required => yellow")
-    ut.print_options(mod, adv)
+    module.print_options()
     eof = False
-    modify = str.lower(input("[*] Modify [y/N]: ")) in YES
-    if not modify and mod.missing_required:
-        modify = str.lower(input((f"[!] Following options missing: "
-                                  f"{', '.join(mod.missing_required)}.\n"
-                                  f"[*] Modify [y/N]: "))
-                           ) in YES
+    modify = check_modify(module)
     while modify:
         try:
             ut.log(
-                'succb',
+                'info',
                 "Finish with EOF (Ctrl+D)")
             while True:
-                opt = input("[*] Option (case sensitive): ")
+                completer.complete_options(module)
+                opt = input("[*] Option: ")
                 try:
-                    opt_info = get_option_info(mod, opt)
+                    opt_info = module.opt_info(opt)
                 except KeyError:
                     ut.log('error', f"Invalid option: {opt}")
                     continue
-                val = ut.correct_type(
-                    input(f"[*] {opt} value: "),
-                    opt_info)
-                if val.startswith(('Invalid', 'Missing')):
-                    ut.log('error',
-                           (f"Invalid or missing value, "
-                            f"must be {opt_info['type']}: {opt}"))
+                if opt == 'ACTION':
+                    completer.complete_optvalues(opt_info, True)
+                else:
+                    completer.complete_optvalues(opt_info)
+                corr, val = ut.correct_type(input(f"[*] {opt} value: "),
+                                            opt_info)
+                if not corr:
+                    ut.log('error', val)
                     continue
                 try:
-                    mod[opt] = val
+                    if opt == 'ACTION':
+                        module.mod.action = val
+                    else:
+                        module.mod[opt] = val
                 except KeyError:
                     ut.log('error',
-                           f"Unexpected error: option = {opt} value = {val}")
+                           f"Unexpected error: option = {opt}, value = {val}")
                 else:
                     mod_options[opt] = val
                 eof = False
@@ -137,18 +216,11 @@ def set_options(mod):
             print()
             if eof:  # avoid infinite loop if consecutives Ctrl+D
                 break
-            ut.log('succb',
-                   ("Final options: missing and required => red, "
-                    "required => yellow"))
-            ut.print_options(mod, adv)
+            ut.log('info',
+                   "Final options (missing+required: red, required:yellow)")
+            module.print_options()
             eof = True
-        modify = str.lower(input("[*] Modify [y/N]: ")) in YES
-        if not modify and mod.missing_required:
-            modify = str.lower(input((f"[!] Following options missing: "
-                                      f"{', '.join(mod.missing_required)}.\n"
-                                      f"[*] Modify [y/N]: ")
-                                     )
-                               ) in YES
+        modify = check_modify(module)
         eof = False
     return mod_options
 
@@ -157,36 +229,46 @@ def generate_resources_file(client, rc_out):
     more_mod = True
     modules = {}
     mod_opts = {}
+    completer.set_client(client)
+    ut.log('info', "Input can be completed with TAB.")
     while more_mod:
         try:
             mod = None
             while mod is None:
-                mtype = input(
-                    f"[*] Module type ({'|'.join(ct.MOD_TYPES)}): ")
-                mname = input("[*] Module: ")
+                completer.complete_mtypes()
+                mtype = input("[*] Module type: ")
                 try:
-                    mod = get_module(client, mtype, mname)
-                except MsfRpcError:
+                    completer.complete_mnames(mtype)
+                except AttributeError:
                     ut.log(
                         'error',
                         f"Invalid module type: {mtype}.")
-                except TypeError:
-                    ut.log(
-                        'error',
-                        f"Invalid module: {mname}.")
                 else:
-                    if mtype not in modules:
-                        modules[mtype] = {}
-                    if mname not in modules[mtype]:
-                        modules[mtype][mname] = []
+                    mname = input("[*] Module name: ")
+                    try:
+                        mod = Module(client, mtype, mname)
+                    except MsfRpcError:
+                        ut.log(
+                            'error',
+                            f"Invalid module type: {mtype}.")
+                    except TypeError:
+                        ut.log(
+                            'error',
+                            f"Invalid module name: {mname}.")
+                    else:
+                        if mtype not in modules:
+                            modules[mtype] = {}
+                        if mname not in modules[mtype]:
+                            modules[mtype][mname] = []
             mod_opts = set_options(mod)
             if mtype == 'exploit':
-                if str.lower(input("[*] Add payload [y/N]: ")) in YES:
+                if ask('pay'):
                     payload = None
                     while payload is None:
+                        completer.complete_payloads(mod)
                         pname = input("[*] Payload: ")
                         try:
-                            payload = get_module(client, 'payload', pname)
+                            payload = Module(client, 'payload', pname)
                         except TypeError:
                             ut.log(
                                 'error',
@@ -195,12 +277,12 @@ def generate_resources_file(client, rc_out):
                     mod_opts['PAYLOAD'] = {'NAME': pname,
                                            'OPTIONS': pay_opts}
             modules[mtype][mname].append(mod_opts)
-            if str.lower(input("[*] More modules [y/N]: ")) not in YES:
+            if ask('end'):
                 more_mod = False
         except EOFError:
             print()
             break
     with open(rc_out, 'w') as f:
         json.dump(modules, f, indent=2)
-        ut.log('succg',
+        ut.log('succ',
                f"Resource script correctly generated in {rc_out}")

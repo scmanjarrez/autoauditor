@@ -1,0 +1,22 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/">
+    <file alias="icon">icons/icon.svg</file>
+    <file alias="file">icons/file_open_black_24dp.svg</file>
+    <file alias="folder">icons/folder_open_black_24dp.svg</file>
+    <file alias="info">icons/info_black_24dp.svg</file>
+    <file alias="run">icons/play_arrow_black_36dp.svg</file>
+    <file alias="store">icons/backup_black_36dp.svg</file>
+    <file alias="wizard">icons/settings_suggest_black_36dp.svg</file>
+    <file alias="stop">icons/power_settings_new_black_36dp.svg</file>
+    <file alias="on">icons/circle_filled_black_18dp.svg</file>
+    <file alias="off">icons/circle_black_18dp.svg</file>
+    <file alias="add">icons/add_black_24dp.svg</file>
+    <file alias="edit">icons/edit_black_24dp.svg</file>
+    <file alias="remove">icons/delete_black_24dp.svg</file>
+    <file alias="save">icons/save_black_24dp.svg</file>
+    <file alias="license">../../LICENSE</file>
+    <file alias="font">font/Roboto-Light.ttf</file>    
+    <file>qtquickcontrols2.conf</file>
+  </qresource>
+</RCC>
