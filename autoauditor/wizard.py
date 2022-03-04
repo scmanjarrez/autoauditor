@@ -102,10 +102,11 @@ class Module:
 
     def references(self):
         minfo = self.info()
+        ref = ["CVE info not present"]
         if 'references' in minfo:
             ref = ["-".join(rf) for rf in minfo['references']
                    if rf[0].lower() == 'cve']
-        return ref if ref else ['CVE info not present']
+        return ref
 
     def options(self):
         return self.mod.options
@@ -149,13 +150,13 @@ class Module:
         for opt in sorted(opts):
             sym = '- '
             if opt == 'ACTION':
-                sym = f'{ut._YELLOW}* {ut._CLEANC}'
+                sym = f'{ut.COLORS["Y"]}* {ut.COLORS["N"]}'
                 print(f"    {sym}{opt} (enum): {self.mod.action}")
             else:
                 if opt in opts_req:
-                    sym = f'{ut._YELLOW}* {ut._CLEANC}'
+                    sym = f'{ut.COLORS["Y"]}* {ut.COLORS["N"]}'
                     if opt in opts_mreq:
-                        sym = f'{ut._RED}! {ut._CLEANC}'
+                        sym = f'{ut.COLORS["R"]}! {ut.COLORS["N"]}'
                 val = self.mod[opt] if self.mod[opt] is not None else ''
                 print(f"    {sym}{opt} ({self.opt_info(opt)['type']}): {val}")
 
@@ -214,7 +215,7 @@ def set_options(module):
                 eof = False
         except EOFError:
             print()
-            if eof:  # avoid infinite loop if consecutives Ctrl+D
+            if eof:  # avoid infinite loop if consecutive Ctrl+D
                 break
             ut.log('info',
                    "Final options (missing+required: red, required:yellow)")
@@ -228,7 +229,6 @@ def set_options(module):
 def generate_resources_file(client, rc_out):
     more_mod = True
     modules = {}
-    mod_opts = {}
     completer.set_client(client)
     ut.log('info', "Input can be completed with TAB.")
     while more_mod:

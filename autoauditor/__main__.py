@@ -78,7 +78,7 @@ def verify_arguments(parser, args):
 def set_arguments():
     parser = argparse.ArgumentParser(
         prog='python -m autoauditor',
-        description=("Semi-automatic scanner and vulnerability exploiter."))
+        description="Semi-automatic scanner and vulnerability exploiter.")
     cmds = parser.add_argument_group("commands")
     group = cmds.add_mutually_exclusive_group(required=True)
     group.add_argument('-c', '--cli',

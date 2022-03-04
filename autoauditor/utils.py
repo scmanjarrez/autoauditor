@@ -31,13 +31,14 @@ import pwd
 import sys
 import os
 
-
-_RED = '\033[91m'
-_YELLOW = '\033[93m'
-_BLUE = '\033[94m'
-_GREEN = '\033[92m'
-_CLEANC = '\033[0m'
-_NC = ''
+COLORS = {
+    'R': '\033[91m',
+    'Y': '\033[93m',
+    'B': '\033[94m',
+    'G': '\033[92m',
+    'N': '\033[0m',
+    'E': ''
+}
 
 LOG = {
     'normal': '[*] ',
@@ -49,8 +50,11 @@ WINDOW = None
 
 
 def disable_ansi_colors():
-    global _GREEN, _BLUE, _YELLOW, _RED, _CLEANC
-    _GREEN = _BLUE = _YELLOW = _RED = _CLEANC = _NC
+    COLORS['R'] = COLORS['E']
+    COLORS['Y'] = COLORS['E']
+    COLORS['B'] = COLORS['E']
+    COLORS['G'] = COLORS['E']
+    COLORS['N'] = COLORS['E']
 
 
 def set_logger(window):
@@ -63,13 +67,13 @@ def set_logger(window):
 def log(ltype, msg, end='\n', err=None):
     color = LOG[ltype]
     if ltype == 'succ':
-        color = f'{_GREEN}{color}{_CLEANC}'
+        color = f'{COLORS["G"]}{color}{COLORS["N"]}'
     elif ltype == 'info':
-        color = f'{_BLUE}{color}{_CLEANC}'
+        color = f'{COLORS["B"]}{color}{COLORS["N"]}'
     elif ltype == 'warn':
-        color = f'{_YELLOW}{color}{_CLEANC}'
+        color = f'{COLORS["Y"]}{color}{COLORS["N"]}'
     elif ltype == 'error':
-        color = f'{_RED}{color}{_CLEANC}'
+        color = f'{COLORS["R"]}{color}{COLORS["N"]}'
     if WINDOW is not None:
         WINDOW.emit(f"{color}{msg}")
     else:
@@ -118,12 +122,14 @@ def correct_type(value, info):
                     correct = False
                     res = error_msg
             elif value_type in ('integer', 'port'):
+                inv = True
                 if (isinstance(value, str) and value.isdigit()
                     or isinstance(value, int)):  # noqa
                     dig = int(value)
                     if value_type == 'integer' or 0 < dig < 2 ** 16:
                         res = dig
-                else:
+                        inv = False
+                if inv:
                     correct = False
                     res = error_msg
             elif value_type in ('address', 'addressrange'):

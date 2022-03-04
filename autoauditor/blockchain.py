@@ -178,8 +178,8 @@ def cache(db, mod, data, update_cache=False):
 def get_cve(exploit):
     exp = exploit.split('/')
     cl = ms.get_msf_connection(ct.DEF_MSFRPC_PWD)
-    mod = wz.get_module(cl, exp[0], "/".join(exp[1:]))
-    return wz.get_module_references(mod)
+    mod = wz.Module(cl, exp[0], "/".join(exp[1:]))
+    return mod.references()
 
 
 def get_score(cve):
@@ -232,9 +232,7 @@ def parse_report(msf_log):
 def generate_reports(outf, update_cache):
     info = parse_report(outf)
     db = set_up_cache()
-    report = {}
-    report['privrep'] = {}
-    report['pubrep'] = {}
+    report = {'privrep': {}, 'pubrep': {}}
     try:
         date = info.pop('date')
         report['date'] = date
@@ -362,7 +360,7 @@ def _read_network(config):
         except json.JSONDecodeError:
             ut.log('error',
                    (f"Bad network format: {config}. "
-                    f"Check {ut.NET_TEMPLATE}."),
+                    f"Check {ct.NET_TEMPLATE}."),
                    err=ct.ECFGNET)
     return network
 
@@ -380,20 +378,18 @@ def load_config(config, loop=None):
     tls_cacerts = peer_config['tls_cacerts']
     opts = (('grpc.ssl_target_name_override', peer_config['server_hostname']),)
     endpoint = peer_config['grpc_request_endpoint']
-
     ut.check_readf(tls_cacerts)
     peer = create_peer(endpoint=endpoint,
                        tls_cacerts=tls_cacerts,
                        opts=opts)
-
     channel = _get_network_data(network, 'network', 'channel')
     wpath = _get_network_data(network, 'client', 'wallet', 'path')
-    userId = _get_network_data(network, 'client', 'id')
+    user_id = _get_network_data(network, 'client', 'id')
     org = _get_network_data(network, 'network', 'organization', 'name')
-    mspId = _get_network_data(network, 'network', 'organization', 'mspid')
+    msp_id = _get_network_data(network, 'network', 'organization', 'mspid')
     wal = wallet.FileSystenWallet(wpath)
-    if wal.exists(userId):
-        user = wal.create_user(userId, org, mspId)
+    if wal.exists(user_id):
+        user = wal.create_user(user_id, org, msp_id)
     else:
         _c = _get_network_data(network, 'client', 'credentials', 'cert')
         _k = _get_network_data(network, 'client', 'credentials', 'private_key')
@@ -405,20 +401,20 @@ def load_config(config, loop=None):
             pk = load_pem_private_key(f.read(), password=None,
                                       backend=default_backend())
         enroll = Enrollment(private_key=pk, enrollmentCert=crt)
-        uidentity = wallet.Identity(userId, enroll)
+        uidentity = wallet.Identity(user_id, enroll)
         uidentity.CreateIdentity(wal)
-        user = wal.create_user(userId, org, mspId)
+        user = wal.create_user(user_id, org, msp_id)
     loop.run_until_complete(
         client_discovery.init_with_discovery(user, peer, channel))
-    return (user, client_discovery, peer, channel)
+    return user, client_discovery, peer, channel
 
 
 def opentimestamp_format():
     class OpenTimeStampFormatter(logging.Formatter):
-        err_fmt = f"{ut._RED}[!]{ut._CLEANC} %(msg)s"
-        warn_fmt = f"{ut._YELLOW}[-]{ut._CLEANC} %(msg)s"
-        dbg_fmt = f"{ut._BLUE}[*]{ut._CLEANC} %(msg)s"
-        info_fmt = f"{ut._GREEN}[+]{ut._CLEANC} %(msg)s"
+        err_fmt = f"{ut.COLORS['R']}[!]{ut.COLORS['N']} %(msg)s"
+        warn_fmt = f"{ut.COLORS['Y']}[-]{ut.COLORS['N']} %(msg)s"
+        dbg_fmt = f"{ut.COLORS['B']}[*]{ut.COLORS['N']} %(msg)s"
+        info_fmt = f"{ut.COLORS['G']}[+]{ut.COLORS['N']} %(msg)s"
 
         def __init__(self):
             super().__init__(fmt="[*] %(msg)s", datefmt=None, style='%')

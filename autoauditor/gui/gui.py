@@ -78,16 +78,13 @@ class Module(QObject):
         return items
 
     @Property('QVariantList')
-    def references(self): return self._module.references()
-
-    @Property('QVariantList')
     def options(self): return sorted(self._module.options())
 
-    @Property('QVariantList')
-    def required(self): return self._module.required()
-
-    @Property('QVariantList')
-    def missing(self): return self._module.missing()
+    @Slot(QObject, result=bool)
+    def missing_required(self, window):
+        mis = self._module.missing()
+        window.showError.emit(f"Following options required: {', '.join(mis)}")
+        return len(mis)
 
     @Slot(str, result='QVariant')
     def opt_info(self, opt):
@@ -105,9 +102,6 @@ class Module(QObject):
             res['Required'] = "True"
             res['Type'] = "enum"
         return res
-
-    @Slot(str, result=str)
-    def opt_desc(self, opt): return self._module.opt_desc(opt)
 
     @Slot(str, result='QVariantList')
     def opt_value(self, opt):
@@ -251,8 +245,8 @@ class Backend(QObject):
         self.cwid = 0
         self._modules = {}
 
-    def _property(self, obj_id, property):
-        return self.root.findChild(QObject, obj_id).property(property)
+    def _property(self, obj_id, prop):
+        return self.root.findChild(QObject, obj_id).property(prop)
 
     def containers_start(self, action):
         ready = False

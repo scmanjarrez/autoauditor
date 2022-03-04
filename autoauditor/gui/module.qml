@@ -13,7 +13,7 @@ ApplicationWindow {
     onClosing: {
         if (!isPayload) {
             tmpRemoveModule(wid);
-            delete openedModules[module.wid]
+            delete openedModules[wid]
         } else {
             parentWindow.openedPayload = false
         }
@@ -366,18 +366,25 @@ ApplicationWindow {
                         id: bAccept
                         text: "Accept"
                         onClicked: {
+                            var correct = false
                             if (!isPayload) {
-                                if (newModule) {
-                                    addModule(module);
+                                if (!module.missing_required(moduleWindow)
+                                    && newModule) {
+                                    correct = true
+                                    addModule(module)
                                 }
                             } else {
-                                parentWindow.idMap['cbPayload'].enabled = false;
-                                parentWindow.idMap['bPayAdd'].enabled = false;
-                                parentWindow.idMap['bPayEdit'].enabled = true;
-                                parentWindow.idMap['bPayRemove'].enabled = true;
-                                module.payload_set()
+                                if (!module.payload.missing_required(moduleWindow)) {
+                                    correct = true
+                                    parentWindow.idMap['cbPayload'].enabled = false;
+                                    parentWindow.idMap['bPayAdd'].enabled = false;
+                                    parentWindow.idMap['bPayEdit'].enabled = true;
+                                    parentWindow.idMap['bPayRemove'].enabled = true;
+                                    module.payload_set()
+                                }
                             }
-                            moduleWindow.close()
+                            if (correct)
+                                moduleWindow.close()
                         }
                     }
                     Button {
