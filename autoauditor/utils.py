@@ -41,7 +41,7 @@ COLORS = {
 }
 
 LOG = {
-    'normal': '[*] ',
+    'normal': '',
     'succ': '[+] ', 'info': '[*] ',
     'warn': '[-] ', 'error': '[!] '
 }
@@ -138,10 +138,9 @@ def correct_type(value, info):
                 except ValueError:
                     correct = False
                     res = error_msg
-            elif value_type == 'enum':
-                if value not in info['enums']:
-                    correct = False
-                    res = f"Invalid. Expected: {', '.join(info['enums'])}"
+            elif value_type == 'enum' and value not in info['enums']:
+                correct = False
+                res = f"Invalid. Expected: {', '.join(info['enums'])}"
     return correct, res
 
 

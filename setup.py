@@ -56,7 +56,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.8'
     ],
-    packages=['autoauditor'],
+    packages=['autoauditor', 'gui'],
     python_requires='>= 3.6',
     install_requires=[
         'opentimestamps-client',

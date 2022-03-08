@@ -119,11 +119,10 @@ class Module:
     def opt_desc(self, opt):
         if opt == 'ACTION':
             return 'Specifiy the action for this module'
-        else:
-            try:
-                return self.mod.optioninfo(opt)['desc']
-            except KeyError:
-                return ''
+        try:
+            return self.mod.optioninfo(opt)['desc']
+        except KeyError:
+            return ''
 
     def required(self):
         return self.mod.required
@@ -261,21 +260,20 @@ def generate_resources_file(client, rc_out):
                         if mname not in modules[mtype]:
                             modules[mtype][mname] = []
             mod_opts = set_options(mod)
-            if mtype == 'exploit':
-                if ask('pay'):
-                    payload = None
-                    while payload is None:
-                        completer.complete_payloads(mod)
-                        pname = input("[*] Payload: ")
-                        try:
-                            payload = Module(client, 'payload', pname)
-                        except TypeError:
-                            ut.log(
-                                'error',
-                                f"Invalid payload: {pname}")
-                    pay_opts = set_options(payload)
-                    mod_opts['PAYLOAD'] = {'NAME': pname,
-                                           'OPTIONS': pay_opts}
+            if mtype == 'exploit' and ask('pay'):
+                payload = None
+                while payload is None:
+                    completer.complete_payloads(mod)
+                    pname = input("[*] Payload: ")
+                    try:
+                        payload = Module(client, 'payload', pname)
+                    except TypeError:
+                        ut.log(
+                            'error',
+                            f"Invalid payload: {pname}")
+                pay_opts = set_options(payload)
+                mod_opts['PAYLOAD'] = {'NAME': pname,
+                                       'OPTIONS': pay_opts}
             modules[mtype][mname].append(mod_opts)
             if ask('end'):
                 more_mod = False

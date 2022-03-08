@@ -178,8 +178,7 @@ class Module(QObject):
     def payload_metadata(self):
         if not self._payload['tmp']:
             return self._module.payloads().index(self._payload['mod'].mname)
-        else:
-            return -1
+        return -1
 
     def gen_dict(self):
         dct = dict(sorted(self._mopts.items()))
@@ -257,7 +256,7 @@ class Backend(QObject):
         erc = self._property('sErc', 'checked')
         self.vpn = self._property('sVpn', 'checked')
         self.vcfg = self._property('tfVcfg', 'text')
-        bc = self._property('sBc', 'checked')
+        sbc = self._property('sBc', 'checked')
         bcfg = self._property('tfBcfg', 'text')
         blog = self._property('tfBlog', 'text')
         if ut.check_writef(self.log) is not None:
@@ -269,7 +268,7 @@ class Backend(QObject):
             errors.append(["Resources script not readable"])
         if self.vpn and ut.check_readf(self.vcfg) is not None:
             errors.append(["Vpn configuration not readable"])
-        if bc:
+        if sbc:
             if ut.check_readf(bcfg) is not None:
                 errors.append(["Blockchain configuration not readable"])
             if ut.check_writef(blog) is not None:
@@ -310,28 +309,26 @@ class Backend(QObject):
     @Slot()
     def button_run(self):
         pbar = 'pbRun'
-        if self.containers_start(pbar):
-            if self.backend_ready(pbar):
-                ms.launch_metasploit(self.msfcl,
-                                     self._property('tfRc', 'text'),
-                                     self.log)
-                if self._property('sBc', 'checked'):
-                    self.store()
-                if self._property('cStop', 'checked'):
-                    self.stop(pbar)
-                else:
-                    self.taskCompleted.emit(pbar)
+        if self.containers_start(pbar) and self.backend_ready(pbar):
+            ms.launch_metasploit(self.msfcl,
+                                 self._property('tfRc', 'text'),
+                                 self.log)
+            if self._property('sBc', 'checked'):
+                self.store()
+            if self._property('cStop', 'checked'):
+                self.stop(pbar)
+            else:
+                self.taskCompleted.emit(pbar)
 
     @Slot()
     def button_store(self):
         pbar = 'pbStore'
-        if self.containers_start(pbar):
-            if self.backend_ready(pbar):
-                self.store()
-                if self._property('cStop', 'checked'):
-                    self.stop(pbar)
-                else:
-                    self.taskCompleted.emit(pbar)
+        if self.containers_start(pbar) and self.backend_ready(pbar):
+            self.store()
+            if self._property('cStop', 'checked'):
+                self.stop(pbar)
+            else:
+                self.taskCompleted.emit(pbar)
 
     def store(self):
         _asyncio.set_event_loop(self.async_loop)
@@ -345,12 +342,11 @@ class Backend(QObject):
     @Slot()
     def button_wizard(self):
         pbar = 'pbWizard'
-        if self.containers_start(pbar):
-            if self.backend_ready(pbar):
-                if self._property('sErc', 'checked') and not self._modules:
-                    self.parse_rc()
-                self.taskCompleted.emit(pbar)
-                self.root.openWizard.emit()
+        if self.containers_start(pbar) and self.backend_ready(pbar):
+            if self._property('sErc', 'checked') and not self._modules:
+                self.parse_rc()
+            self.taskCompleted.emit(pbar)
+            self.root.openWizard.emit()
 
     @Slot()
     def request_wizard(self):
@@ -363,7 +359,7 @@ class Backend(QObject):
         with open(self._property('tfRc', 'text'), 'r') as f:
             try:
                 rc = json.load(f)
-            except Exception:
+            except json.decoder.JSONDecodeError:
                 self.root.errorSignal.emit(["Error parsing RC"], 'pbWizard')
         for mtype in rc:
             for mname in rc[mtype]:
@@ -500,39 +496,39 @@ def main():
     @Slot()
     def containers_status():
         cnts = ut.running_containers()
-        main.containerStatus.emit('vpnStatus',
+        root.containerStatus.emit('vpnStatus',
                                   _status(cnts, 'autoauditor_vpn_client'))
         msf = _status(cnts, 'autoauditor_msf')
-        main.containerStatus.emit('msfStatus', msf)
+        root.containerStatus.emit('msfStatus', msf)
 
     @Slot(str)
     def pbar_hide(pbar):
-        main.hidePBar.emit(pbar)
-        main.endConsole.emit()
+        root.hidePBar.emit(pbar)
+        root.endConsole.emit()
 
     def create_connections():
-        main.closing.connect(backend_thread.quit)
-        main.requestRun.connect(backend_thread.backend.button_run)
-        main.requestStore.connect(backend_thread.backend.button_store)
-        main.requestWizard.connect(backend_thread.backend.button_wizard)
-        main.openOrRequestWizard.connect(
+        root.closing.connect(backend_thread.quit)
+        root.requestRun.connect(backend_thread.backend.button_run)
+        root.requestStore.connect(backend_thread.backend.button_store)
+        root.requestWizard.connect(backend_thread.backend.button_wizard)
+        root.openOrRequestWizard.connect(
             backend_thread.backend.request_wizard)
-        main.requestStop.connect(backend_thread.backend.button_stop)
-        main.moduleTypeSelected.connect(backend_thread.backend.modules)
-        main.moduleNameSelected.connect(backend_thread.backend.module_load)
-        main.moduleInfo.connect(backend_thread.backend.module_info)
-        main.requestModule.connect(backend_thread.backend.module_open)
-        main.fillModuleOptions.connect(
+        root.requestStop.connect(backend_thread.backend.button_stop)
+        root.moduleTypeSelected.connect(backend_thread.backend.modules)
+        root.moduleNameSelected.connect(backend_thread.backend.module_load)
+        root.moduleInfo.connect(backend_thread.backend.module_info)
+        root.requestModule.connect(backend_thread.backend.module_open)
+        root.fillModuleOptions.connect(
             backend_thread.backend.module_fill_options)
-        main.addedModule.connect(backend_thread.backend.module_added)
-        main.removeModule.connect(backend_thread.backend.module_remove)
-        main.tmpRemoveModule.connect(backend_thread.backend.tmp_remove)
-        main.checkSave.connect(backend_thread.backend.check_save)
-        main.generateRc.connect(backend_thread.backend.generate_rc)
+        root.addedModule.connect(backend_thread.backend.module_added)
+        root.removeModule.connect(backend_thread.backend.module_remove)
+        root.tmpRemoveModule.connect(backend_thread.backend.tmp_remove)
+        root.checkSave.connect(backend_thread.backend.check_save)
+        root.generateRc.connect(backend_thread.backend.generate_rc)
         backend_thread.backend.dockerCompleted.connect(
             containers_status)
         backend_thread.backend.taskCompleted.connect(pbar_hide)
-        ut.set_logger(main.newLineConsole)
+        ut.set_logger(root.newLineConsole)
 
     app = QGuiApplication(sys.argv)
     app.setWindowIcon(QIcon(':/icon'))
@@ -541,12 +537,12 @@ def main():
     engine = QQmlApplicationEngine()
     engine.quit.connect(app.quit)
     engine.load('autoauditor/gui/main.qml')
-    main = engine.rootObjects()[0]
-    backend_thread = BackendThread(main)
+    root = engine.rootObjects()[0]
+    backend_thread = BackendThread(root)
     create_connections()
     backend_thread.start()
 
-    obj = main.findChild(QObject, 'taLicense')
+    obj = root.findChild(QObject, 'taLicense')
     lic = QFile(':/license')
     if lic.open(QFile.ReadOnly):
         t_lic = QTextStream(lic).readAll()
