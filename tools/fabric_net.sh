@@ -135,8 +135,8 @@ usage ()
     echo "    $name -qi|--qid        Change default query report id. D: $QID"
     echo "    $name -qo|--qorg       Change default query org. D: $QORG"
     echo "    $name -qd|--qdate      Change default query date. D: ${QDATE:0:7}"
-    echo "    $name -n|--no-color    No ANSI colors."
-    echo "    $name -v|--verbose     Enable verbose output."
+    echo "    $name --no-color       No ANSI colors."
+    echo "    $name --verbose         Enable verbose output."
     echo "    $name -h|--help        Show this help."
 
     exit
@@ -228,8 +228,8 @@ check_binaries ()
         mkdir -p $bin
 
         log warn "Downloading fabric binaries"
-        wget -P $bin -q https://github.com/hyperledger/fabric/releases/download/v2.4.0/hyperledger-fabric-linux-amd64-2.4.0.tar.gz
-        tar -C $bin --strip-components 1 -xf third_party/fabric/hyperledger-fabric-linux-amd64-2.4.0.tar.gz bin/configtxgen bin/osnadmin bin/peer
+        wget -P $bin -q https://github.com/hyperledger/fabric/releases/download/v2.4.3/hyperledger-fabric-linux-amd64-2.4.3.tar.gz
+        tar -C $bin --strip-components 1 -xf third_party/fabric/hyperledger-fabric-linux-amd64-2.4.3.tar.gz bin/configtxgen bin/osnadmin bin/peer
 
         log warn "Downloading fabric-ca binaries"
         wget -P $bin -q https://github.com/hyperledger/fabric-ca/releases/download/v1.5.2/hyperledger-fabric-ca-linux-amd64-1.5.2.tar.gz
@@ -370,6 +370,9 @@ configure_ca_peer ()
     $BIN/fabric-ca-client enroll -u https://user1:user1pw@$(url $1 ca) --caname ca-$1 -M $org_users/user1@$1.$DOMAIN/msp --tls.certfiles $tlscert
     cp $org_users/user1@$1.$DOMAIN/msp/keystore/*_sk $org_users/user1@$1.$DOMAIN/msp/keystore/priv_sk
     cp $org_msp/config.yaml $org_users/user1@$1.$DOMAIN/msp/config.yaml
+    # Generating user (idemix) msp
+    $BIN/fabric-ca-client enroll -u https://user1:user1pw@$(url $1 ca) --caname ca-$1 --enrollment.type idemix -M $org_users/user1@$1.$DOMAIN/msp --tls.certfiles $tlscert
+    ln -s $org_msp/IssuerRevocationPublicKey $org_msp/RevocationPublicKey
 
     # Generating admin msp
     $BIN/fabric-ca-client enroll -u https://$1admin:$1adminpw@$(url $1 ca) --caname ca-$1 -M $org_users/admin@$1.$DOMAIN/msp --tls.certfiles $tlscert

@@ -2,7 +2,7 @@ version: '3'
 
 services:
   orderer:
-    image: hyperledger/fabric-orderer:2.4.0
+    image: hyperledger/fabric-orderer:2.4.3
     container_name: autoauditor_orderer
     hostname: orderer.example.com
     command: orderer
@@ -45,7 +45,7 @@ services:
       - fabric_net
 
   peer0_org1:
-    image: hyperledger/fabric-peer:2.4.0
+    image: hyperledger/fabric-peer:2.4.3
     container_name: autoauditor_peer0_org1
     hostname: peer0.org1.example.com
     command: peer node start
@@ -90,7 +90,7 @@ services:
       - couchdb_org1
 
   peer0_org2:
-    image: hyperledger/fabric-peer:2.4.0
+    image: hyperledger/fabric-peer:2.4.3
     container_name: autoauditor_peer0_org2
     hostname: peer0.org2.example.com
     command: peer node start
@@ -163,7 +163,7 @@ services:
       - fabric_net
 
   cli:
-    image: hyperledger/fabric-tools:2.4.0
+    image: hyperledger/fabric-tools:2.4.3
     container_name: autoauditor_cli
     hostname: cli.example.com
     command: /bin/bash
