@@ -12,15 +12,15 @@ type SmartContract struct {
 	contractapi.Contract
 }
 
-var publicCollection = "colAaRep"
-var privateCollection = "colAaRepPriv"
+var publicCollection = "autoauditor"
+var privateCollection = "autoauditorPrivate"
 
 type Report struct {
 	ObjectType   string `json:"docType"`
 	Id           string `json:"id"`
 	Organization string `json:"org"`
 	Date         string `json:"date"`
-	TotalVuln    int    `json:"nvuln"`
+	TotalVuln    int    `json:"nVuln"`
 	AuditReport  string `json:"report"`
 }
 
@@ -67,7 +67,7 @@ func (s *SmartContract) NewReport(ctx contractapi.TransactionContextInterface) e
 		Id           string `json:"id"`
 		Organization string `json:"org"`
 		Date         string `json:"date"`
-		NVuln        int    `json:"nvuln"`
+		NVuln        int    `json:"nVuln"`
 		Private      bool   `json:"private"`
 		Report       string `json:"report"`
 	}
@@ -91,7 +91,7 @@ func (s *SmartContract) NewReport(ctx contractapi.TransactionContextInterface) e
 	}
 
 	if reportInput.NVuln <= 0 {
-		return fmt.Errorf("nvuln field must be a positive integer.")
+		return fmt.Errorf("nVuln field must be a positive integer.")
 	}
 
 	if len(reportInput.Report) == 0 {

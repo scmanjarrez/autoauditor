@@ -1,20 +1,20 @@
 [
-    {
-    "name": "colAaRep",
+  {
+    "name": "autoauditor",
     "policy": "OR('Org1MSP.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 3,
     "blockToLive": 0,
     "memberOnlyRead": false,
     "memberOnlyWrite": true
-},
-    {
-    "name": "colAaRepPriv",
+  },
+  {
+    "name": "autoauditorPrivate",
     "policy": "OR('Org1MSP.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 3,
     "blockToLive": 0,
     "memberOnlyRead": true,
     "memberOnlyWrite": true
-}
+  }
 ]

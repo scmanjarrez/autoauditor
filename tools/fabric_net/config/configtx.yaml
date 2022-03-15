@@ -32,24 +32,6 @@ Organizations:
             Endorsement:
                 Type: Signature
                 Rule: "OR('Org1MSP.peer')"
-    - &Org1Idemix
-        Name: Org1IdemixMSP
-        ID: Org1IdemixMSP
-        MSPType: idemix
-        MSPDir: ../network/org1
-        Policies:
-            Readers:
-                Type: Signature
-                Rule: "OR('Org1IdemixMSP.admin', 'Org1IdemixMSP.peer', 'Org1IdemixMSP.client')"
-            Writers:
-                Type: Signature
-                Rule: "OR('Org1IdemixMSP.admin', 'Org1IdemixMSP.client')"
-            Admins:
-                Type: Signature
-                Rule: "OR('Org1IdemixMSP.admin')"
-            Endorsement:
-                Type: Signature
-                Rule: "OR('Org1IdemixMSP.peer')"
     - &Org2
         Name: Org2MSP
         ID: Org2MSP
@@ -67,24 +49,6 @@ Organizations:
             Endorsement:
                 Type: Signature
                 Rule: "OR('Org2MSP.peer')"
-    - &Org2Idemix
-        Name: Org2IdemixMSP
-        ID: Org2IdemixMSP
-        MSPType: idemix
-        MSPDir: ../network/org2
-        Policies:
-            Readers:
-                Type: Signature
-                Rule: "OR('Org2IdemixMSP.admin', 'Org2IdemixMSP.peer', 'Org2IdemixMSP.client')"
-            Writers:
-                Type: Signature
-                Rule: "OR('Org2IdemixMSP.admin', 'Org2IdemixMSP.client')"
-            Admins:
-                Type: Signature
-                Rule: "OR('Org2IdemixMSP.admin')"
-            Endorsement:
-                Type: Signature
-                Rule: "OR('Org2IdemixMSP.peer')"
 Capabilities:
     Channel: &ChannelCapabilities
         V2_0: true
@@ -126,10 +90,10 @@ Application: &ApplicationDefaults
             Rule: "MAJORITY Admins"
         LifecycleEndorsement:
             Type: ImplicitMeta
-            Rule: "ANY Endorsement"
+            Rule: "MAJORITY Endorsement"
         Endorsement:
             Type: ImplicitMeta
-            Rule: "ANY Endorsement"
+            Rule: "MAJORITY Endorsement"
     Capabilities:
         <<: *ApplicationCapabilities
 Orderer: &OrdererDefaults
@@ -186,7 +150,5 @@ Profiles:
             <<: *ApplicationDefaults
             Organizations:
                 - *Org1
-                - *Org1Idemix
                 - *Org2
-                - *Org2Idemix
             Capabilities: *ApplicationCapabilities

@@ -7,14 +7,14 @@
 # Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
-# This file is part of AutoAuditor.
+# This file is part of autoauditor.
 
-# AutoAuditor is free software: you can redistribute it and/or modify
+# autoauditor is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-# AutoAuditor is distributed in the hope that it will be useful,
+# autoauditor is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -28,8 +28,10 @@ _Y="\033[93m"
 _B="\033[94m"
 _N="\033[0m"
 
+# Orderer/Peer listen ports: PORTS + offset
+# Offsets => CA: 50, General: 0, Admin: 10, Operation: 20, Couch (Peer only): 30
 declare -A PORTS=([orderer]=7000 [org1]=8000 [org2]=9000)
-# Just to keep the order when configuring containers
+# Containers configuration order
 ORGS=(orderer org1 org2)
 declare -A CMDS=([package]=chaincode_package
                  [install]=chaincode_install
@@ -120,8 +122,7 @@ usage ()
 {
     local name=$(basename $0)
     echo "Usage:"
-    echo "    $name                  Start fabric network."
-    echo "    $name --no-up          Do not start containers."
+    echo "    $name                  Start fabric network containers if down."
     echo "    $name -d|--down        Stop containers and remove created files."
     echo "    $name -r|--restart     Restart fabric network."
     echo "    $name --anchor         Execute anchor peer functions."
@@ -370,9 +371,6 @@ configure_ca_peer ()
     $BIN/fabric-ca-client enroll -u https://user1:user1pw@$(url $1 ca) --caname ca-$1 -M $org_users/user1@$1.$DOMAIN/msp --tls.certfiles $tlscert
     cp $org_users/user1@$1.$DOMAIN/msp/keystore/*_sk $org_users/user1@$1.$DOMAIN/msp/keystore/priv_sk
     cp $org_msp/config.yaml $org_users/user1@$1.$DOMAIN/msp/config.yaml
-    # Generating user (idemix) msp
-    $BIN/fabric-ca-client enroll -u https://user1:user1pw@$(url $1 ca) --caname ca-$1 --enrollment.type idemix -M $org_users/user1@$1.$DOMAIN/msp --tls.certfiles $tlscert
-    ln -s $org_msp/IssuerRevocationPublicKey $org_msp/RevocationPublicKey
 
     # Generating admin msp
     $BIN/fabric-ca-client enroll -u https://$1admin:$1adminpw@$(url $1 ca) --caname ca-$1 -M $org_users/admin@$1.$DOMAIN/msp --tls.certfiles $tlscert
@@ -642,8 +640,8 @@ chaincode_store ()
 {
     set_variables $1
 
-    local rep=$(echo -n "{\"id\": \"$QID\", \"org\": \"$QORG\", \"date\": \"$QDATE\", \"nvuln\": 5, \"report\": \"public_report\"}" | base64 | tr -d \\n)
-    local priv=$(echo -n "{\"id\": \"$QID\", \"org\": \"$QORG\", \"date\": \"$QDATE\", \"nvuln\": 5, \"report\": \"private_report\", \"private\": true}" | base64 | tr -d \\n)
+    local rep=$(echo -n "{\"id\": \"$QID\", \"org\": \"$QORG\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"public_report\"}" | base64 | tr -d \\n)
+    local priv=$(echo -n "{\"id\": \"$QID\", \"org\": \"$QORG\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"private_report\", \"private\": true}" | base64 | tr -d \\n)
 
     _invoke $1 ${CC_CMD[$2]} ${ARG[trans]} $rep
     _invoke $1 ${CC_CMD[$2]} ${ARG[trans]} $priv
@@ -791,10 +789,6 @@ smartcontract_query ()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --no-up)
-            _no_up=SET
-            shift
-            ;;
         -d|--down)
             _down=SET
             shift
@@ -864,6 +858,10 @@ while [[ $# -gt 0 ]]; do
             OUT=/dev/tty
             shift
             ;;
+        --debug)
+            set -x
+            shift
+            ;;
         -h|--help)
             usage
             ;;
@@ -898,17 +896,14 @@ else
         if [ ${#up[@]} -ne $cnt ]; then
             network_up
         fi
-
-        if [ -z "$_no_install" ]; then
-            smartcontract_install
-        fi
-
-        if [ -n "$_store" ]; then
-            smartcontract_store
-        fi
-
-        if [ -n "$_query" ]; then
-            smartcontract_query
-        fi
+    fi
+    if [ -z "$_no_install" ]; then
+        smartcontract_install
+    fi
+    if [ -n "$_store" ]; then
+        smartcontract_store
+    fi
+    if [ -n "$_query" ]; then
+        smartcontract_query
     fi
 fi
