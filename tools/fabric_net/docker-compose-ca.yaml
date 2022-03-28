@@ -82,6 +82,29 @@ services:
     depends_on:
       - dns
 
+  ca_org3:
+    image: hyperledger/fabric-ca:1.5.2
+    container_name: autoauditor_ca_org3
+    hostname: ca.org3.example.com
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    labels:
+      autoauditor: fabric_net
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-org3
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=10050
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:10060
+    volumes:
+      - ./network/ca/org3:/etc/hyperledger/fabric-ca-server
+    ports:
+      - "10050:10050"
+      - "10060:10060"
+    networks:
+      - fabric_net
+    depends_on:
+      - dns
+
 networks:
   fabric_net:
     driver: bridge

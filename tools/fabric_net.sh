@@ -30,9 +30,9 @@ _N="\033[0m"
 
 # Orderer/Peer listen ports: PORTS + offset
 # Offsets => CA: 50, General: 0, Admin: 10, Operation: 20, Couch (Peer only): 30
-declare -A PORTS=([orderer]=7000 [org1]=8000 [org2]=9000)
+declare -A PORTS=([orderer]=7000 [org1]=8000 [org2]=9000 [org3]=10000)
 # Containers configuration order
-ORGS=(orderer org1 org2)
+ORGS=(orderer org1 org2 org3)
 declare -A CMDS=([package]=chaincode_package
                  [install]=chaincode_install
                  [installed]=chaincode_installed
@@ -43,6 +43,9 @@ declare -A CMDS=([package]=chaincode_package
                  [delete]=chaincode_delete
                  [query]=chaincode_query
                  [qhash]=chaincode_query
+                 [qall]=chaincode_query_all
+                 [qtotalall]=chaincode_query_all_bulk
+                 [qidsall]=chaincode_query_all_bulk
                  [qorg]=chaincode_query
                  [qtotalorg]=chaincode_query_org_bulk
                  [qidsorg]=chaincode_query_org_bulk
@@ -50,17 +53,20 @@ declare -A CMDS=([package]=chaincode_package
                  [qtotaldate]=chaincode_query_date_bulk
                  [qidsdate]=chaincode_query_date_bulk)
 declare -A CC_CMD=([help]=Help
-                   [store]=NewReport
+                   [store]=StoreReport
                    [delete]=DeleteReport
+                   [qall]=GetReports
+                   [qtotalall]=GetTotalReports
+                   [qidsall]=GetReportsId
                    [query]=GetReportById
-                   [qhash]=GetReportHash
+                   [qhash]=GetReportHashById
                    [qorg]=GetReportsByOrganization
                    [qtotalorg]=GetTotalReportsByOrganization
                    [qidsorg]=GetReportsIdByOrganization
                    [qdate]=GetReportsByDate
                    [qtotaldate]=GetTotalReportsByDate
                    [qidsdate]=GetReportsIdByDate)
-declare -A ARG=([trans]=report [trans_del]=report_delete)
+declare -A ARG=([trans]=report_st [trans_del]=report_del)
 
 OUT=/dev/null
 BIN=$PWD/third_party/fabric
@@ -78,17 +84,28 @@ CHANNEL=channel1
 PROFILE=TwoOrgsApplicationGenesis
 
 # chaincode defaults
-CC=autoauditor
 CC_VER=1
 CC_LANG=golang
-CC_PATH=$ROOT/chaincode
-CC_CFG=$CC_PATH/collections_config.json
-CC_TAR=$NET/${CC}.tar.gz
-CC_POLICY="OR('Org1MSP.member','Org2MSP.member')"
+chaincode_update ()
+{
+    CC=$1
+    CC_PATH=$ROOT/smart_contracts/$CC
+    if [ "$CC" = "report" ]; then
+        CC_CFG="--collections-config $CC_PATH/collections_config.json"
+    else
+        CC_CFG=
+    fi
+    CC_TAR=$NET/${CC}.tar.gz
+}
+chaincode_update report
+# CC=report
+# CC_PATH=$ROOT/smart_contracts/$CC
+# CC_CFG=$CC_PATH/collections_config.json
+# CC_TAR=$NET/${CC}.tar.gz
 
 # chaincode query defaults
 QID=report007
-QORG=org1
+QORG=Org1MSP
 QDATE="2020-05-21 17:37:27.910352+02:00"
 
 log ()
@@ -137,7 +154,7 @@ usage ()
     echo "    $name -qo|--qorg       Change default query org. D: $QORG"
     echo "    $name -qd|--qdate      Change default query date. D: ${QDATE:0:7}"
     echo "    $name --no-color       No ANSI colors."
-    echo "    $name --verbose         Enable verbose output."
+    echo "    $name --verbose        Enable verbose output."
     echo "    $name -h|--help        Show this help."
 
     exit
@@ -211,6 +228,23 @@ url ()
     esac
 }
 
+peers_agree ()
+{
+    if [ "$1" = 'query' ]; then
+        if [ "$CC" = 'report' ]; then
+            echo "--peerAddresses $(url org1) --tlsRootCertFiles $(ca_org org1)"
+        else
+            echo "--peerAddresses $(url org3) --tlsRootCertFiles $(ca_org org3)"
+        fi
+    else
+        if [ "$CC" = 'report' ]; then
+            echo "--peerAddresses $(url org1) --tlsRootCertFiles $(ca_org org1) --peerAddresses $(url org2) --tlsRootCertFiles $(ca_org org2)"
+        else
+            echo "--peerAddresses $(url org1) --tlsRootCertFiles $(ca_org org1) --peerAddresses $(url org3) --tlsRootCertFiles $(ca_org org3)"
+        fi
+    fi
+}
+
 check_binaries ()
 {
     log info "Checking fabric binaries"
@@ -229,8 +263,8 @@ check_binaries ()
         mkdir -p $bin
 
         log warn "Downloading fabric binaries"
-        wget -P $bin -q https://github.com/hyperledger/fabric/releases/download/v2.4.3/hyperledger-fabric-linux-amd64-2.4.3.tar.gz
-        tar -C $bin --strip-components 1 -xf third_party/fabric/hyperledger-fabric-linux-amd64-2.4.3.tar.gz bin/configtxgen bin/osnadmin bin/peer
+        wget -P $bin -q https://github.com/hyperledger/fabric/releases/download/v2.4.0/hyperledger-fabric-linux-amd64-2.4.0.tar.gz
+        tar -C $bin --strip-components 1 -xf third_party/fabric/hyperledger-fabric-linux-amd64-2.4.0.tar.gz bin/configtxgen bin/osnadmin bin/peer
 
         log warn "Downloading fabric-ca binaries"
         wget -P $bin -q https://github.com/hyperledger/fabric-ca/releases/download/v1.5.2/hyperledger-fabric-ca-linux-amd64-1.5.2.tar.gz
@@ -245,6 +279,24 @@ check_org ()
         exit
     fi
 }
+
+check_org_msp ()
+{
+    local new
+    local org
+    local i=0
+    for org in "${ORGS[@]/orderer}"; do
+        if [ -n "$org" ]; then
+           new[$i]=${org^}MSP
+           i=$(($i + 1))
+        fi
+    done
+    if [[ ! "${new[@]}" =~ $1 ]]; then
+        log error "Organization must be: ${new[*]}"
+        exit
+    fi
+}
+
 
 start_containers ()
 {
@@ -513,7 +565,7 @@ chaincode_exec ()
 {
     local cmd=${CMDS[$2]}
     if [ -z "$cmd" ]; then
-        log error "Command must be: ${!CMDS[*]}"
+        log error "Command '$2' not found. Command must be: ${!CMDS[*]}"
         exit
     fi
 
@@ -569,8 +621,7 @@ chaincode_approve ()
               --ordererTLSHostnameOverride $(host orderer) \
               --channelID $CHANNEL --name $CC \
               --version $CC_VER --sequence $CC_VER --package-id $pkgid \
-              --signature-policy $CC_POLICY \
-              --collections-config $CC_CFG \
+              $CC_CFG \
               --tls --cafile $(ca_ord)
     if [ $? -eq 0 ]; then
         otype=succ
@@ -588,34 +639,16 @@ chaincode_commit ()
               --ordererTLSHostnameOverride $(host orderer) \
               --channelID $CHANNEL --name $CC \
               --version $CC_VER  --sequence $CC_VER \
-              --signature-policy $CC_POLICY \
-              --collections-config $CC_CFG \
+              $CC_CFG \
               --tls --cafile $(ca_ord) \
-              --peerAddresses $(url org1) \
-              --tlsRootCertFiles $(ca_org org1) \
-              --peerAddresses $(url org2) \
-              --tlsRootCertFiles $(ca_org org2)
+              $(peers_agree)
     if [ $? -eq 0 ]; then
         otype=succ
     fi
     log $otype "Command: peer lifecycle chaincode commit, CC: $CC, PEER: $1"
 }
 
-chaincode_help ()
-{
-    set_variables $1
-
-    local otype=error
-    local out=$($BIN/peer chaincode query -C $CHANNEL -n $CC \
-                          -c "{\"Args\":[\"${CC_CMD[help]}\"]}")
-    if [ -n "$out" ]; then
-        otype=succ
-    fi
-    log $otype "Command: ${CC_CMD[help]}, PEER: $1"
-    echo $out
-}
-
-_invoke ()
+_cc_invoke ()
 {
     local otype=error
     $BIN/peer chaincode invoke \
@@ -625,10 +658,7 @@ _invoke ()
               -C $CHANNEL -n $CC \
               -c "{\"Args\":[\"$2\"]}" \
               --transient "{\"$3\":\"$4\"}" \
-              --peerAddresses $(url org1) \
-              --tlsRootCertFiles $(ca_org org1) \
-              --peerAddresses $(url org2) \
-              --tlsRootCertFiles $(ca_org org2)
+              $(peers_agree)
     if [ $? -eq 0 ]; then
         otype=succ
     fi
@@ -640,18 +670,21 @@ chaincode_store ()
 {
     set_variables $1
 
-    local rep=$(echo -n "{\"id\": \"$QID\", \"org\": \"$QORG\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"public_report\"}" | base64 | tr -d \\n)
-    local priv=$(echo -n "{\"id\": \"$QID\", \"org\": \"$QORG\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"private_report\", \"private\": true}" | base64 | tr -d \\n)
+    local rep=$(echo -n "{\"rid\": \"$QID\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"public_report\"}" | base64 | tr -d \\n)
+    local priv=$(echo -n "{\"rid\": \"$QID\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"private_report\", \"private\": true}" | base64 | tr -d \\n)
 
-    _invoke $1 ${CC_CMD[$2]} ${ARG[trans]} $rep
-    _invoke $1 ${CC_CMD[$2]} ${ARG[trans]} $priv
+    _cc_invoke $1 ${CC_CMD[$2]} ${ARG[trans]} $rep
+    _cc_invoke $1 ${CC_CMD[$2]} ${ARG[trans]} $priv
 }
 
-_query ()
+_cc_query ()
 {
     local q_cmd
     local q_msg
-    if [ $# -eq 3 ]; then
+    if [ $# -eq 2 ]; then
+        q_cmd="{\"Args\":[\"$2\"]}"
+        q_msg="none"
+    elif [ $# -eq 3 ]; then
         q_cmd="{\"Args\":[\"$2\", \"$3\"]}"
         q_msg="($3)"
     elif [ $# -eq 4 ]; then
@@ -665,55 +698,80 @@ _query ()
     local errorf=/tmp/autoauditor.sc.error
     local okf=/tmp/autoauditor.sc.output
     $BIN/peer chaincode query -C $CHANNEL -n $CC \
-              -c "$q_cmd" \
-              --peerAddresses $(url org1) \
-              --tlsRootCertFiles $(ca_org org1) > $okf 2> $errorf
+              -c "$q_cmd" $(peers_agree query)> $okf 2> $errorf
     if [ -s $okf ]; then
         otype=succ
     fi
     log $otype "Command: $2, ARGS: $q_msg, ORG: $1"
     if [ $otype == succ ]; then
-        cat $okf
+        if [ -n "$PRETTY" ] && [ "$2" != "GetReportHash" ]; then
+            jq . $okf
+        else
+            cat $okf
+        fi
     else
         cat $errorf
     fi
+}
+
+chaincode_help ()
+{
+    set_variables $1
+
+    _cc_query $1 help
 }
 
 chaincode_query ()
 {
     set_variables $1
 
-    _query $1 ${CC_CMD[$2]} $3
-    _query $1 ${CC_CMD[$2]} $3 public
-    _query $1 ${CC_CMD[$2]} $3 private
+    _cc_query $1 ${CC_CMD[$2]} $3
+    _cc_query $1 ${CC_CMD[$2]} $3 public
+    _cc_query $1 ${CC_CMD[$2]} $3 private
+}
+
+chaincode_query_all ()
+{
+    set_variables $1
+
+    _cc_query $1 ${CC_CMD[$2]}
+    _cc_query $1 ${CC_CMD[$2]} public
+    _cc_query $1 ${CC_CMD[$2]} private
+}
+
+chaincode_query_all_bulk ()
+{
+    set_variables $1
+
+    _cc_query $1 ${CC_CMD[$2]}
 }
 
 chaincode_query_org_bulk ()
 {
     set_variables $1
 
-    _query $1 ${CC_CMD[$2]} $3
+    _cc_query $1 ${CC_CMD[$2]} $3
 }
 
 chaincode_query_date ()
 {
     set_variables $1
 
-    _query $1 ${CC_CMD[$2]} $3
-    _query $1 ${CC_CMD[$2]} $3 public
-    _query $1 ${CC_CMD[$2]} $3 private
+    _cc_query $1 ${CC_CMD[$2]} $3
+    _cc_query $1 ${CC_CMD[$2]} $3 public
+    _cc_query $1 ${CC_CMD[$2]} $3 private
 
-    _query $1 ${CC_CMD[$2]} $3 $4
-    _query $1 ${CC_CMD[$2]} $3 $4 public
-    _query $1 ${CC_CMD[$2]} $3 $4 private
+    _cc_query $1 ${CC_CMD[$2]} $3 $4
+    _cc_query $1 ${CC_CMD[$2]} $3 $4 public
+    _cc_query $1 ${CC_CMD[$2]} $3 $4 private
 }
 
 chaincode_query_date_bulk ()
 {
     set_variables $1
 
-    _query $1 ${CC_CMD[$2]} $3
-    _query $1 ${CC_CMD[$2]} $3 $4
+    _cc_query $1 ${CC_CMD[$2]} $3
+    _cc_query $1 ${CC_CMD[$2]} $3 $4
 }
 
 network_up ()
@@ -725,20 +783,22 @@ network_up ()
 
     log info "Joining Org1 to channel '$CHANNEL'"
     join_channel org1
-
     log info "Joining Org2 to channel '$CHANNEL'"
     join_channel org2
+    log info "Joining Org3 to channel '$CHANNEL'"
+    join_channel org3
 
     log info "Setting anchor peer for Org1 on channel '$CHANNEL'"
     set_anchor_peer org1 $CHANNEL
-
     log info "Setting anchor peer for Org2 on channel '$CHANNEL'"
     set_anchor_peer org2 $CHANNEL
+    log info "Setting anchor peer for Org3 on channel '$CHANNEL'"
+    set_anchor_peer org3 $CHANNEL
 }
 
 smartcontract_install ()
 {
-    log info "Installing autoauditor smartcontract"
+    log info "Installing report smartcontract"
     chaincode_exec org1 package
     chaincode_exec org1 install
     chaincode_exec org2 install
@@ -747,6 +807,21 @@ smartcontract_install ()
     chaincode_exec org1 approve
     chaincode_exec org2 approve
     chaincode_exec org1 commit
+
+    log warn "Waiting processing"
+    # Transaction process time
+    sleep 3
+
+    log info "Installing whistleblower smartcontract"
+    chaincode_update whistleblower
+    chaincode_exec org3 package
+    chaincode_exec org1 install
+    chaincode_exec org3 install
+    chaincode_exec org1 installed
+    chaincode_exec org3 installed
+    chaincode_exec org1 approve
+    chaincode_exec org3 approve
+    chaincode_exec org3 commit
 
     log warn "Waiting processing"
     # Transaction process time
@@ -768,6 +843,9 @@ smartcontract_query ()
     log info "Querying test data as org1"
     chaincode_exec org1 query $QID
     chaincode_exec org1 qhash $QID
+    chaincode_exec org1 qall
+    chaincode_exec org1 qtotalall
+    chaincode_exec org1 qidsall
     chaincode_exec org1 qorg $QORG
     chaincode_exec org1 qtotalorg $QORG
     chaincode_exec org1 qidsorg $QORG
@@ -779,6 +857,9 @@ smartcontract_query ()
     log info "Querying test data as org2"
     chaincode_exec org2 query $QID
     chaincode_exec org2 qhash $QID
+    chaincode_exec org2 qall
+    chaincode_exec org2 qtotalall
+    chaincode_exec org2 qidsall
     chaincode_exec org2 qorg $QORG
     chaincode_exec org2 qtotalorg $QORG
     chaincode_exec org2 qidsorg $QORG
@@ -843,7 +924,7 @@ while [[ $# -gt 0 ]]; do
             QORG=$2
             shift
             shift
-            check_org $QORG
+            check_org_msp $QORG
             ;;
         -qd|--qdate)
             QDATE=$2
@@ -852,6 +933,13 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-color)
             disable_ansi_color
+            shift
+            ;;
+        --pretty)
+            command -v jq > /dev/null 2>&1
+            [[ $? -eq 0 ]] \
+                && PRETTY=SET \
+                    || log warn "Package 'jq' not installed. Ignoring --pretty."
             shift
             ;;
         --verbose)
@@ -866,6 +954,7 @@ while [[ $# -gt 0 ]]; do
             usage
             ;;
         *)
+            log error "Parameter $1 not recognized"
             usage
             ;;
     esac

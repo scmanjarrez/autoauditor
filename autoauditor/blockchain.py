@@ -50,7 +50,7 @@ import re
 CVEDETAILS = "https://www.cvedetails.com/cve/"
 
 CC = 'autoauditor'
-CC_FUN = 'NewReport'
+CC_FUN = 'StoreReport'
 CC_TRANS = 'report'
 
 _tmp_outf = None

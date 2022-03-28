@@ -90,7 +90,7 @@ csr:
    names:
       - C: ES
         ST: "Comunidad de Madrid"
-        L: "Leganés"
+        L: "Leganes"
         O: org1.example.com
         OU:
    hosts:
