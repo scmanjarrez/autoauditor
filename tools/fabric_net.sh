@@ -33,6 +33,19 @@ _N="\033[0m"
 declare -A PORTS=([orderer]=7000 [org1]=8000 [org2]=9000 [org3]=10000)
 # Containers configuration order
 ORGS=(orderer org1 org2 org3)
+SCMDS=(package install installed approve commit
+       help
+       store delete
+       query qhash
+       qall qtotalall qidsall
+       qorg qtotalorg qidsorg
+       qdate qtotaldate qidsdate
+       sub unsub
+       qsubs qtotalsubs qidssubs
+       qsubsid qcertid
+       qsubsorg qtotalsubsorg qidssubsorg
+       storeblow qblow
+       qblows qtotalblows qhashblows)
 declare -A CMDS=([package]=chaincode_package
                  [install]=chaincode_install
                  [installed]=chaincode_installed
@@ -41,17 +54,32 @@ declare -A CMDS=([package]=chaincode_package
                  [help]=chaincode_help
                  [store]=chaincode_store
                  [delete]=chaincode_delete
-                 [query]=chaincode_query
-                 [qhash]=chaincode_query
-                 [qall]=chaincode_query_all
-                 [qtotalall]=chaincode_query_all_bulk
-                 [qidsall]=chaincode_query_all_bulk
-                 [qorg]=chaincode_query
-                 [qtotalorg]=chaincode_query_org_bulk
-                 [qidsorg]=chaincode_query_org_bulk
-                 [qdate]=chaincode_query_date
-                 [qtotaldate]=chaincode_query_date_bulk
-                 [qidsdate]=chaincode_query_date_bulk)
+                 [query]=chaincode_query_1arg_and_rep_dbs
+                 [qhash]=chaincode_query_1arg_and_rep_dbs
+                 [qall]=chaincode_query_0args_and_rep_dbs
+                 [qtotalall]=chaincode_query_0args
+                 [qidsall]=chaincode_query_0args
+                 [qorg]=chaincode_query_1arg_and_rep_dbs
+                 [qtotalorg]=chaincode_query_1arg
+                 [qidsorg]=chaincode_query_1arg
+                 [qdate]=chaincode_query_1and2args_and_rep_dbs
+                 [qtotaldate]=chaincode_query_1and2args
+                 [qidsdate]=chaincode_query_1and2args
+                 [sub]=chaincode_subscribe
+                 [unsub]=chaincode_subscribe
+                 [qsubs]=chaincode_query_0args
+                 [qtotalsubs]=chaincode_query_0args
+                 [qidssubs]=chaincode_query_0args
+                 [qsubsid]=chaincode_query_1arg
+                 [qcertid]=chaincode_query_1arg
+                 [qsubsorg]=chaincode_query_1arg
+                 [qtotalsubsorg]=chaincode_query_1arg
+                 [qidssubsorg]=chaincode_query_1arg
+                 [storeblow]=chaincode_blow
+                 [qblow]=chaincode_query_1arg
+                 [qblows]=chaincode_query_0args
+                 [qtotalblows]=chaincode_query_0args
+                 [qhashblows]=chaincode_query_0args)
 declare -A CC_CMD=([help]=Help
                    [store]=StoreReport
                    [delete]=DeleteReport
@@ -65,7 +93,22 @@ declare -A CC_CMD=([help]=Help
                    [qidsorg]=GetReportsIdByOrganization
                    [qdate]=GetReportsByDate
                    [qtotaldate]=GetTotalReportsByDate
-                   [qidsdate]=GetReportsIdByDate)
+                   [qidsdate]=GetReportsIdByDate
+                   [sub]=Subscribe
+                   [unsub]=Unsubscribe
+                   [qsubs]=GetSubscribers
+                   [qtotalsubs]=GetTotalSubscribers
+                   [qidssubs]=GetSubscribersId
+                   [qsubsid]=GetSubscriberById
+                   [qcertid]=GetCertificateById
+                   [qsubsorg]=GetSubscribersByOrganization
+                   [qtotalsubsorg]=GetTotalSubscribersByOrganization
+                   [qidssubsorg]=GetSubscribersIdByOrganization
+                   [storeblow]=StoreBlow
+                   [qblow]=GetBlowByHash
+                   [qblows]=GetBlows
+                   [qtotalblows]=GetTotalBlows
+                   [qhashblows]=GetBlowsHash)
 declare -A ARG=([trans]=report_st [trans_del]=report_del)
 
 OUT=/dev/null
@@ -84,10 +127,22 @@ CHANNEL=channel1
 PROFILE=TwoOrgsApplicationGenesis
 
 # chaincode defaults
+CCS=(report whistleblower)
 CC_VER=1
 CC_LANG=golang
+
+check_chaincode ()
+{
+    if [[ ! "${CCS[@]}" =~ $1( |$) ]]; then
+        local ccs=$(echo "${CCS[*]}" | sed 's/ /, /g')
+        log error "Chaincode must be: $ccs"
+        exit 1
+    fi
+}
+
 chaincode_update ()
 {
+    check_chaincode $1
     CC=$1
     CC_PATH=$ROOT/smart_contracts/$CC
     if [ "$CC" = "report" ]; then
@@ -97,16 +152,15 @@ chaincode_update ()
     fi
     CC_TAR=$NET/${CC}.tar.gz
 }
+
 chaincode_update report
-# CC=report
-# CC_PATH=$ROOT/smart_contracts/$CC
-# CC_CFG=$CC_PATH/collections_config.json
-# CC_TAR=$NET/${CC}.tar.gz
 
 # chaincode query defaults
 QID=report007
 QORG=Org1MSP
 QDATE="2020-05-21 17:37:27.910352+02:00"
+QSID="eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1MZWdhbmVzLFNUPUNvbXVuaWRhZCBkZSBNYWRyaWQsQz1FUw=="
+QBHASH="843931cf23b7d5482a55ee3ab8f05029be54c41fb7d561ae787e09269a0e16a7"
 
 log ()
 {
@@ -133,31 +187,6 @@ disable_ansi_color ()
     _Y=
     _B=
     _N=
-}
-
-usage ()
-{
-    local name=$(basename $0)
-    echo "Usage:"
-    echo "    $name                  Start fabric network containers if down."
-    echo "    $name -d|--down        Stop containers and remove created files."
-    echo "    $name -r|--restart     Restart fabric network."
-    echo "    $name --anchor         Execute anchor peer functions."
-    echo "    $name --no-install     Do not install autoauditor smartcontract."
-    echo "    $name --store          Store test data."
-    echo "    $name --query          Check test data."
-    echo "    $name -P|--peer        Change default peer. D: $PEER"
-    echo "    $name -C|--channel     Change default channel name. D: $CHANNEL"
-    echo "    $name -V|--version     Change default smartcontract version. D: $CC_VER"
-    echo "    $name -e|--exec        Execute specific command: ${!CMDS[@]}."
-    echo "    $name -qi|--qid        Change default query report id. D: $QID"
-    echo "    $name -qo|--qorg       Change default query org. D: $QORG"
-    echo "    $name -qd|--qdate      Change default query date. D: ${QDATE:0:7}"
-    echo "    $name --no-color       No ANSI colors."
-    echo "    $name --verbose        Enable verbose output."
-    echo "    $name -h|--help        Show this help."
-
-    exit
 }
 
 host ()
@@ -230,18 +259,26 @@ url ()
 
 peers_agree ()
 {
-    if [ "$1" = 'query' ]; then
-        if [ "$CC" = 'report' ]; then
+    if [ "$1" = "query" ]; then
+        if [ "$CC" = "report" ]; then
             echo "--peerAddresses $(url org1) --tlsRootCertFiles $(ca_org org1)"
         else
             echo "--peerAddresses $(url org3) --tlsRootCertFiles $(ca_org org3)"
         fi
     else
-        if [ "$CC" = 'report' ]; then
+        if [ "$CC" = "report" ]; then
             echo "--peerAddresses $(url org1) --tlsRootCertFiles $(ca_org org1) --peerAddresses $(url org2) --tlsRootCertFiles $(ca_org org2)"
         else
             echo "--peerAddresses $(url org1) --tlsRootCertFiles $(ca_org org1) --peerAddresses $(url org3) --tlsRootCertFiles $(ca_org org3)"
         fi
+    fi
+}
+
+check_argument ()
+{
+    if [[ $2 == --* ]] || [ -z "$2" ]; then
+        log error "Parameter $1 requires an argument"
+        exit 1
     fi
 }
 
@@ -252,12 +289,12 @@ check_binaries ()
         command -v wget > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             log error "Package not installed: wget"
-            exit
+            exit 1
         fi
         command -v tar > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             log error "Package not installed: tar"
-            exit
+            exit 1
         fi
         local bin=third_party/fabric
         mkdir -p $bin
@@ -274,26 +311,20 @@ check_binaries ()
 
 check_org ()
 {
-    if [[ ! "${ORGS[@]/orderer}" =~ $1 ]]; then
-        log error "Organization must be:${ORGS[*]/orderer}"
-        exit
+    if [[ ! "${ORGS[@]/orderer}" =~ $1( |$) ]]; then
+        local org=$(echo "${ORGS[@]/orderer}" | sed 's/ //' | sed 's/ /, /g')
+        log error "Peer organization must be: $org"
+        exit 1
     fi
 }
 
 check_org_msp ()
 {
-    local new
-    local org
-    local i=0
-    for org in "${ORGS[@]/orderer}"; do
-        if [ -n "$org" ]; then
-           new[$i]=${org^}MSP
-           i=$(($i + 1))
-        fi
-    done
-    if [[ ! "${new[@]}" =~ $1 ]]; then
-        log error "Organization must be: ${new[*]}"
-        exit
+    local msp=$(echo "${ORGS[@]/orderer}" | sed 's/ //' | sed 's/org\([0-9]\)/Org\1MSP/g')
+    if [[ ! "$msp" =~ $1( |$) ]]; then
+        local cmsp=$(echo "$msp" | sed 's/ /, /g')
+        log error "Query organization must be: $cmsp"
+        exit 1
     fi
 }
 
@@ -566,7 +597,7 @@ chaincode_exec ()
     local cmd=${CMDS[$2]}
     if [ -z "$cmd" ]; then
         log error "Command '$2' not found. Command must be: ${!CMDS[*]}"
-        exit
+        exit 1
     fi
 
     $cmd $1 $2 $3 $4
@@ -650,6 +681,29 @@ chaincode_commit ()
 
 _cc_invoke ()
 {
+    if [ $# -eq 2 ]; then
+        q_cmd="{\"Args\":[\"$2\"]}"
+        q_msg="none"
+    elif [ $# -eq 3 ]; then
+        q_cmd="{\"Args\":[\"$2\", \"$3\"]}"
+        q_msg="($3)"
+    fi
+    local otype=error
+    $BIN/peer chaincode invoke \
+              -o $(url orderer) \
+              --ordererTLSHostnameOverride $(host orderer) \
+              --tls --cafile $(ca_ord) \
+              -C $CHANNEL -n $CC \
+              -c "$q_cmd" \
+              $(peers_agree)
+    if [ $? -eq 0 ]; then
+        otype=succ
+    fi
+    log $otype "Command: $2, ARGS: $q_msg, ORG: $1"
+}
+
+_cc_invoke_trans ()
+{
     local otype=error
     $BIN/peer chaincode invoke \
               -o $(url orderer) \
@@ -673,8 +727,31 @@ chaincode_store ()
     local rep=$(echo -n "{\"rid\": \"$QID\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"public_report\"}" | base64 | tr -d \\n)
     local priv=$(echo -n "{\"rid\": \"$QID\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"private_report\", \"private\": true}" | base64 | tr -d \\n)
 
-    _cc_invoke $1 ${CC_CMD[$2]} ${ARG[trans]} $rep
-    _cc_invoke $1 ${CC_CMD[$2]} ${ARG[trans]} $priv
+    _cc_invoke_trans $1 ${CC_CMD[$2]} ${ARG[trans]} $rep
+    _cc_invoke_trans $1 ${CC_CMD[$2]} ${ARG[trans]} $priv
+}
+
+chaincode_delete ()
+{
+    set_variables $1
+
+    local rep=$(echo -n "{\"rid\": \"$QID\"}" | base64 | tr -d \\n)
+
+    _cc_invoke_trans $1 ${CC_CMD[$2]} ${ARG[trans_del]} $rep
+}
+
+chaincode_subscribe ()
+{
+    set_variables $1
+
+    _cc_invoke $1 ${CC_CMD[$2]}
+}
+
+chaincode_blow ()
+{
+    set_variables $1
+
+    _cc_invoke $1 ${CC_CMD[$2]} $3
 }
 
 _cc_query ()
@@ -704,7 +781,9 @@ _cc_query ()
     fi
     log $otype "Command: $2, ARGS: $q_msg, ORG: $1"
     if [ $otype == succ ]; then
-        if [ -n "$PRETTY" ] && [ "$2" != "GetReportHash" ]; then
+        if [ -n "$PRETTY" ] &&
+               [ "$2" != "GetReportHash" ] &&
+               [ "$2" != "GetCertificateById" ]; then
             jq . $okf
         else
             cat $okf
@@ -721,16 +800,14 @@ chaincode_help ()
     _cc_query $1 help
 }
 
-chaincode_query ()
+chaincode_query_0args ()
 {
     set_variables $1
 
-    _cc_query $1 ${CC_CMD[$2]} $3
-    _cc_query $1 ${CC_CMD[$2]} $3 public
-    _cc_query $1 ${CC_CMD[$2]} $3 private
+    _cc_query $1 ${CC_CMD[$2]}
 }
 
-chaincode_query_all ()
+chaincode_query_0args_and_rep_dbs ()
 {
     set_variables $1
 
@@ -739,21 +816,32 @@ chaincode_query_all ()
     _cc_query $1 ${CC_CMD[$2]} private
 }
 
-chaincode_query_all_bulk ()
-{
-    set_variables $1
 
-    _cc_query $1 ${CC_CMD[$2]}
-}
-
-chaincode_query_org_bulk ()
+chaincode_query_1arg ()
 {
     set_variables $1
 
     _cc_query $1 ${CC_CMD[$2]} $3
 }
 
-chaincode_query_date ()
+chaincode_query_1arg_and_rep_dbs ()
+{
+    set_variables $1
+
+    _cc_query $1 ${CC_CMD[$2]} $3
+    _cc_query $1 ${CC_CMD[$2]} $3 public
+    _cc_query $1 ${CC_CMD[$2]} $3 private
+}
+
+chaincode_query_1and2args ()
+{
+    set_variables $1
+
+    _cc_query $1 ${CC_CMD[$2]} $3
+    _cc_query $1 ${CC_CMD[$2]} $3 $4
+}
+
+chaincode_query_1and2args_and_rep_dbs ()
 {
     set_variables $1
 
@@ -764,14 +852,6 @@ chaincode_query_date ()
     _cc_query $1 ${CC_CMD[$2]} $3 $4
     _cc_query $1 ${CC_CMD[$2]} $3 $4 public
     _cc_query $1 ${CC_CMD[$2]} $3 $4 private
-}
-
-chaincode_query_date_bulk ()
-{
-    set_variables $1
-
-    _cc_query $1 ${CC_CMD[$2]} $3
-    _cc_query $1 ${CC_CMD[$2]} $3 $4
 }
 
 network_up ()
@@ -798,7 +878,7 @@ network_up ()
 
 smartcontract_install ()
 {
-    log info "Installing report smartcontract"
+    log info "Installing report chaincode"
     chaincode_exec org1 package
     chaincode_exec org1 install
     chaincode_exec org2 install
@@ -812,7 +892,7 @@ smartcontract_install ()
     # Transaction process time
     sleep 3
 
-    log info "Installing whistleblower smartcontract"
+    log info "Installing whistleblower chaincode"
     chaincode_update whistleblower
     chaincode_exec org3 package
     chaincode_exec org1 install
@@ -828,7 +908,7 @@ smartcontract_install ()
     sleep 3
 }
 
-smartcontract_store ()
+smartcontract_fill_report ()
 {
     log info "Storing test data as org1"
     chaincode_exec org1 store
@@ -838,7 +918,7 @@ smartcontract_store ()
     sleep 3
 }
 
-smartcontract_query ()
+smartcontract_query_report ()
 {
     log info "Querying test data as org1"
     chaincode_exec org1 query $QID
@@ -868,6 +948,75 @@ smartcontract_query ()
     chaincode_exec org2 qidsdate ${QDATE:0:7} $QORG
 }
 
+smartcontract_fill_whistleblower ()
+{
+    log info "Subscribing org1 to receive blows"
+    chaincode_exec org1 sub
+
+    log info "Subscribing org2 to receive blows"
+    chaincode_exec org2 sub
+
+    log info "Storing blow as org3"
+    chaincode_exec org3 storeblow "encryptedBlow"
+
+    log warn "Waiting processing"
+    # Transaction process time
+    sleep 3
+}
+
+smartcontract_query_whistleblower ()
+{
+    log info "Querying test data as org3"
+    chaincode_exec org3 qsubs
+    chaincode_exec org3 qtotalsubs
+    chaincode_exec org3 qidssubs
+    chaincode_exec org3 qsubsid $QSID
+    chaincode_exec org3 qcertid $QSID
+    chaincode_exec org3 qsubsorg $QORG
+    chaincode_exec org3 qtotalsubsorg $QORG
+    chaincode_exec org3 qidssubsorg $QORG
+    chaincode_exec org3 qblows
+    chaincode_exec org3 qtotalblows
+    chaincode_exec org3 qhashblows
+    chaincode_exec org3 qblow $QBHASH
+}
+
+usage ()
+{
+    local name=$(basename $0)
+    local peer=$(echo "${ORGS[@]/orderer}" | sed 's/ //' | sed 's/ /, /g')
+    local msp=$(echo "${ORGS[@]/orderer}" | sed 's/ //' | sed 's/org\([0-9]\)/Org\1MSP/g' | sed 's/ /, /g')
+    local cc=$(echo "${CCS[@]}" | sed 's/ /, /g')
+    local cmds=$(echo "${SCMDS[@]}" | sed 's/ /, /g')
+    echo "Usage:"
+    echo "    $name                       Start fabric network containers if down"
+    echo "    $name -d|--down             Stop containers and remove created files"
+    echo "    $name -r|--restart          Restart fabric network"
+    echo "    $name --anchor              Execute anchor peer functions"
+    echo "    $name --no-install          Skip chaincode install"
+    echo "    $name --fill CC             Fill CC with test data. Def: $CC. CC: $cc"
+    echo "    $name --query CC            Query CC test data. Def: $CC. CC: $cc"
+    echo "    $name -P|--peer P           Set peer. Def: $PEER. P: $peer"
+    echo "    $name -CC|--chaincode CC    Set chaincode. Def: $CC. CC: $cc"
+    echo "    $name -C|--channel C        Set channel. Def: $CHANNEL. C: $CHANNEL"
+    echo "    $name -V|--version V        Set chaincode version. Def: $CC_VER"
+    echo "    $name -e|--exec CMD         Execute command: $cmds"
+    echo "    $name -qi|--qid QID         Set query report id. Def: $QID"
+    echo "    $name -qo|--qorg QORG       Set query org. Def: $QORG. QORG: $msp"
+    echo "    $name -qd|--qdate QDATE     Set query date. Def: ${QDATE:0:7}"
+    echo "    $name -qsi|--qsid QSID      Set query subscriber id. Def: $QSID"
+    echo "    $name -qbh|--qbhash QBHASH  Set query blow hash. Def: $QBHASH"
+    echo "    $name --no-color            No ANSI colors"
+    echo "    $name --pretty              Show prettified output. Requires jq"
+    echo "    $name --verbose             Enable verbose output"
+    echo "    $name -h|--help             Show this help."
+
+    if [ -n "$1" ]; then
+        exit $1
+    fi
+    exit
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -d|--down)
@@ -886,48 +1035,87 @@ while [[ $# -gt 0 ]]; do
             _no_install=SET
             shift
             ;;
-        --store)
-            _store=SET
+        --fill)
+            check_argument $1 $2
+            check_chaincode $2
+            if [ "$2" = "whistleblower" ]; then
+                _fill_whistleblower=SET
+            else
+                _fill_report=SET
+            fi
+            shift
             shift
             ;;
         --query)
-            _query=SET
+            check_argument $1 $2
+            check_chaincode $2
+            if [ "$2" = "whistleblower" ]; then
+                _query_whistleblower=SET
+            else
+                _query_report=SET
+            fi
+            shift
             shift
             ;;
         -P|--peer)
+            check_argument $1 $2
             PEER=$2
             shift
             shift
             check_org $PEER
             ;;
+        -CC|--chaincode)
+            check_argument $1 $2
+            chaincode_update $2
+            shift
+            shift
+            ;;
         -C|--channel)
+            check_argument $1 $2
             CHANNEL=$2
             shift
             shift
             ;;
         -V|--version)
+            check_argument $1 $2
             CC_VER=$2
             shift
             shift
             ;;
         -e|--exec)
+            check_argument $1 $2
             _exec=$2
             shift
             shift
             ;;
         -qi|--qid)
+            check_argument $1 $2
             QID=$2
             shift
             shift
             ;;
         -qo|--qorg)
+            check_argument $1 $2
             QORG=$2
             shift
             shift
             check_org_msp $QORG
             ;;
         -qd|--qdate)
+            check_argument $1 $2
             QDATE=$2
+            shift
+            shift
+            ;;
+        -qsi|--qsid)
+            check_argument $1 $2
+            QSID=$2
+            shift
+            shift
+            ;;
+        -qbh|--qbhash)
+            check_argument $1 $2
+            QBHASH=$2
             shift
             shift
             ;;
@@ -955,7 +1143,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             log error "Parameter $1 not recognized"
-            usage
+            usage 1
             ;;
     esac
 done
@@ -989,10 +1177,20 @@ else
     if [ -z "$_no_install" ]; then
         smartcontract_install
     fi
-    if [ -n "$_store" ]; then
-        smartcontract_store
+    if [ -n "$_fill_report" ]; then
+        chaincode_update report
+        smartcontract_fill_report
     fi
-    if [ -n "$_query" ]; then
-        smartcontract_query
+    if [ -n "$_query_report" ]; then
+        chaincode_update report
+        smartcontract_query_report
+    fi
+    if [ -n "$_fill_whistleblower" ]; then
+        chaincode_update whistleblower
+        smartcontract_fill_whistleblower
+    fi
+    if [ -n "$_query_whistleblower" ]; then
+        chaincode_update whistleblower
+        smartcontract_query_whistleblower
     fi
 fi
