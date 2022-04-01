@@ -356,7 +356,7 @@ class Backend(QObject):
             self.button_wizard()
 
     def parse_rc(self):
-        with open(self._property('tfRc', 'text'), 'r') as f:
+        with open(self._property('tfRc', 'text')) as f:
             try:
                 rc = json.load(f)
             except json.decoder.JSONDecodeError:

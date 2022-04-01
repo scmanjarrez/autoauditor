@@ -197,7 +197,7 @@ def get_score(cve):
 
 def parse_report(msf_log):
     mod = {}
-    with open(msf_log, 'r') as f:
+    with open(msf_log) as f:
         lines = filter(None, (line.rstrip() for line in f))
         modname = None
         host = None
@@ -354,7 +354,7 @@ def _get_network_data(config, *key_path):
 
 
 def _read_network(config):
-    with open(config, 'r') as f:
+    with open(config) as f:
         try:
             network = json.load(f)
         except json.JSONDecodeError:

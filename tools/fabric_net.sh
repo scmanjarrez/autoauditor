@@ -131,10 +131,27 @@ CCS=(report whistleblower)
 CC_VER=1
 CC_LANG=golang
 
+log ()
+{
+    case $1 in
+        info)
+            echo -e "$_B[*]$_N $2"
+            ;;
+        succ)
+            echo -e "$_G[+]$_N $2"
+            ;;
+        error)
+            echo -e "$_R[!]$_N $2"
+            ;;
+        warn)
+            echo -e "$_Y[-]$_N $2"
+    esac
+}
+
 check_chaincode ()
 {
     if [[ ! "${CCS[@]}" =~ $1( |$) ]]; then
-        local ccs=$(echo "${CCS[*]}" | sed 's/ /, /g')
+        local ccs=$(echo "${CCS[@]}" | sed 's/ /, /g')
         log error "Chaincode must be: $ccs"
         exit 1
     fi
@@ -159,25 +176,10 @@ chaincode_update report
 QID=report007
 QORG=Org1MSP
 QDATE="2020-05-21 17:37:27.910352+02:00"
-QSID="eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1MZWdhbmVzLFNUPUNvbXVuaWRhZCBkZSBNYWRyaWQsQz1FUw=="
+# QSID from user1@Org1MSP
+QSID="eDUwOTo6Q049dXNlcjEsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1MZWdhbmVzLFNUPUNvbXVuaWRhZCBkZSBNYWRyaWQsQz1FUw=="
+# QBHASH from "hello"
 QBHASH="843931cf23b7d5482a55ee3ab8f05029be54c41fb7d561ae787e09269a0e16a7"
-
-log ()
-{
-    case $1 in
-        info)
-            echo -e "$_B[*]$_N $2"
-            ;;
-        succ)
-            echo -e "$_G[+]$_N $2"
-            ;;
-        error)
-            echo -e "$_R[!]$_N $2"
-            ;;
-        warn)
-            echo -e "$_Y[-]$_N $2"
-    esac
-}
 
 disable_ansi_color ()
 {
@@ -274,9 +276,18 @@ peers_agree ()
     fi
 }
 
+empty_argument ()
+{
+    if [[ $1 == -* ]] || [ -z "$1" ]; then
+        echo 0
+    else
+        echo 1
+    fi
+}
+
 check_argument ()
 {
-    if [[ $2 == --* ]] || [ -z "$2" ]; then
+    if [[ $2 == -* ]] || [ -z "$2" ]; then
         log error "Parameter $1 requires an argument"
         exit 1
     fi
@@ -312,7 +323,7 @@ check_binaries ()
 check_org ()
 {
     if [[ ! "${ORGS[@]/orderer}" =~ $1( |$) ]]; then
-        local org=$(echo "${ORGS[@]/orderer}" | sed 's/ //' | sed 's/ /, /g')
+        local org=$(echo "${ORGS[@]/orderer}" | sed 's/ // ; s/ /, /g')
         log error "Peer organization must be: $org"
         exit 1
     fi
@@ -320,7 +331,7 @@ check_org ()
 
 check_org_msp ()
 {
-    local msp=$(echo "${ORGS[@]/orderer}" | sed 's/ //' | sed 's/org\([0-9]\)/Org\1MSP/g')
+    local msp=$(echo "${ORGS[@]/orderer}" | sed 's/ // ; s/org\([0-9]\)/Org\1MSP/g')
     if [[ ! "$msp" =~ $1( |$) ]]; then
         local cmsp=$(echo "$msp" | sed 's/ /, /g')
         log error "Query organization must be: $cmsp"
@@ -380,12 +391,17 @@ set_variables ()
     export CORE_PEER_LOCALMSPID=${1^}MSP
     export CORE_PEER_ADDRESS=$(url $1)
     local net=$NET
-    if [ -n "$2" ]; then
+    if [ "$2" = "cli" ]; then
         # Called from cli container
         net=$PWD/fabric_net/network/
     fi
     export CORE_PEER_TLS_ROOTCERT_FILE=$net/$1/peers/$(host $1)/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=$net/$1/users/admin@$1.$DOMAIN/msp
+
+    if [ "$2" = "user" ]; then
+        export CORE_PEER_MSPCONFIGPATH=$net/$1/users/user1@$1.$DOMAIN/msp
+    else
+        export CORE_PEER_MSPCONFIGPATH=$net/$1/users/admin@$1.$DOMAIN/msp
+    fi
 }
 
 gen_nodeous ()
@@ -722,7 +738,7 @@ _cc_invoke_trans ()
 
 chaincode_store ()
 {
-    set_variables $1
+    set_variables $1 user
 
     local rep=$(echo -n "{\"rid\": \"$QID\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"public_report\"}" | base64 | tr -d \\n)
     local priv=$(echo -n "{\"rid\": \"$QID\", \"date\": \"$QDATE\", \"nVuln\": 5, \"report\": \"private_report\", \"private\": true}" | base64 | tr -d \\n)
@@ -733,7 +749,7 @@ chaincode_store ()
 
 chaincode_delete ()
 {
-    set_variables $1
+    set_variables $1 user
 
     local rep=$(echo -n "{\"rid\": \"$QID\"}" | base64 | tr -d \\n)
 
@@ -742,14 +758,14 @@ chaincode_delete ()
 
 chaincode_subscribe ()
 {
-    set_variables $1
+    set_variables $1 user
 
     _cc_invoke $1 ${CC_CMD[$2]}
 }
 
 chaincode_blow ()
 {
-    set_variables $1
+    set_variables $1 user
 
     _cc_invoke $1 ${CC_CMD[$2]} $3
 }
@@ -795,21 +811,21 @@ _cc_query ()
 
 chaincode_help ()
 {
-    set_variables $1
+    set_variables $1 user
 
     _cc_query $1 help
 }
 
 chaincode_query_0args ()
 {
-    set_variables $1
+    set_variables $1 user
 
     _cc_query $1 ${CC_CMD[$2]}
 }
 
 chaincode_query_0args_and_rep_dbs ()
 {
-    set_variables $1
+    set_variables $1 user
 
     _cc_query $1 ${CC_CMD[$2]}
     _cc_query $1 ${CC_CMD[$2]} public
@@ -819,14 +835,14 @@ chaincode_query_0args_and_rep_dbs ()
 
 chaincode_query_1arg ()
 {
-    set_variables $1
+    set_variables $1 user
 
     _cc_query $1 ${CC_CMD[$2]} $3
 }
 
 chaincode_query_1arg_and_rep_dbs ()
 {
-    set_variables $1
+    set_variables $1 user
 
     _cc_query $1 ${CC_CMD[$2]} $3
     _cc_query $1 ${CC_CMD[$2]} $3 public
@@ -835,7 +851,7 @@ chaincode_query_1arg_and_rep_dbs ()
 
 chaincode_query_1and2args ()
 {
-    set_variables $1
+    set_variables $1 user
 
     _cc_query $1 ${CC_CMD[$2]} $3
     _cc_query $1 ${CC_CMD[$2]} $3 $4
@@ -843,7 +859,7 @@ chaincode_query_1and2args ()
 
 chaincode_query_1and2args_and_rep_dbs ()
 {
-    set_variables $1
+    set_variables $1 user
 
     _cc_query $1 ${CC_CMD[$2]} $3
     _cc_query $1 ${CC_CMD[$2]} $3 public
@@ -984,8 +1000,8 @@ smartcontract_query_whistleblower ()
 usage ()
 {
     local name=$(basename $0)
-    local peer=$(echo "${ORGS[@]/orderer}" | sed 's/ //' | sed 's/ /, /g')
-    local msp=$(echo "${ORGS[@]/orderer}" | sed 's/ //' | sed 's/org\([0-9]\)/Org\1MSP/g' | sed 's/ /, /g')
+    local peer=$(echo "${ORGS[@]/orderer}" | sed 's/ // ; s/ /, /g')
+    local msp=$(echo "${ORGS[@]/orderer}" | sed 's/ // ; s/org\([0-9]\)/Org\1MSP/g ; s/ /, /g')
     local cc=$(echo "${CCS[@]}" | sed 's/ /, /g')
     local cmds=$(echo "${SCMDS[@]}" | sed 's/ /, /g')
     echo "Usage:"
@@ -1004,8 +1020,8 @@ usage ()
     echo "    $name -qi|--qid QID         Set query report id. Def: $QID"
     echo "    $name -qo|--qorg QORG       Set query org. Def: $QORG. QORG: $msp"
     echo "    $name -qd|--qdate QDATE     Set query date. Def: ${QDATE:0:7}"
-    echo "    $name -qsi|--qsid QSID      Set query subscriber id. Def: $QSID"
-    echo "    $name -qbh|--qbhash QBHASH  Set query blow hash. Def: $QBHASH"
+    echo "    $name -qsi|--qsid QSID      Set query subscriber id. Def: ${QSID::10}...${QSID: -10}"
+    echo "    $name -qbh|--qbhash QBHASH  Set query blow hash. Def: ${QBHASH::10}...${QBHASH: -10}"
     echo "    $name --no-color            No ANSI colors"
     echo "    $name --pretty              Show prettified output. Requires jq"
     echo "    $name --verbose             Enable verbose output"
@@ -1036,88 +1052,88 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --fill)
-            check_argument $1 $2
-            check_chaincode $2
-            if [ "$2" = "whistleblower" ]; then
+            arg=1
+            if [ $(empty_argument $2) -eq 0 ]; then
                 _fill_whistleblower=SET
-            else
                 _fill_report=SET
+            else
+                check_chaincode $2
+                if [ "$2" = "whistleblower" ]; then
+                    _fill_whistleblower=SET
+                else
+                    _fill_report=SET
+                fi
+                arg=2
             fi
-            shift
-            shift
+            shift $arg
             ;;
         --query)
-            check_argument $1 $2
-            check_chaincode $2
-            if [ "$2" = "whistleblower" ]; then
+            arg=1
+            if [ $(empty_argument $2) -eq 0 ]; then
                 _query_whistleblower=SET
-            else
                 _query_report=SET
+            else
+                check_chaincode $2
+                if [ "$2" = "whistleblower" ]; then
+                    _query_whistleblower=SET
+                else
+                    _query_report=SET
+                fi
+                arg=2
             fi
-            shift
-            shift
+            shift $arg
             ;;
         -P|--peer)
             check_argument $1 $2
             PEER=$2
-            shift
-            shift
+            shift 2
             check_org $PEER
             ;;
         -CC|--chaincode)
             check_argument $1 $2
             chaincode_update $2
-            shift
-            shift
+            shift 2
             ;;
         -C|--channel)
             check_argument $1 $2
             CHANNEL=$2
-            shift
-            shift
+            shift 2
             ;;
         -V|--version)
             check_argument $1 $2
             CC_VER=$2
-            shift
-            shift
+            shift 2
             ;;
         -e|--exec)
             check_argument $1 $2
             _exec=$2
-            shift
-            shift
+            shift 2
             ;;
         -qi|--qid)
             check_argument $1 $2
             QID=$2
-            shift
-            shift
+            shift 2
             ;;
         -qo|--qorg)
             check_argument $1 $2
             QORG=$2
-            shift
-            shift
+            shift 2
             check_org_msp $QORG
             ;;
         -qd|--qdate)
             check_argument $1 $2
             QDATE=$2
-            shift
-            shift
+            shift 2
             ;;
         -qsi|--qsid)
             check_argument $1 $2
             QSID=$2
-            shift
-            shift
+            shift 2
             ;;
         -qbh|--qbhash)
             check_argument $1 $2
             QBHASH=$2
-            shift
-            shift
+            shift 2
             ;;
         --no-color)
             disable_ansi_color

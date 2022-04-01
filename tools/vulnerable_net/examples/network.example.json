@@ -1,19 +1,19 @@
 {
     "client": {
-        "description": "wallet where user ID is stored",
-        "id": "user1",
+        "description": "Client configuration",
+        "id": "user1report",
         "wallet": {
-            "description": "File system wallet where user ID is stored",
+            "description": "File system wallet to store client credentials",
             "path": "wallet-test"
         },
         "credentials": {
-            "description": "optionally, a credential path can be used if user ID can't be loaded from wallet",
+            "description": "Physical credentials: used when credentials can not be obtained from wallet",
             "cert": "tools/fabric_net/network/org1/users/user1@org1.example.com/msp/signcerts/cert.pem",
             "private_key": "tools/fabric_net/network/org1/users/user1@org1.example.com/msp/keystore/priv_sk"
         }
     },
     "network": {
-        "description": "Fabric network: 1 peer to use discovery, 1 client to operate and 1 joined channel",
+        "description": "Fabric network configuration: needs at least one anchor peer and a channel to use discovery service",
         "name": "fabric_net",
         "channel": "channel1",
         "organization": {

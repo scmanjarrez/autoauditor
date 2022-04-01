@@ -111,7 +111,7 @@ def start_msf(loot_dir, ovpn=False):
 
 
 def launch_metasploit(msfcl, rc_file, log_file):
-    with open(rc_file, 'r') as f:
+    with open(rc_file) as f:
         try:
             rc = json.load(f)
         except json.JSONDecodeError:
