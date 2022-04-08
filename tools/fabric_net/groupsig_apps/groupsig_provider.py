@@ -87,6 +87,8 @@ class Manager:
                 with open(f'{self.grp_dir}/{file}') as f:
                     if file != 'gml':
                         self.group[file] = F_IMP[file](CODE, f.read())
+                        if file == 'grpkey':
+                            print(grpkey.grpkey_export(self.group['grpkey']))
                     else:
                         try:
                             self.group[file] = F_IMP[file](CODE, f.read())
@@ -127,18 +129,18 @@ class Manager:
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index_provider.html')
 
 
 @app.route('/grpkey')
-def grpkey():
-    return MGR.export_grpkey()
+def grp_key():
+    return {'msg': MGR.export_grpkey()}
 
 
 @app.route('/join')
 def join_step1():
     client_sha = request.environ[
-        'clientcrt'].digest('sha256').decode('utf-8')
+        'clientcrt'].digest('sha256').decode()
     res = {
         'msg': ("Error: You already received a token. "
                 "Continue the process in /join/<token>"),
@@ -160,7 +162,7 @@ def join_step1():
 @app.route('/join/<token>', methods=['POST'])
 def join_step2(token):
     client_sha = request.environ[
-        'clientcrt'].digest('sha256').decode('utf-8')
+        'clientcrt'].digest('sha256').decode()
     res = {
         'msg': ("Error: You are not registered. "
                 "Start the process in /join")
@@ -189,27 +191,30 @@ def join_step2(token):
 def main():
     parser = argparse.ArgumentParser(
         description="autoauditor group signature provider")
-    parser.add_argument('-d', '--dir',
+    parser.add_argument('-d',
                         metavar='dir',
-                        help="Group credentials path")
-    parser.add_argument('-ca', '--ca-dir',
+                        help="Group credentials path.")
+    parser.add_argument('--ca-dir',
                         metavar='ca_dir',
                         default='fabric_ca_certs',
                         help=("CA certificates path. "
                               "Certificates must be in format HHHHHHHH.D."
-                              "Check man c_rehash"))
-    parser.add_argument('-sc', '--svr-crt',
+                              "Check man c_rehash."))
+    parser.add_argument('--svr-crt',
                         metavar='svr_crt',
-                        default='server.crt',
-                        help="Server certificate for TLS connection")
-    parser.add_argument('-sk', '--svr-key',
+                        default='provider.crt',
+                        help="Server certificate for TLS connection.")
+    parser.add_argument('--svr-key',
                         metavar='svr_key',
-                        default='server.key',
-                        help="Server key for TLS connection")
-
+                        default='provider.key',
+                        help="Server key for TLS connection.")
+    parser.add_argument('-p',
+                        metavar='port', type=int,
+                        default=5000,
+                        help="Server listening port.")
     args = parser.parse_args()
     global MGR
-    MGR = Manager(args.dir)
+    MGR = Manager(args.d)
     ssl_context = ssl.create_default_context(
         purpose=ssl.Purpose.CLIENT_AUTH, capath=args.ca_dir)
 
@@ -219,7 +224,8 @@ def main():
     # Force client certificate authentication
     ssl_context.verify_mode = ssl.CERT_REQUIRED
     app.run(ssl_context=ssl_context,
-            request_handler=PeerCertWSGIRequestHandler)
+            request_handler=PeerCertWSGIRequestHandler,
+            port=args.p)
     MGR.save_credentials()
 
 

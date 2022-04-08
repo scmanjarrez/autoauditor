@@ -49,9 +49,9 @@ import re
 
 CVEDETAILS = "https://www.cvedetails.com/cve/"
 
-CC = 'autoauditor'
+CC = 'report'
 CC_FUN = 'StoreReport'
-CC_TRANS = 'report'
+CC_TRANS = 'report_st'
 
 _tmp_outf = None
 _tmp_outd = None
@@ -237,7 +237,7 @@ def generate_reports(outf, update_cache):
         date = info.pop('date')
         report['date'] = date
     except KeyError:
-        ut.log('error', 'Wrong report format.', err=ct.EREP)
+        ut.log('error', ct.PRSREPERR, err=ct.EREP)
     nvuln = 0
     for mod in info:
         if is_cached(db, mod) and not update_cache:
@@ -264,20 +264,20 @@ def store_report(info, outf, outbc, update_cache=False, loop=None):
         loop = _asyncio.get_event_loop()
     user, client, peer, channel = info
 
-    ut.log('info', ct.GENREP, end='\r')
+    ut.log('info', ct.PRSREP, end='\r')
     reports = generate_reports(outf, update_cache)
-    ut.log('succ', ct.GENREPDONE)
+    ut.log('succ', ct.PRSDREP)
 
     privdate = reports.pop('date')  # yyyy-mm-dd hh:mm:ss.ffffff+tt:zz
     pubdate = privdate[:7]  # yyyy-mm
     nvuln = reports.pop('nvuln')
     rid = user.org + privdate
-    rhash = hashlib.sha256(rid.encode('utf-8')).hexdigest()
+    rhash = hashlib.sha256(rid.encode()).hexdigest()
 
-    rep = {'id': rhash,
+    rep = {'rid': rhash,
            'org': user.org,
            'date': privdate,
-           'nvuln': nvuln,
+           'nVuln': nvuln,
            'report': {},
            'private': True}
     uploaded = 0
@@ -326,7 +326,7 @@ def store_report(info, outf, outbc, update_cache=False, loop=None):
                        err=ct.EHLFST)
             else:
                 ut.log('error',
-                       "Unknown error storing {_type} report {rhash}: {resp}",
+                       f"Unknown error storing {_type} report {rhash}: {resp}",
                        err=ct.EHLFST)
     ut.log('info', f"Blockchain output log: {outbc}")
     with open(outbc, 'w') as out:
@@ -348,7 +348,7 @@ def _get_network_data(config, *key_path):
                 config = config[k]
             except KeyError:
                 ut.log('error',
-                       "No key path {key_path} exists in network info",
+                       f"No key path {key_path} exists in network info",
                        err=ct.ECFGNET)
         return config
 

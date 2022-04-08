@@ -64,9 +64,9 @@ def http_req(method, session, url, msg=None):
     return resp
 
 
-class Member:
-    def __init__(self, address, port, grp_dir, cert):
-        self.url = f'https://{address}:{port}'
+class FabricMember:
+    def __init__(self, provider, grp_dir, cert):
+        self.url = f'https://{provider[0]}:{provider[1]}'
         self.session = requests.Session()
         self.session.verify = False
         self.session.cert = cert
@@ -82,18 +82,29 @@ class Member:
             self.usk = memkey.memkey_import(CODE, f.read())
 
     def save_credentials(self):
-        try:
-            os.makedirs(CRED_DIR, exist_ok=True)
-        except PermissionError:
-            log('error',
-                f"Can not create {CRED_DIR}",
-                err=errno.EACCES)
-        with open(f'{CRED_DIR}/memkey', 'w') as f:
-            f.write(memkey.memkey_export(self.usk))
+        if self.usk is not None:
+            try:
+                os.makedirs(CRED_DIR, exist_ok=True)
+            except PermissionError:
+                log('error',
+                    f"Can not create {CRED_DIR}",
+                    err=errno.EACCES)
+            with open(f'{CRED_DIR}/memkey', 'w') as f:
+                f.write(memkey.memkey_export(self.usk))
 
     def retrieve_grpkey(self):
         resp = http_req('get', self.session, f'{self.url}/grpkey')
-        self.grpkey = grpkey.grpkey_import(CODE, resp.text)
+        if resp.status_code == 200:
+            try:
+                data = json.loads(resp.text)
+            except json.JSONDecodeError:
+                log('error',
+                    "Error decoding groupkey message.", err=1)
+            else:
+                self.grpkey = grpkey.grpkey_import(CODE, data['msg'])
+        else:
+            log('error',
+                "Error on GET: grpkey (provider).", err=1)
 
     def join1(self):
         if self.usk is None:
@@ -140,34 +151,34 @@ class Member:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="autoauditor group signature client")
-    parser.add_argument('-d', '--dir',
+        description="autoauditor group signature demo1: retrieve credentials")
+    parser.add_argument('-d',
                         metavar='dir',
-                        help="Group credentials path")
-    parser.add_argument('-u', '--usr-dir',
+                        help="Group credentials path.")
+    parser.add_argument('-u',
                         metavar='usr_dir',
                         default='fabric_credentials',
-                        help="Fabric credentials path")
-    parser.add_argument('-uc', '--usr-crt',
+                        help="Fabric credentials path.")
+    parser.add_argument('--usr-crt',
                         metavar='usr_crt',
                         default='user.crt',
-                        help="User certificate for TLS authentication")
-    parser.add_argument('-sk', '--usr-key',
+                        help="User certificate for TLS authentication.")
+    parser.add_argument('--usr-key',
                         metavar='usr_key',
                         default='user.key',
-                        help="User key for TLS authentication")
-    parser.add_argument('-a', '--address',
+                        help="User key for TLS authentication.")
+    parser.add_argument('-a',
                         metavar='address',
                         default='127.0.0.1',
-                        help="Group signature provider address")
-    parser.add_argument('-p', '--port',
-                        metavar='port',
-                        default='5000',
-                        help="Group signature provider port")
+                        help="Group signature (provider) server address.")
+    parser.add_argument('-p',
+                        metavar='port', type=int,
+                        default=5000,
+                        help="Group signature (provider) server port.")
     args = parser.parse_args()
-    member = Member(args.address, args.port,
-                    args.dir, (f"{args.usr_dir}/{args.usr_crt}",
-                               f"{args.usr_dir}/{args.usr_key}"))
+    member = FabricMember((args.a, args.p),
+                          args.d, (f'{args.u}/{args.usr_crt}',
+                                   f'{args.u}/{args.usr_key}'))
     member.retrieve_grpkey()
     member.join1()
     member.join2()

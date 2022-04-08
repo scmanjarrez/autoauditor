@@ -178,6 +178,7 @@ QORG=Org1MSP
 QDATE="2020-05-21 17:37:27.910352+02:00"
 # QSID from user1@Org1MSP
 QSID="eDUwOTo6Q049dXNlcjEsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1MZWdhbmVzLFNUPUNvbXVuaWRhZCBkZSBNYWRyaWQsQz1FUw=="
+BLOW="hello"
 # QBHASH from "hello"
 QBHASH="843931cf23b7d5482a55ee3ab8f05029be54c41fb7d561ae787e09269a0e16a7"
 
@@ -440,8 +441,10 @@ configure_ca_peer ()
     $BIN/fabric-ca-client enroll -u https://admin:adminpw@$(url $1 ca) --caname ca-$1 --tls.certfiles $tlscert
     # Registering peer0
     $BIN/fabric-ca-client register --caname ca-$1 --id.name peer0 --id.secret peer0pw --id.type peer --tls.certfiles $tlscert
-    # Registering user
+    # Registering user1
     $BIN/fabric-ca-client register --caname ca-$1 --id.name user1 --id.secret user1pw --id.type client --tls.certfiles $tlscert
+    # Registering user2
+    $BIN/fabric-ca-client register --caname ca-$1 --id.name user2 --id.secret user2pw --id.type client --tls.certfiles $tlscert
     # Registering admin
     $BIN/fabric-ca-client register --caname ca-$1 --id.name $1admin --id.secret $1adminpw --id.type admin --tls.certfiles $tlscert
     # Generating peer0 msp
@@ -466,10 +469,15 @@ configure_ca_peer ()
     mkdir -p $org_path/ca
     cp $peer_msp/cacerts/$(host $1 ca)-$(port $1 ca).pem $org_path/ca/ca.$1.$DOMAIN-cert.pem
 
-    # Generating user msp
+    # Generating user1 msp
     $BIN/fabric-ca-client enroll -u https://user1:user1pw@$(url $1 ca) --caname ca-$1 -M $org_users/user1@$1.$DOMAIN/msp --tls.certfiles $tlscert
     cp $org_users/user1@$1.$DOMAIN/msp/keystore/*_sk $org_users/user1@$1.$DOMAIN/msp/keystore/priv_sk
     cp $org_msp/config.yaml $org_users/user1@$1.$DOMAIN/msp/config.yaml
+
+    # Generating user2 msp
+    $BIN/fabric-ca-client enroll -u https://user2:user2pw@$(url $1 ca) --caname ca-$1 -M $org_users/user2@$1.$DOMAIN/msp --tls.certfiles $tlscert
+    cp $org_users/user2@$1.$DOMAIN/msp/keystore/*_sk $org_users/user2@$1.$DOMAIN/msp/keystore/priv_sk
+    cp $org_msp/config.yaml $org_users/user2@$1.$DOMAIN/msp/config.yaml
 
     # Generating admin msp
     $BIN/fabric-ca-client enroll -u https://$1admin:$1adminpw@$(url $1 ca) --caname ca-$1 -M $org_users/admin@$1.$DOMAIN/msp --tls.certfiles $tlscert
@@ -973,7 +981,7 @@ smartcontract_fill_whistleblower ()
     chaincode_exec org2 sub
 
     log info "Storing blow as org3"
-    chaincode_exec org3 storeblow "encryptedBlow"
+    chaincode_exec org3 storeblow $BLOW
 
     log warn "Waiting processing"
     # Transaction process time
@@ -1130,6 +1138,11 @@ while [[ $# -gt 0 ]]; do
             QSID=$2
             shift 2
             ;;
+        -qb|--qblow)
+            check_argument $1 $2
+            QBLOW=$2
+            shift 2
+            ;;
         -qbh|--qbhash)
             check_argument $1 $2
             QBHASH=$2
@@ -1176,6 +1189,12 @@ elif [ -n "$_exec" ]; then
         chaincode_exec $PEER $_exec $QID
     elif [ $_exec == qdate ] || [ $_exec == qtotaldate ] || [ $_exec == qidsdate ]; then
         chaincode_exec $PEER $_exec ${QDATE:0:7} $QORG
+    elif [ $_exec == qsubid ] || [ $_exec == qcertid ]; then
+        chaincode_exec $PEER $_exec $QSID
+    elif [ $_exec == storeblow ]; then
+        chaincode_exec $PEER $_exec $QBLOW
+    elif [ $_exec == qblow ]; then
+        chaincode_exec $PEER $_exec $QBHASH
     else
         chaincode_exec $PEER $_exec $QORG
     fi
