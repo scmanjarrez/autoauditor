@@ -1,10 +1,12 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
+	"time"
+	"strings"
+	"crypto/sha256"
+	"encoding/json"
+	"encoding/base64"
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
@@ -23,7 +25,8 @@ type Subscription struct {
 
 type Blow struct {
 	ObjectType string `json:"docType"`
-	BlowHash   string `json:"bhash"`
+	BlowHash   string `json:"blowHash"`
+	Date       string `json:"date"`
 	Blow       string `json:"blow"`
 }
 
@@ -38,6 +41,7 @@ var tagBlow = "blow"
 var indexTagSubId = "tag~sid"
 var indexOrgSubId = "organization~sid"
 var indexTagBHash = "tag~bhash"
+var indexDateBHash = "year~month~day~bhash"
 var nullValue = []byte{0x00}  // 'nil' value delete key from state, so we need null character instead
 var objTypeSub = "autoauditorSubscription"
 var objTypeBlow = "autoauditorBlow"
@@ -552,9 +556,11 @@ func (s *SmartContract) StoreBlow(
 	if err != nil {
 		return err
 	}
+	date := fmt.Sprintf("%s", time.Now().Format("2006-01-02"))
 	blow := &Blow{
 		ObjectType: objTypeBlow,
 		BlowHash: blowHash,
+		Date: date,
 		Blow: blowInp,
 	}
 	blowJSONAsBytes, err := json.Marshal(blow)
@@ -573,7 +579,17 @@ func (s *SmartContract) StoreBlow(
 	if err != nil {
 		return err
 	}
+	tagDateIndexKey, err := createCompKey(
+		ctx.GetStub(), indexDateBHash,
+		append(strings.Split(date, "-"), []string{blowHash}...))
+	if err != nil {
+		return err
+	}
 	err = putData(ctx.GetStub(), tagBHashIndexKey, nullValue)
+	if err != nil {
+		return err
+	}
+	err = putData(ctx.GetStub(), tagDateIndexKey, nullValue)
 	if err != nil {
 		return err
 	}
@@ -698,11 +714,130 @@ func (s *SmartContract) GetBlowsHash(
 				"Failed to split composite key: %s",
 				err.Error())
 		}
-		bHash := compositeKeyParts[1]
-		results = append(results, bHash)
+		blowHash := compositeKeyParts[1]
+		results = append(results, blowHash)
 	}
 	if len(results) == 0 {
 		return nil, fmt.Errorf("No results found")
+	}
+	return results, nil
+}
+
+func (s *SmartContract) GetBlowsByDate(
+	ctx contractapi.TransactionContextInterface) ([]Blow, error) {
+
+	_, params := ctx.GetStub().GetFunctionAndParameters()
+	if len(params) < 1 || len(params) > 3 {
+		return nil, fmt.Errorf(
+			"Incorrect number of arguments. " +
+				"Expecting: YYYY [MM [DD]]")
+	}
+	resIterator, err := getDataByPartialCompKey(
+		ctx.GetStub(), indexDateBHash, params,
+		[]string {""})
+	if err != nil {
+		return nil, err
+	}
+	defer resIterator.Close()
+	results := []Blow{}
+	for resIterator.HasNext() {
+		response, err := resIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+		_, compositeKeyParts, err := ctx.GetStub().SplitCompositeKey(
+			response.Key)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"Failed to split composite key: %s",
+				err.Error())
+		}
+		blowHash := compositeKeyParts[3]
+		blowJSONAsBytes, err := getData(ctx.GetStub(), blowHash)
+		if err != nil {
+			return nil, err
+		}
+		blow := new(Blow)
+		err = json.Unmarshal(blowJSONAsBytes, blow)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"Failed to unmarshall JSON: %s",
+				err.Error())
+		}
+		results = append(results, *blow)
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("No results found")
+	}
+	return results, nil
+}
+
+func (s *SmartContract) GetTotalBlowsByDate(
+	ctx contractapi.TransactionContextInterface) (int, error) {
+
+		_, params := ctx.GetStub().GetFunctionAndParameters()
+	if len(params) < 1 || len(params) > 3 {
+		return -1, fmt.Errorf(
+			"Incorrect number of arguments. " +
+				"Expecting: YYYY [MM [DD]]")
+	}
+	resIterator, err := getDataByPartialCompKey(
+		ctx.GetStub(), indexDateBHash, params,
+		[]string {""})
+	if err != nil {
+		return -1, err
+	}
+	defer resIterator.Close()
+	total := 0
+	for resIterator.HasNext() {
+		_, err := resIterator.Next()
+		if err != nil {
+			return -1, err
+		}
+		total++
+	}
+	if total == 0 {
+		return -1, fmt.Errorf(
+			"No results found")
+	}
+	return total, nil
+}
+
+func (s *SmartContract) GetBlowsHashByDate(
+	ctx contractapi.TransactionContextInterface) ([]string, error) {
+
+			_, params := ctx.GetStub().GetFunctionAndParameters()
+	if len(params) < 1 || len(params) > 3 {
+		return nil, fmt.Errorf(
+			"Incorrect number of arguments. " +
+				"Expecting: YYYY [MM [DD]]")
+	}
+	resIterator, err := getDataByPartialCompKey(
+		ctx.GetStub(), indexDateBHash, params,
+		[]string {""})
+	if err != nil {
+		return nil, err
+	}
+	defer resIterator.Close()
+	results := []string{}
+	for resIterator.HasNext() {
+		response, err := resIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+		_, compositeKeyParts, err := ctx.GetStub().SplitCompositeKey(
+			response.Key)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"Failed to split composite key: %s",
+				err.Error())
+		}
+		blowHash := compositeKeyParts[3]
+		results = append(results, blowHash)
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf(
+			"No results found")
 	}
 	return results, nil
 }
@@ -754,6 +889,15 @@ func (s *SmartContract) Help(
 		{"GetBlowsHash",
 			"Query all blows hash present in blockchain",
 			"none"},
+		{"GetBlowsByDate",
+			"Query all blows from a given Date",
+			"Date(YYYY [MM [DD]])"},
+		{"GetTotalBlowsByDate",
+			"Query number of blows from a given Date",
+			"Date(YYYY [MM [DD]])"},
+		{"GetBlowsHashByDate",
+			"Query all blows hash from a given Date",
+			"Date(YYYY [MM [DD]])"},
 		{"Help",
 			"Show smart contract available functions",
 			"none"},

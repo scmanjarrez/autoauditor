@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"encoding/json"
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
@@ -518,7 +518,7 @@ func (s *SmartContract) GetReportById(
 	if len(params) != 1 && len(params) != 2 {
 		return nil, fmt.Errorf(
 			"Incorrect number of arguments. " +
-				"Expecting: ReportID [, public|private]")
+				"Expecting: ReportID [public|private]")
 	}
 	rid := params[0]
 	var repJSONAsBytes []byte
@@ -555,7 +555,7 @@ func (s *SmartContract) GetReportHashById(
 	if len(params) != 1 && len(params) != 2 {
 		return "", fmt.Errorf(
 			"Incorrect number of arguments. " +
-				"Expecting: ReportID [, public|private]")
+				"Expecting: ReportID [public|private]")
 	}
 	rid := params[0]
 	var hashAsBytes []byte
@@ -602,7 +602,7 @@ func (s *SmartContract) GetReportsByOrganization(
 	if len(params) != 1 && len(params) != 2 {
 		return nil, fmt.Errorf(
 			"Incorrect number of arguments. " +
-				"Expecting: OrgName [, public|private]")
+				"Expecting: OrgName [public|private]")
 	}
 	org := params[0]
 	resIterator, err := getDataByPartialCompKey(
@@ -738,7 +738,7 @@ func (s *SmartContract) GetReportsByDate(
 	if len(params) < 1 || len(params) > 3 {
 		return nil, fmt.Errorf(
 			"Incorrect number of arguments. " +
-				"Expecting: YYYY-MM [, OrgName [, public|private]]")
+				"Expecting: YYYY-MM [OrgName [public|private]]")
 	}
 	date := params[0]
 	var orgAsDB bool = false
@@ -814,7 +814,7 @@ func (s *SmartContract) GetTotalReportsByDate(
 	if len(params) != 1 && len(params) != 2 {
 		return -1, fmt.Errorf(
 			"Incorrect number of arguments. " +
-				"Expecting: YYYY-MM [, OrgName]")
+				"Expecting: YYYY-MM [OrgName]")
 	}
 	date := params[0]
 	var partialKey = []string {date}
@@ -852,7 +852,7 @@ func (s *SmartContract) GetReportsIdByDate(
 	if len(params) < 1 || len(params) > 2 {
 		return nil, fmt.Errorf(
 			"Incorrect number of arguments. " +
-				"Expecting: YYYY-MM [, OrgName]")
+				"Expecting: YYYY-MM [OrgName]")
 	}
 	date := params[0]
 	var partialKey = []string {date}
