@@ -57,12 +57,12 @@ setup(
         'Programming Language :: Python :: 3.8'
     ],
     packages=['autoauditor', 'autoauditor.gui'],
-    python_requires='>= 3.6',
+    python_requires='>= 3.7',
     install_requires=[
         'opentimestamps-client',
         'docker',
         'bs4',
-        'PySimpleGUI',
+        'PySide6',
         # Compiled from fork, check third_party/pymetasploit3/README.md
         (f'pymetasploit3 @ '
          f'file://localhost/{os.getcwd()}/'
