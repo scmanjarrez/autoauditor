@@ -176,10 +176,10 @@ chaincode_update report
 QID=report007
 QORG=Org1MSP
 QDATE="2020-05-21 17:37:27.910352+02:00"
-# QSID from user1@Org1MSP
-QSID="eDUwOTo6Q049dXNlcjEsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1MZWdhbmVzLFNUPUNvbXVuaWRhZCBkZSBNYWRyaWQsQz1FUw=="
-BLOW="hello"
-# QBHASH from "hello"
+# QSID from user1@Org2MSP
+QSID="eDUwOTo6Q049dXNlcjEsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1NYWRyaWQsU1Q9Q29tdW5pZGFkIGRlIE1hZHJpZCxDPUVT"
+BLOW="encryptedBlow"
+# echo -n "encryptedBlow" | sha256sum
 QBHASH="843931cf23b7d5482a55ee3ab8f05029be54c41fb7d561ae787e09269a0e16a7"
 
 disable_ansi_color ()
@@ -976,9 +976,6 @@ smartcontract_fill_whistleblower ()
 {
     log info "Subscribing org1 to receive blows"
     chaincode_exec org1 sub
-
-    log info "Subscribing org2 to receive blows"
-    chaincode_exec org2 sub
 
     log info "Storing blow as org3"
     chaincode_exec org3 storeblow $BLOW

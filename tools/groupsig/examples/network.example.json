@@ -4,12 +4,12 @@
         "id": "user1whistleblower",
         "wallet": {
             "description": "File system wallet to store client credentials",
-            "path": "tools/fabric_net/network/wallet"
+            "path": "tools/groupsig/verifier/wallet"
         },
         "credentials": {
             "description": "Physical credentials: used when credentials can not be obtained from wallet",
-            "cert": "tools/fabric_net/network/org3/users/user1@org3.example.com/msp/signcerts/cert.pem",
-            "private_key": "tools/fabric_net/network/org3/users/user1@org3.example.com/msp/keystore/priv_sk"
+            "cert": "tools/groupsig/verifier/fabric_credentials/user.crt",
+            "private_key": "tools/groupsig/verifier/fabric_credentials/user.key"
         }
     },
     "network": {
@@ -17,13 +17,13 @@
         "name": "fabric_net",
         "channel": "channel1",
         "organization": {
-            "description": "Org1 information",
+            "description": "Org3 information",
             "name": "org3",
             "mspid": "Org3MSP",
             "peer": {
-                "grpc_request_endpoint": "peer0.org3.example.com:8000",
+                "grpc_request_endpoint": "peer0.org3.example.com:10000",
                 "server_hostname": "peer0.org3.example.com",
-                "tls_cacerts": "tools/fabric_net/network/org3/peers/peer0.org3.example.com/tls/ca.crt"
+                "tls_cacerts": "tools/groupsig/verifier/fabric_credentials/peer.crt"
             }
         }
     }

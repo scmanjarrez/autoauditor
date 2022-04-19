@@ -33,7 +33,7 @@ readme = (_parent / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='autoauditor',
-    version='1.0.0',
+    version='3.0',
     description='Semi-automatic scanner and vulnerability exploiter',
     author='Sergio Chica',
     author_email='sergio.chica@uc3m.es',
@@ -54,7 +54,7 @@ setup(
         ('License :: OI Approved :: '
          'GNU General Public License v3 or later (GPLv3+)'),
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.8'
+        'Programming Language :: Python :: 3.7'
     ],
     packages=['autoauditor', 'autoauditor.gui'],
     python_requires='>= 3.7',
@@ -70,7 +70,13 @@ setup(
         # Compiled from fork, check third_party/fabric_sdk/README.md
         (f'fabric-sdk-py @ '
          f'file://localhost/{os.getcwd()}/'
-         f'third_party/fabric_sdk/fabric_sdk_py-0.9.0-py3-none-any.whl')
+         f'third_party/fabric_sdk/fabric_sdk_py-0.9.0-py3-none-any.whl'),
+        # Compiled code, still need to compile the C sources
+        # check third_party/libgroupsig/README.md
+        (f'pygroupsig @ '
+         f'file://localhost/{os.getcwd()}/'
+         f'third_party/libgroupsig/'
+         f'pygroupsig-1.1.0-cp38-cp38-linux_x86_64.whl')
     ],
     entry_points={
         'console_scripts': [

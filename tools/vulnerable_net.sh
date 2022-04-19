@@ -35,8 +35,7 @@ ROOT=$PWD/tools/vulnerable_net
 YAML=$ROOT/docker-compose.yaml
 CFG=$ROOT/examples/vpn.example.ovpn
 
-WALLET_NAME=wallet-test
-VENV_NAME=.venv
+VENV=venv
 
 log ()
 {
@@ -120,8 +119,7 @@ network_down ()
     docker-compose $NO_COLOR -f $YAML down -v
 
     log info "Removing vulnerable network files"
-    rm -rf $VENV_NAME
-    rm -rf $WALLET_NAME
+    rm -rf $VENV
 }
 
 pkg_info ()
@@ -181,8 +179,8 @@ create_venv ()
     log info "Generating virtual environment"
     local errorf=/tmp/autoauditor.venv.error
 
-    if [ ! -d $VENV_NAME ]; then
-        python3 -m venv $VENV_NAME > $errorf
+    if [ ! -d $VENV ]; then
+        python3 -m venv $VENV > $errorf
         if [ $? -ne 0 ]; then
             cat $errorf
             exit

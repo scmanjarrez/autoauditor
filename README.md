@@ -11,6 +11,7 @@ Semiautomatic vulnerabilities auditor using docker containers.
   - [Pre-execution (optional)](#pre-execution-optional)
     - [Vulnerable network](#vulnerable-network)
     - [Fabric network](#fabric-network)
+    - [Groupsig](#groupsig)
     - [Python virtual environment](#python-virtual-environment)
   - [Execution](#execution)
     - [Command line interface](#command-line-interface)
@@ -27,7 +28,8 @@ Semiautomatic vulnerabilities auditor using docker containers.
   - [Output](#output)
   - [Post-execution (optional)](#post-execution-optional)
     - [Vulnerable network](#vulnerable-network-1)
-    - [Hyperledger Fabric network](#hyperledger-fabric-network-1)
+    - [Fabric network](#fabric-network-1)
+    - [Groupsig](#groupsig-1)
     - [Python virtual environment](#python-virtual-environment-1)
   - [Errors and fixes](#errors-and-fixes)
     - [Invalid credentials](#invalid-credentials)
@@ -74,12 +76,13 @@ tools/vulnerable_net.sh
 <!-- > Test environment set up: https://youtu.be/XYmzdHH_G-o -->
 
 ## Fabric network
-We have prepared a containerized environment mimicking hyperledger fabric network: fabric\_net
+We have prepared a containerized environment mimicking hyperledger
+fabric network: fabric\_net
 
 **Features**:
 - Isolated network: autoauditor\_fabric\_net
 - <details>
-    <summary>Nine containers + DNS container</summary>
+    <summary>Twelve containers + DNS container</summary>
     <ul>
         <li>autoauditor_dns</li>
         <li>autoauditor_ca_orderer</li>
@@ -90,22 +93,68 @@ We have prepared a containerized environment mimicking hyperledger fabric networ
         <li>autoauditor_ca_org2</li>
         <li>autoauditor_peer0_org2</li>
         <li>autoauditor_couchdb_org2</li>
+        <li>autoauditor_ca_org3</li>
+        <li>autoauditor_peer0_org3</li>
+        <li>autoauditor_couchdb_org3</li>
         <li>autoauditor_cli</li>
     </ul>
   </details>
-- Three organizations:
+- Four organizations:
   - Org1: Peer + CA
-    - Users: admin, user1
+    - Users: admin, user1, user2
   - Org2: Peer + CA
-    - Users: admin, user1
+    - Users: admin, user1, user2
+  - Org3: Peer + CA
+    - Users: admin, user1, user2
   - Orderer: Orderer + CA
     - Users: admin
-- Autoauditor smart contract installed in Org1
+- Report smart contract installed in Org1
+- Whistleblower smart contract installed in Org1 and Org3
 - One DNS resolver.
 
 **Run**:
 ```bash
 $ tools/fabric_net.sh
+```
+
+## Groupsig
+In order to use groupsig add-on, it is mandatory to compile
+the C sources:
+```bash
+$ cd third_party/libgroupsig/libgroupsig
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+```
+
+And generate the crypto material for each component (must be run
+after fabric_net is up):
+```bash
+$ tools/groupsig.sh
+```
+
+Start the provider and verifier servers:
+```bash
+$ python tools/groupsig/provider/groupsig_provider.py --crt tools/groupsig/provider/provider.crt --key tools/groupsig/provider/provider.key --ca-dir tools/groupsig/provider/fabric_ca_certs
+```
+```bash
+$ python tools/groupsig/verifier/groupsig_verifier.py --crt tools/groupsig/verifier/verifier.crt --key tools/groupsig/verifier/verifier.key -b tools/groupsig/examples/network.example.json
+```
+Tools to register members in the group, publish blows and read blows
+can be found under `tools/groupsig/informer` and `tools/groupsig/reader`.
+
+Register:
+```bash
+$ python tools/groupsig/informer/groupsig_register.py -u tools/groupsig/informer/fabric_credentials --crt user.crt --key user.key -d tools/groupsig/informer/credentials
+```
+Publish blow:
+```bash
+$ python tools/groupsig/informer/groupsig_inform.py -u tools/groupsig/informer/fabric_credentials --crt user.crt --key user.key -d tools/groupsig/informer/credentials
+```
+Read blows:
+```bash
+$ python tools/groupsig/reader/groupsig_read.py -u tools/groupsig/reader/fabric_credentials --crt user.crt --key user.key
 ```
 
 ## Python virtual environment
@@ -327,14 +376,20 @@ Stop vulnerable network
 $ tools/vulnerable_net.sh --down
 ```
 
-## Hyperledger Fabric network
+## Fabric network
 Stop fabric network
 ```bash
 $ tools/fabric_net.sh --down
 ```
 
+## Groupsig
+Remove the crypto material
+```bash
+$ tools/groupsig.sh --clean
+```
+
 ## Python virtual environment
-Deactivate virtual environment
+Deactivate the virtual environment
 ```bash
 $ deactivate
 ```

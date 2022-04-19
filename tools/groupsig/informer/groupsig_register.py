@@ -1,7 +1,30 @@
 #!/usr/bin/env python3
 
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# groupsig_register - User (register) component.
+
+# Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Universidad Carlos III de Madrid.
+
+# This file is part of autoauditor.
+
+# autoauditor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# autoauditor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
 from pygroupsig import (constants, groupsig, grpkey,
                         memkey, message)
+
 import argparse
 import requests
 import urllib3
@@ -9,13 +32,13 @@ import errno
 import json
 import sys
 import os
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 CODE = constants.PS16_CODE
 groupsig.init(CODE)
 
-CRED_DIR = 'credentials'
 COLORS = {
     'R': '\033[91m',
     'Y': '\033[93m',
@@ -64,7 +87,7 @@ def http_req(method, session, url, msg=None):
     return resp
 
 
-class FabricMember:
+class User:
     def __init__(self, provider, grp_dir, cert):
         self.url = f'https://{provider[0]}:{provider[1]}'
         self.session = requests.Session()
@@ -74,22 +97,16 @@ class FabricMember:
         self.token = None
         self.usk = None
         self.grp_dir = grp_dir
-        if self.grp_dir is not None:
-            self.load()
-
-    def load(self):
-        with open(f'{self.grp_dir}/memkey') as f:
-            self.usk = memkey.memkey_import(CODE, f.read())
 
     def save_credentials(self):
         if self.usk is not None:
             try:
-                os.makedirs(CRED_DIR, exist_ok=True)
+                os.makedirs(self.grp_dir, exist_ok=True)
             except PermissionError:
                 log('error',
-                    f"Can not create {CRED_DIR}",
+                    f"Can not create {self.grp_dir}",
                     err=errno.EACCES)
-            with open(f'{CRED_DIR}/memkey', 'w') as f:
+            with open(f'{self.grp_dir}/memkey', 'w') as f:
                 f.write(memkey.memkey_export(self.usk))
 
     def retrieve_grpkey(self):
@@ -154,17 +171,18 @@ def main():
         description="autoauditor group signature demo1: retrieve credentials")
     parser.add_argument('-d',
                         metavar='dir',
+                        default='tools/groupsig/informer/credentials',
                         help="Group credentials path.")
     parser.add_argument('-u',
                         metavar='usr_dir',
-                        default='fabric_credentials',
+                        default='tools/groupsig/informer/fabric_credentials',
                         help="Fabric credentials path.")
-    parser.add_argument('--usr-crt',
-                        metavar='usr_crt',
+    parser.add_argument('--crt',
+                        metavar='crt',
                         default='user.crt',
                         help="User certificate for TLS authentication.")
-    parser.add_argument('--usr-key',
-                        metavar='usr_key',
+    parser.add_argument('--key',
+                        metavar='key',
                         default='user.key',
                         help="User key for TLS authentication.")
     parser.add_argument('-a',
@@ -176,13 +194,13 @@ def main():
                         default=5000,
                         help="Group signature (provider) server port.")
     args = parser.parse_args()
-    member = FabricMember((args.a, args.p),
-                          args.d, (f'{args.u}/{args.usr_crt}',
-                                   f'{args.u}/{args.usr_key}'))
-    member.retrieve_grpkey()
-    member.join1()
-    member.join2()
-    member.save_credentials()
+    user = User((args.a, args.p),
+                args.d, (f'{args.u}/{args.crt}',
+                         f'{args.u}/{args.key}'))
+    user.retrieve_grpkey()
+    user.join1()
+    user.join2()
+    user.save_credentials()
 
 
 if __name__ == '__main__':

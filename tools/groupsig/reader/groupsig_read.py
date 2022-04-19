@@ -1,10 +1,33 @@
 #!/usr/bin/env python3
 
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# groupsig_read - User (reader) component.
+
+# Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Universidad Carlos III de Madrid.
+
+# This file is part of autoauditor.
+
+# autoauditor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# autoauditor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.kdf import hkdf
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography import x509
+
 import argparse
 import requests
 import urllib3
@@ -13,12 +36,12 @@ import errno
 import json
 import sys
 import re
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 B64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}=='
                  r'|[A-Za-z0-9+/]{3}=)?$')
-CRED_DIR = 'credentials'
 COLORS = {
     'R': '\033[91m',
     'Y': '\033[93m',
@@ -79,9 +102,9 @@ def http_get(session, url):
     return resp
 
 
-class FabricMember:
-    def __init__(self, bridge, cert):
-        self.url = f'https://{bridge[0]}:{bridge[1]}'
+class Reader:
+    def __init__(self, verifier, cert):
+        self.url = f'https://{verifier[0]}:{verifier[1]}'
         self.session = requests.Session()
         self.session.verify = False
         self.cert = cert
@@ -146,6 +169,12 @@ class FabricMember:
                                             err=1)
                                     else:
                                         log('succ',
+                                            "Blow decrypted successfully")
+                                        log('info',
+                                            f"BlowHash: {blow['blowHash']}")
+                                        log('info',
+                                            f"BlowDate: {blow['date']}")
+                                        log('info',
                                             f"Blow: {decrypted['blow']}")
                                         ownblows += 1
                     if ownblows == 0:
@@ -161,29 +190,29 @@ def main():
         description="autoauditor group signature demo3: read a blow")
     parser.add_argument('-u',
                         metavar='usr_dir',
-                        default='fabric_credentials',
+                        default='tools/groupsig/reader/fabric_credentials',
                         help="Fabric credentials path.")
-    parser.add_argument('--usr-crt',
-                        metavar='usr_crt',
+    parser.add_argument('--crt',
+                        metavar='crt',
                         default='user.crt',
                         help="User crt for blow verification.")
-    parser.add_argument('--usr-key',
-                        metavar='usr_key',
+    parser.add_argument('--key',
+                        metavar='key',
                         default='user.key',
                         help="User key for blow decryption.")
     parser.add_argument('-a',
                         metavar='address',
                         default='127.0.0.1',
-                        help="Group signature (bridge) server address.")
+                        help="Group signature (verifier) server address.")
     parser.add_argument('-p',
                         metavar='port', type=int,
                         default=5050,
-                        help="Group signature (bridge) server port.")
+                        help="Group signature (verifier) server port.")
     args = parser.parse_args()
-    member = FabricMember((args.a, args.p),
-                          (f'{args.u}/{args.usr_crt}',
-                           f'{args.u}/{args.usr_key}'))
-    member.retrieve_blows()
+    reader = Reader((args.a, args.p),
+                    (f'{args.u}/{args.crt}',
+                     f'{args.u}/{args.key}'))
+    reader.retrieve_blows()
 
 
 if __name__ == '__main__':

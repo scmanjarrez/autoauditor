@@ -3,6 +3,7 @@
 from pygroupsig import constants, gml, groupsig, grpkey, message, mgrkey
 from flask import Flask, render_template, request
 from uuid import uuid4
+
 import werkzeug.serving
 import argparse
 import OpenSSL
@@ -17,8 +18,8 @@ app = Flask(__name__)
 CODE = constants.PS16_CODE
 groupsig.init(CODE)
 
-CRED_DIR = 'credentials'
-MGR = None
+CRED_DIR = 'tools/groupsig/provider/credentials'
+PVR = None
 TOKENS = {}
 F_IMP = {
     'mgrkey': mgrkey.mgrkey_import,
@@ -72,7 +73,7 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
         return environ
 
 
-class Manager:
+class Provider:
     def __init__(self, grp_dir):
         self.grp_dir = grp_dir
         if self.grp_dir is None:
@@ -129,12 +130,12 @@ class Manager:
 
 @app.route('/')
 def home():
-    return render_template('index_provider.html')
+    return render_template('index.html')
 
 
 @app.route('/grpkey')
 def grp_key():
-    return {'msg': MGR.export_grpkey()}
+    return {'msg': PVR.export_grpkey()}
 
 
 @app.route('/join')
@@ -149,9 +150,9 @@ def join_step1():
     if client_sha not in TOKENS:
         TOKENS[client_sha] = [False, '']
         msg1 = groupsig.join_mgr(0,
-                                 MGR.group['mgrkey'],
-                                 MGR.group['grpkey'],
-                                 gml=MGR.group['gml'])
+                                 PVR.group['mgrkey'],
+                                 PVR.group['grpkey'],
+                                 gml=PVR.group['gml'])
         token = str(uuid4())
         TOKENS[client_sha][1] = token
         res['msg'] = message.message_to_base64(msg1)
@@ -174,10 +175,10 @@ def join_step2(token):
                 data = request.get_json()
                 msgin = message.message_from_base64(data['msg'])
                 msg3 = groupsig.join_mgr(2,
-                                         MGR.group['mgrkey'],
-                                         MGR.group['grpkey'],
+                                         PVR.group['mgrkey'],
+                                         PVR.group['grpkey'],
                                          msgin=msgin,
-                                         gml=MGR.group['gml'])
+                                         gml=PVR.group['gml'])
                 res['msg'] = message.message_to_base64(msg3)
             else:
                 res['msg'] = ("Error: You already completed "
@@ -196,37 +197,37 @@ def main():
                         help="Group credentials path.")
     parser.add_argument('--ca-dir',
                         metavar='ca_dir',
-                        default='fabric_ca_certs',
+                        default='tools/groupsig/provider/fabric_ca_certs',
                         help=("CA certificates path. "
                               "Certificates must be in format HHHHHHHH.D."
                               "Check man c_rehash."))
-    parser.add_argument('--svr-crt',
-                        metavar='svr_crt',
-                        default='provider.crt',
+    parser.add_argument('--crt',
+                        metavar='crt',
+                        default='tools/groupsig/provider/provider.crt',
                         help="Server certificate for TLS connection.")
-    parser.add_argument('--svr-key',
-                        metavar='svr_key',
-                        default='provider.key',
+    parser.add_argument('--key',
+                        metavar='key',
+                        default='tools/groupsig/provider/provider.key',
                         help="Server key for TLS connection.")
     parser.add_argument('-p',
                         metavar='port', type=int,
                         default=5000,
                         help="Server listening port.")
     args = parser.parse_args()
-    global MGR
-    MGR = Manager(args.d)
+    global PVR
+    PVR = Provider(args.d)
     ssl_context = ssl.create_default_context(
         purpose=ssl.Purpose.CLIENT_AUTH, capath=args.ca_dir)
 
     # Server certificate and key for TLS connection
     ssl_context.load_cert_chain(
-        certfile=args.svr_crt, keyfile=args.svr_key)
+        certfile=args.crt, keyfile=args.key)
     # Force client certificate authentication
     ssl_context.verify_mode = ssl.CERT_REQUIRED
     app.run(ssl_context=ssl_context,
             request_handler=PeerCertWSGIRequestHandler,
             port=args.p)
-    MGR.save_credentials()
+    PVR.save_credentials()
 
 
 if __name__ == '__main__':

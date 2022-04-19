@@ -1,8 +1,31 @@
 #!/usr/bin/env python3
 
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# grupsig_verifier - Verifier component.
+
+# Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Universidad Carlos III de Madrid.
+
+# This file is part of autoauditor.
+
+# autoauditor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# autoauditor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
 from pygroupsig import constants, groupsig, grpkey, signature
 from flask import Flask, render_template, request
 from autoauditor import blockchain as bc
+
 import argparse
 import requests
 import asyncio
@@ -18,7 +41,7 @@ app = Flask(__name__)
 CODE = constants.PS16_CODE
 groupsig.init(CODE)
 
-BRG = None
+VRF = None
 COLORS = {
     'R': '\033[91m',
     'Y': '\033[93m',
@@ -63,7 +86,7 @@ def http_get(session, url):
     return resp
 
 
-class Bridge:
+class Verifier:
     def __init__(self, provider, blockchain):
         self.info = bc.load_config(blockchain)
         self.url = f'https://{provider[0]}:{provider[1]}'
@@ -93,6 +116,33 @@ class Bridge:
         resp = http_get(self.session, f'{self.url}/grpkey')
         data = json.loads(resp.text)
         self.grpkey = grpkey.grpkey_import(CODE, data['msg'])
+
+    def retrieve_sids(self):
+        user, client, peer, channel = self.info
+        res = {
+            'msg': "Error:"
+        }
+        try:
+            resp = loop.run_until_complete(client.chaincode_query(
+                requestor=user,
+                channel_name=channel,
+                peers=[peer],
+                fcn='GetSubscribersId',
+                args=None,
+                cc_name='whistleblower'
+            ))
+        except Exception as e:
+            import grpc
+            if isinstance(e, grpc._channel._MultiThreadedRendezvous):
+                log('error',
+                    ("Error querying blockchain. "
+                     "Are you running updated credentials?"))
+                res['msg'] = "Error: server running outdated credentials."
+            else:
+                res['msg'] = f"Error: {e.args[0][0].response.message}"
+        else:
+            res['msg'] = resp
+        return res
 
     def retrieve_certificate(self, sid):
         user, client, peer, channel = self.info
@@ -187,7 +237,7 @@ def pub_key():
     }
     data = request.get_json()
     if 'sid' in data:
-        res = BRG.retrieve_certificate(data['sid'])
+        res = VRF.retrieve_certificate(data['sid'])
     return res
 
 
@@ -210,16 +260,21 @@ def blow():
         if groupsig.verify(
                 signature.signature_import(CODE, sig),
                 json.dumps(verify).encode(),
-                BRG.grpkey):
-            res = BRG.publish_blow(env, cnt)
+                VRF.grpkey):
+            res = VRF.publish_blow(env, cnt)
         else:
             res['msg'] = "Error: invalid signature. Verification failed"
     return res
 
 
+@app.route('/sids')
+def sids():
+    return VRF.retrieve_sids()
+
+
 @app.route('/blows')
 def blows():
-    return BRG.blows()
+    return VRF.blows()
 
 
 def main():
@@ -227,7 +282,7 @@ def main():
         description="autoauditor group signature provider")
     parser.add_argument('-b',
                         metavar='bc_cfg',
-                        default='network.example.json',
+                        default='tools/groupsig/examples/network.example.json',
                         help="Group signature (provider) server address.")
     parser.add_argument('--pvr-address',
                         metavar='provider_address',
@@ -237,22 +292,22 @@ def main():
                         metavar='provider_port', type=int,
                         default=5000,
                         help="Blockchain network configuration.")
-    parser.add_argument('--svr-crt',
-                        metavar='svr_crt',
-                        default='bridge.crt',
+    parser.add_argument('--crt',
+                        metavar='crt',
+                        default='tools/groupsig/verifier/verifier.crt',
                         help="Server certificate for TLS connection.")
-    parser.add_argument('--svr-key',
-                        metavar='svr_key',
-                        default='bridge.key',
+    parser.add_argument('--key',
+                        metavar='key',
+                        default='tools/groupsig/verifier/verifier.key',
                         help="Server key for TLS connection.")
     parser.add_argument('-p',
                         metavar='port', type=int,
                         default=5050,
                         help="Server listening port.")
     args = parser.parse_args()
-    global BRG
-    BRG = Bridge((args.pvr_address, args.pvr_port), args.b)
-    app.run(ssl_context=(args.svr_crt, args.svr_key),
+    global VRF
+    VRF = Verifier((args.pvr_address, args.pvr_port), args.b)
+    app.run(ssl_context=(args.crt, args.key),
             port=args.p)
 
 
