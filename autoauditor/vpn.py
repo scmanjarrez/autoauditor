@@ -29,7 +29,6 @@ import docker
 
 def start_vpn(ovpn_file):
     dcl = docker.from_env()
-    vpncont = None
     ut.log('info', ct.VPNSTAT, end='\r')
     try:
         image = dcl.images.get('dperson/openvpn-client')
@@ -52,9 +51,9 @@ def start_vpn(ovpn_file):
         ipam_pool = docker.types.IPAMPool(subnet='10.10.20.0/24')
         ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
         try:
-            net = dcl.networks.get(ct.NET_NAME)
+            dcl.networks.get(ct.NET_NAME)
         except docker.errors.NotFound:
-            net = dcl.networks.create(
+            dcl.networks.create(
                 ct.NET_NAME, driver='bridge', ipam=ipam_config)
         vpncont = dcl.containers.run(image, ('sh -c "sleep 5 && '
                                              '/sbin/tini -- '

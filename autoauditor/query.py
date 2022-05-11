@@ -69,7 +69,8 @@ def query(info, args):
         response = loop.run_until_complete(client.chaincode_query(
             requestor=user,
             channel_name=channel,
-            peers=[peer],
+            peers=[client.peers[peer] for peer in client.peers
+                   if args.P in peer],
             fcn=cc_fcn,
             args=cc_args,
             cc_name=bc.CC
@@ -131,6 +132,9 @@ def main():
                          choices=['public', 'private'],
                          help=("Database filter. "
                                "Choose between public or private."))
+    cmd_opt.add_argument('-P',
+                         metavar='peer', default='org1',
+                         help="Query target peer.")
     misc_opt = parser.add_argument_group("misc options")
     misc_opt.add_argument('--pretty',
                           action='store_true',
@@ -144,7 +148,7 @@ def main():
     if args.no_color:
         ut.disable_ansi_colors()
 
-    ut.copyright()
+    ut.copyright_notice()
 
     info = bc.load_config(args.b)
     query(info, args)

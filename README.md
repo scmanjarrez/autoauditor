@@ -414,6 +414,10 @@ $ deactivate
 **Fix:** Check connection to peers. If using fabric\_net, check that
 **autoauditor_dns** container is running.
 
+## Failed to connect
+> status = StatusCode.UNAVAILABLE<br>details = "failed to connect to all addresses"
+**Fix:** Check **grpc_request_endpoint** in network configuration file.
+
 # Acknowledgements
 **This work has been supported by National R&D Project TEC2017-84197-C4-1-R and by
 the Comunidad de Madrid project CYNAMON P2018/TCS-4566 and co-financed by European

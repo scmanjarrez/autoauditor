@@ -49,7 +49,6 @@ def get_msf_connection(passwd):
 
 def start_msf(loot_dir, ovpn=False):
     dcl = docker.from_env()
-    msfcont = None
     ut.log('info', ct.MSSTAT, end='\r')
     try:
         image = dcl.images.get('metasploitframework/metasploit-framework')

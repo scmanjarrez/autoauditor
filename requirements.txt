@@ -6,4 +6,4 @@ third_party/pymetasploit3/pymetasploit3-1.0-py3-none-any.whl
 third_party/fabric_sdk/fabric_sdk_py-0.9.0-py3-none-any.whl
 flask
 pyopenssl
-third_party/librgroupsig/pygroupsig-1.1.0-cp38-cp38-linux_x86_64.whl
+third_party/libgroupsig/pygroupsig-1.1.0-cp38-cp38-linux_x86_64.whl

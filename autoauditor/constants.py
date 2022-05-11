@@ -50,10 +50,10 @@ DEF_DIR = 'output'
 DEF_OUT = f'{DEF_DIR}/msf.log'
 DEF_BLOCK = f'{DEF_DIR}/blockchain.log'
 DEF_TEMPLATE = 'tools/templates'
+DEF_EPEERS = 'org1,org2'
 
 # Templates
 RC_TEMPLATE = Path(f'{DEF_TEMPLATE}/rc.template').absolute()
-VPN_TEMPLATE = Path(f'{DEF_TEMPLATE}/ovpn.template').absolute()
 NET_TEMPLATE = Path(f'{DEF_TEMPLATE}/network.template').absolute()
 
 # Log Messages

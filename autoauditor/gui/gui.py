@@ -337,6 +337,7 @@ class Backend(QObject):
         if cfg is not None:
             bc.store_report(cfg, self.log,
                             self._property('tfBlog', 'text'),
+                            ct.DEF_EPEERS,
                             loop=self.async_loop)
 
     @Slot()
