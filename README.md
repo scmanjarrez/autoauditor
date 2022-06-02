@@ -141,20 +141,20 @@ $ python tools/groupsig/provider/groupsig_provider.py --crt tools/groupsig/provi
 ```bash
 $ python tools/groupsig/verifier/groupsig_verifier.py --crt tools/groupsig/verifier/verifier.crt --key tools/groupsig/verifier/verifier.key -b tools/groupsig/examples/network.example.json
 ```
-Tools to register members in the group, publish blows and read blows
-can be found under `tools/groupsig/informer` and `tools/groupsig/reader`.
+Tools to register members in the group, publish disclosures and read disclosures
+can be found under `tools/groupsig/informer` and `tools/groupsig/recipient`.
 
 Register:
 ```bash
 $ python tools/groupsig/informer/groupsig_register.py -u tools/groupsig/informer/fabric_credentials --crt user.crt --key user.key -d tools/groupsig/informer/credentials
 ```
-Publish blow:
+Publish disclosure:
 ```bash
 $ python tools/groupsig/informer/groupsig_inform.py -u tools/groupsig/informer/fabric_credentials --crt user.crt --key user.key -d tools/groupsig/informer/credentials
 ```
-Read blows:
+Read disclosures:
 ```bash
-$ python tools/groupsig/reader/groupsig_read.py -u tools/groupsig/reader/fabric_credentials --crt user.crt --key user.key
+$ python tools/groupsig/recipient/groupsig_read.py -u tools/groupsig/recipient/fabric_credentials --crt user.crt --key user.key
 ```
 
 ## Python virtual environment

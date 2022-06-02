@@ -123,9 +123,9 @@ class Reader:
                 f'{self.keypair[0].subject.rfc4514_string()}::'
                 f'{self.keypair[0].issuer.rfc4514_string()}').encode()
 
-    def retrieve_blows(self):
+    def retrieve_disclosures(self):
         if self.keypair[0] is not None and self.keypair[1] is not None:
-            resp = http_get(self.session, f'{self.url}/blows')
+            resp = http_get(self.session, f'{self.url}/disclosures')
             if resp.status_code == 200:
                 try:
                     data = json.loads(resp.text)
@@ -133,12 +133,13 @@ class Reader:
                     log('error',
                         "Error decoding groupkey message.", err=1)
                 else:
-                    blows = json.loads(data['msg'])
-                    ownblows = 0
-                    for blow in blows:
-                        if B64.match(blow['blow']):
+                    disclosures = json.loads(data['msg'])
+                    owndisclosures = 0
+                    for disclosure in disclosures:
+                        if B64.match(disclosure['disclosure']):
                             b64 = json.loads(
-                                base64.b64decode(blow['blow'].encode()))
+                                base64.b64decode(
+                                    disclosure['disclosure'].encode()))
                             env = json.loads(
                                 base64.b64decode(b64['envelope']))
                             if self.cert_sid() == base64.b64decode(env['sid']):
@@ -169,17 +170,21 @@ class Reader:
                                             err=1)
                                     else:
                                         log('succ',
-                                            "Blow decrypted successfully")
+                                            "Disclosure decrypted "
+                                            "successfully")
                                         log('info',
-                                            f"BlowHash: {blow['blowHash']}")
+                                            f"DisclosureHash: "
+                                            f"{disclosure['disclosureHash']}")
                                         log('info',
-                                            f"BlowDate: {blow['date']}")
+                                            f"DisclosureDate: "
+                                            f"{disclosure['date']}")
                                         log('info',
-                                            f"Blow: {decrypted['blow']}")
-                                        ownblows += 1
-                    if ownblows == 0:
+                                            f"Disclosure: "
+                                            f"{decrypted['disclosure']}")
+                                        owndisclosures += 1
+                    if owndisclosures == 0:
                         log('warn',
-                            "No blows assigned to your credentials.")
+                            "No disclosures assigned to your credentials.")
             else:
                 log('error',
                     "Error on GET: grpkey (provider).", err=1)
@@ -187,19 +192,19 @@ class Reader:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="autoauditor group signature demo3: read a blow")
+        description="autoauditor group signature demo3: read a disclosure")
     parser.add_argument('-u',
                         metavar='usr_dir',
-                        default='tools/groupsig/reader/fabric_credentials',
+                        default='tools/groupsig/recipient/fabric_credentials',
                         help="Fabric credentials path.")
     parser.add_argument('--crt',
                         metavar='crt',
                         default='user.crt',
-                        help="User crt for blow verification.")
+                        help="User crt for disclosure verification.")
     parser.add_argument('--key',
                         metavar='key',
                         default='user.key',
-                        help="User key for blow decryption.")
+                        help="User key for disclosure decryption.")
     parser.add_argument('-a',
                         metavar='address',
                         default='127.0.0.1',
@@ -212,7 +217,7 @@ def main():
     reader = Reader((args.a, args.p),
                     (f'{args.u}/{args.crt}',
                      f'{args.u}/{args.key}'))
-    reader.retrieve_blows()
+    reader.retrieve_disclosures()
 
 
 if __name__ == '__main__':

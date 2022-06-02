@@ -171,7 +171,7 @@ class Verifier:
             res['msg'] = resp
         return res
 
-    def publish_blow(self, envelope, content):
+    def publish_disclosure(self, envelope, content):
         user, client, peer, channel = self.info
         store = {
             'envelope': envelope,
@@ -180,15 +180,15 @@ class Verifier:
         res = {
             'msg': "Error:"
         }
-        b64blow = base64.b64encode(json.dumps(store).encode()).decode()
+        b64disc = base64.b64encode(json.dumps(store).encode()).decode()
         try:
             resp = loop.run_until_complete(client.chaincode_invoke(
                 requestor=user,
                 channel_name=channel,
                 peers=[client.peers['peer0.org3.example.com'],
                        client.peers['peer0.org1.example.com']],
-                fcn='StoreBlow',
-                args=[b64blow],
+                fcn='PublishDisclosure',
+                args=[b64disc],
                 cc_name='whistleblower'
             ))
             print(resp)
@@ -196,14 +196,14 @@ class Verifier:
             res['msg'] = f"Error: {e.args[0][0].response.message}"
         else:
             if not resp:
-                res['msg'] = "Blow stored succesfully"
+                res['msg'] = "Disclosure stored succesfully"
             elif 'already' in resp:
-                res['msg'] = "Error: Blow already in blockchain"
+                res['msg'] = "Error: Disclosure already in blockchain"
             else:
                 res['msg'] = f"Error: {resp}"
         return res
 
-    def blows(self):
+    def disclosures(self):
         user, client, peer, channel = self.info
         res = {
             'msg': "Error:"
@@ -213,7 +213,7 @@ class Verifier:
                 requestor=user,
                 channel_name=channel,
                 peers=[peer],
-                fcn='GetBlows',
+                fcn='GetDisclosures',
                 args=None,
                 cc_name='whistleblower'
             ))
@@ -241,8 +241,8 @@ def pub_key():
     return res
 
 
-@app.route('/blow', methods=['POST'])
-def blow():
+@app.route('/disclosure', methods=['POST'])
+def disclosure():
     res = {
         'msg': "Error: envelope/content/signature missing."
     }
@@ -261,7 +261,7 @@ def blow():
                 signature.signature_import(CODE, sig),
                 json.dumps(verify).encode(),
                 VRF.grpkey):
-            res = VRF.publish_blow(env, cnt)
+            res = VRF.publish_disclosure(env, cnt)
         else:
             res['msg'] = "Error: invalid signature. Verification failed"
     return res
@@ -272,9 +272,9 @@ def sids():
     return VRF.retrieve_sids()
 
 
-@app.route('/blows')
-def blows():
-    return VRF.blows()
+@app.route('/disclosures')
+def disclosures():
+    return VRF.disclosures()
 
 
 def main():

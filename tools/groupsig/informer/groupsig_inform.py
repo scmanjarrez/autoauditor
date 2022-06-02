@@ -45,11 +45,11 @@ import os
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-BLOW = "Leaked information in Org1 due to outdated systems: CVE-2022-21907"
+DISC = "Leaked information in Org1 due to outdated systems: CVE-2022-21907"
 CODE = constants.PS16_CODE
 groupsig.init(CODE)
 
-NONCE_SZ = 8
+NONCE_SZ = 9
 COLORS = {
     'R': '\033[91m',
     'Y': '\033[93m',
@@ -195,7 +195,7 @@ class Informer:
                 self.plain_content = {
                     'date': self.plain_envelope['date'],
                     'nonce': self.plain_envelope['nonce'],
-                    'blow': BLOW
+                    'disclosure': DISC
                 }
                 self.content = fer.encrypt(
                     json.dumps(self.plain_content).encode()
@@ -220,7 +220,7 @@ class Informer:
         else:
             log('error', "Create envelope and content first", err=1)
 
-    def publish_blow(self):
+    def publish_disclosure(self):
         if (self.envelope is not None and
             self.content is not None and
             self.signature is not None):  # noqa
@@ -230,7 +230,7 @@ class Informer:
                 'signature': self.signature
             }
             resp = http_req('post', self.session_vfr,
-                            f'{self.url_vfr}/blow',
+                            f'{self.url_vfr}/disclosure',
                             post)
             if resp.status_code == 200:
                 data = json.loads(resp.text)
@@ -239,7 +239,7 @@ class Informer:
                 else:
                     log('error', data['msg'], err=1)
             else:
-                log('error', "Error on blow", err=1)
+                log('error', "Error on disclosure", err=1)
         else:
             log('error',
                 "Create envelope, content and signature first", err=1)
@@ -247,7 +247,7 @@ class Informer:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="autoauditor group signature demo2: publish a blow")
+        description="autoauditor group signature demo2: publish a disclosure")
     parser.add_argument('-d',
                         metavar='dir',
                         default='tools/groupsig/informer/credentials',
@@ -289,7 +289,7 @@ def main():
     informer.create_envelope()
     informer.create_content()
     informer.create_signature()
-    informer.publish_blow()
+    informer.publish_disclosure()
 
 
 if __name__ == '__main__':

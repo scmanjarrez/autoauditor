@@ -135,39 +135,39 @@ pkg_info ()
 check_required_pkgs ()
 {
     log info "Checking packages"
-    local all_pk=1
+    local all_pk=0
 
     local pkg=git
     command -v $pkg > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
     pkg=docker
     command -v $pkg > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
     pkg=docker-compose
     command -v $pkg > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
     pkg=python3-config
     command -v $pkg > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
     pkg=python3-venv
     python3 -c 'import ensurepip' > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
-    if [ $all_pk -eq 0 ]; then
+    if [ $all_pk -ne 0 ]; then
         log error "Mandatory package missing"
         exit 1
     fi

@@ -1,7 +1,7 @@
 {
     "client": {
         "description": "Client configuration",
-        "id": "user1whistleblower",
+        "id": "user1org3whistleblower",
         "wallet": {
             "description": "File system wallet to store client credentials",
             "path": "tools/fabric_net/network/wallet"
@@ -17,7 +17,7 @@
         "name": "fabric_net",
         "channel": "channel1",
         "organization": {
-            "description": "Org1 information",
+            "description": "Org3 information",
             "name": "org3",
             "mspid": "Org3MSP",
             "peer": {

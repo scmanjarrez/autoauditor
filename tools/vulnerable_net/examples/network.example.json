@@ -1,7 +1,7 @@
 {
     "client": {
         "description": "Client configuration",
-        "id": "user1report",
+        "id": "user1org1report",
         "wallet": {
             "description": "File system wallet to store client credentials",
             "path": "wallet-test"

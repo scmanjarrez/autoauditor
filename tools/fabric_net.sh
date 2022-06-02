@@ -44,8 +44,8 @@ SCMDS=(package install installed approve commit
        qsubs qtotalsubs qidssubs
        qsubsid qcertid
        qsubsorg qtotalsubsorg qidssubsorg
-       storeblow qblow
-       qblows qtotalblows qhashblows)
+       publishdisc qdisc
+       qdiscs qtotaldiscs qhashdiscs)
 declare -A CMDS=([package]=chaincode_package
                  [install]=chaincode_install
                  [installed]=chaincode_installed
@@ -75,11 +75,11 @@ declare -A CMDS=([package]=chaincode_package
                  [qsubsorg]=chaincode_query_1arg
                  [qtotalsubsorg]=chaincode_query_1arg
                  [qidssubsorg]=chaincode_query_1arg
-                 [storeblow]=chaincode_blow
-                 [qblow]=chaincode_query_1arg
-                 [qblows]=chaincode_query_0args
-                 [qtotalblows]=chaincode_query_0args
-                 [qhashblows]=chaincode_query_0args)
+                 [publishdisc]=chaincode_publish
+                 [qdisc]=chaincode_query_1arg
+                 [qdiscs]=chaincode_query_0args
+                 [qtotaldiscs]=chaincode_query_0args
+                 [qhashdiscs]=chaincode_query_0args)
 declare -A CC_CMD=([help]=Help
                    [store]=StoreReport
                    [delete]=DeleteReport
@@ -104,11 +104,11 @@ declare -A CC_CMD=([help]=Help
                    [qsubsorg]=GetSubscribersByOrganization
                    [qtotalsubsorg]=GetTotalSubscribersByOrganization
                    [qidssubsorg]=GetSubscribersIdByOrganization
-                   [storeblow]=StoreBlow
-                   [qblow]=GetBlowByHash
-                   [qblows]=GetBlows
-                   [qtotalblows]=GetTotalBlows
-                   [qhashblows]=GetBlowsHash)
+                   [publishdisc]=PublishDisclosure
+                   [qdisc]=GetDisclosureByHash
+                   [qdiscs]=GetDisclosures
+                   [qtotaldiscs]=GetTotalDisclosures
+                   [qhashdiscs]=GetDisclosuresHash)
 declare -A ARG=([trans]=report_st [trans_del]=report_del)
 
 OUT=/dev/null
@@ -176,11 +176,11 @@ chaincode_update report
 QID=report007
 QORG=Org1MSP
 QDATE="2020-05-21 17:37:27.910352+02:00"
-# QSID from user1@Org2MSP
-QSID="eDUwOTo6Q049dXNlcjEsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1NYWRyaWQsU1Q9Q29tdW5pZGFkIGRlIE1hZHJpZCxDPUVT"
-BLOW="encryptedBlow"
-# echo -n "encryptedBlow" | sha256sum
-QBHASH="843931cf23b7d5482a55ee3ab8f05029be54c41fb7d561ae787e09269a0e16a7"
+# QSID from user1@Org1MSP
+QSID="eDUwOTo6Q049dXNlcjEsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1MZWdhbmVzLFNUPUNvbXVuaWRhZCBkZSBNYWRyaWQsQz1FUw=="
+DISC="encryptedDisclosure"
+# echo -n "encryptedDisclosure" | sha256sum
+QDHASH="08dfc3eac27e0c4c2f992f8c619314fdc81ad0f0a3dc0a0ca7bcbfe912c546c9"
 
 disable_ansi_color ()
 {
@@ -771,7 +771,7 @@ chaincode_subscribe ()
     _cc_invoke $1 ${CC_CMD[$2]}
 }
 
-chaincode_blow ()
+chaincode_publish ()
 {
     set_variables $1 user
 
@@ -974,11 +974,11 @@ smartcontract_query_report ()
 
 smartcontract_fill_whistleblower ()
 {
-    log info "Subscribing org1 to receive blows"
+    log info "Subscribing org1 to receive disclosures"
     chaincode_exec org1 sub
 
-    log info "Storing blow as org3"
-    chaincode_exec org3 storeblow $BLOW
+    log info "Publishing disclosure as org3"
+    chaincode_exec org3 publishdisc $DISC
 
     log warn "Waiting processing"
     # Transaction process time
@@ -996,10 +996,10 @@ smartcontract_query_whistleblower ()
     chaincode_exec org3 qsubsorg $QORG
     chaincode_exec org3 qtotalsubsorg $QORG
     chaincode_exec org3 qidssubsorg $QORG
-    chaincode_exec org3 qblows
-    chaincode_exec org3 qtotalblows
-    chaincode_exec org3 qhashblows
-    chaincode_exec org3 qblow $QBHASH
+    chaincode_exec org3 qdiscs
+    chaincode_exec org3 qtotaldiscs
+    chaincode_exec org3 qhashdiscs
+    chaincode_exec org3 qdisc $QDHASH
 }
 
 usage ()
@@ -1021,16 +1021,17 @@ usage ()
     echo "    $name -CC|--chaincode CC    Set chaincode. Def: $CC. CC: $cc"
     echo "    $name -C|--channel C        Set channel. Def: $CHANNEL. C: $CHANNEL"
     echo "    $name -V|--version V        Set chaincode version. Def: $CC_VER"
+    echo "    $name -D|--disc DISC        Set disclosure. Def: $DISC"
     echo "    $name -e|--exec CMD         Execute command: $cmds"
     echo "    $name -qi|--qid QID         Set query report id. Def: $QID"
     echo "    $name -qo|--qorg QORG       Set query org. Def: $QORG. QORG: $msp"
     echo "    $name -qd|--qdate QDATE     Set query date. Def: ${QDATE:0:7}"
     echo "    $name -qsi|--qsid QSID      Set query subscriber id. Def: ${QSID::10}...${QSID: -10}"
-    echo "    $name -qbh|--qbhash QBHASH  Set query blow hash. Def: ${QBHASH::10}...${QBHASH: -10}"
+    echo "    $name -qdh|--qdhash QDHASH  Set query disclosure hash. Def: ${QDHASH::10}...${QDHASH: -10}"
     echo "    $name --no-color            No ANSI colors"
     echo "    $name --pretty              Show prettified output. Requires jq"
     echo "    $name --verbose             Enable verbose output"
-    echo "    $name -h|--help             Show this help."
+    echo "    $name -h|--help             Show this help"
 
     if [ -n "$1" ]; then
         exit $1
@@ -1109,6 +1110,11 @@ while [[ $# -gt 0 ]]; do
             CC_VER=$2
             shift 2
             ;;
+        -D|--disc)
+            check_argument $1 $2
+            DISC=$2
+            shift 2
+            ;;
         -e|--exec)
             check_argument $1 $2
             _exec=$2
@@ -1135,14 +1141,9 @@ while [[ $# -gt 0 ]]; do
             QSID=$2
             shift 2
             ;;
-        -qb|--qblow)
+        -qdh|--qdhash)
             check_argument $1 $2
-            QBLOW=$2
-            shift 2
-            ;;
-        -qbh|--qbhash)
-            check_argument $1 $2
-            QBHASH=$2
+            QDHASH=$2
             shift 2
             ;;
         --no-color)
@@ -1188,10 +1189,10 @@ elif [ -n "$_exec" ]; then
         chaincode_exec $PEER $_exec ${QDATE:0:7} $QORG
     elif [ $_exec == qsubid ] || [ $_exec == qcertid ]; then
         chaincode_exec $PEER $_exec $QSID
-    elif [ $_exec == storeblow ]; then
-        chaincode_exec $PEER $_exec $QBLOW
-    elif [ $_exec == qblow ]; then
-        chaincode_exec $PEER $_exec $QBHASH
+    elif [ $_exec == publishdisc ]; then
+        chaincode_exec $PEER $_exec $DISC
+    elif [ $_exec == qdisc ]; then
+        chaincode_exec $PEER $_exec $QDHASH
     else
         chaincode_exec $PEER $_exec $QORG
     fi

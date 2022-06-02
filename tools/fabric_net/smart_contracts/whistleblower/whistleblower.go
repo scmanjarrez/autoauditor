@@ -23,11 +23,11 @@ type Subscription struct {
 	Cert         string `json:"cert"`
 }
 
-type Blow struct {
-	ObjectType string `json:"docType"`
-	BlowHash   string `json:"blowHash"`
-	Date       string `json:"date"`
-	Blow       string `json:"blow"`
+type Disclosure struct {
+	ObjectType       string `json:"docType"`
+	DisclosureHash   string `json:"disclosureHash"`
+	Date             string `json:"date"`
+	Disclosure       string `json:"disclosure"`
 }
 
 type SmartContractHelp struct {
@@ -37,14 +37,14 @@ type SmartContractHelp struct {
 }
 
 var tagSub = "subscriber"
-var tagBlow = "blow"
+var tagDisclosure = "disclosure"
 var indexTagSubId = "tag~sid"
 var indexOrgSubId = "organization~sid"
-var indexTagBHash = "tag~bhash"
-var indexDateBHash = "year~month~day~bhash"
+var indexTagDHash = "tag~dhash"
+var indexDateDHash = "year~month~day~dhash"
 var nullValue = []byte{0x00}  // 'nil' value delete key from state, so we need null character instead
 var objTypeSub = "autoauditorSubscription"
-var objTypeBlow = "autoauditorBlow"
+var objTypeDisclosure = "autoauditorDisclosure"
 
 func verifyData(
 	stub shim.ChaincodeStubInterface,
@@ -57,7 +57,7 @@ func verifyData(
 			id, err.Error())
 	} else if subJSONAsBytes != nil {
 		return fmt.Errorf(
-			"Blow already in blockchain: %s",
+			"Disclosure already in blockchain: %s",
 			id)
 	}
 	return nil
@@ -541,47 +541,47 @@ func (s *SmartContract) GetSubscribersIdByOrganization(
 	return results, nil
 }
 
-func (s *SmartContract) StoreBlow(
+func (s *SmartContract) PublishDisclosure(
 	ctx contractapi.TransactionContextInterface) error {
 
 	_, params := ctx.GetStub().GetFunctionAndParameters()
 	if len(params) != 1 {
 		return fmt.Errorf(
 			"Incorrect number of arguments. " +
-				"Expecting: Blow")
+				"Expecting: Disclosure")
 	}
-	blowInp := params[0]
-	blowHash := fmt.Sprintf("%x", sha256.Sum256([]byte(blowInp)))
-	err := verifyData(ctx.GetStub(), blowHash)
+	disclosureInp := params[0]
+	disclosureHash := fmt.Sprintf("%x", sha256.Sum256([]byte(disclosureInp)))
+	err := verifyData(ctx.GetStub(), disclosureHash)
 	if err != nil {
 		return err
 	}
 	date := fmt.Sprintf("%s", time.Now().Format("2006-01-02"))
-	blow := &Blow{
-		ObjectType: objTypeBlow,
-		BlowHash: blowHash,
+	disclosure := &Disclosure{
+		ObjectType: objTypeDisclosure,
+		DisclosureHash: disclosureHash,
 		Date: date,
-		Blow: blowInp,
+		Disclosure: disclosureInp,
 	}
-	blowJSONAsBytes, err := json.Marshal(blow)
+	disclosureJSONAsBytes, err := json.Marshal(disclosure)
 	if err != nil {
 		return fmt.Errorf(
-			"Failed to marshall blow: %s",
+			"Failed to marshall disclosure: %s",
 			err.Error())
 	}
-	err = putData(ctx.GetStub(), blowHash, blowJSONAsBytes)
+	err = putData(ctx.GetStub(), disclosureHash, disclosureJSONAsBytes)
 	if err != nil {
 		return err
 	}
 	tagBHashIndexKey, err := createCompKey(
-		ctx.GetStub(), indexTagBHash,
-		[]string{tagBlow, blowHash})
+		ctx.GetStub(), indexTagDHash,
+		[]string{tagDisclosure, disclosureHash})
 	if err != nil {
 		return err
 	}
 	tagDateIndexKey, err := createCompKey(
-		ctx.GetStub(), indexDateBHash,
-		append(strings.Split(date, "-"), []string{blowHash}...))
+		ctx.GetStub(), indexDateDHash,
+		append(strings.Split(date, "-"), []string{disclosureHash}...))
 	if err != nil {
 		return err
 	}
@@ -596,45 +596,45 @@ func (s *SmartContract) StoreBlow(
 	return nil
 }
 
-func (s *SmartContract) GetBlowByHash(
-	ctx contractapi.TransactionContextInterface) (*Blow, error) {
+func (s *SmartContract) GetDisclosureByHash(
+	ctx contractapi.TransactionContextInterface) (*Disclosure, error) {
 
 	_, params := ctx.GetStub().GetFunctionAndParameters()
 	if len(params) != 1 {
 		return nil, fmt.Errorf(
 			"Incorrect number of arguments. " +
-				"Expecting: BlowHash")
+				"Expecting: DisclosureHash")
 	}
-	blowHash := params[0]
-	blowJSONAsBytes, err := getData(ctx.GetStub(), blowHash)
+	disclosureHash := params[0]
+	disclosureJSONAsBytes, err := getData(ctx.GetStub(), disclosureHash)
 	if err != nil {
 		return nil, err
-	} else if blowJSONAsBytes == nil {
+	} else if disclosureJSONAsBytes == nil {
 		return nil, fmt.Errorf(
-			"Blow not present in blockchain: %s",
-		blowHash)
+			"Disclosure not present in blockchain: %s",
+		disclosureHash)
 	}
-	blow := new(Blow)
-	err = json.Unmarshal(blowJSONAsBytes, blow)
+	disclosure := new(Disclosure)
+	err = json.Unmarshal(disclosureJSONAsBytes, disclosure)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Failed to unmarshall JSON: %s",
 			err.Error())
 	}
-	return blow, nil
+	return disclosure, nil
 }
 
-func (s *SmartContract) GetBlows(
-	ctx contractapi.TransactionContextInterface) ([]Blow, error) {
+func (s *SmartContract) GetDisclosures(
+	ctx contractapi.TransactionContextInterface) ([]Disclosure, error) {
 
 	resIterator, err := getDataByPartialCompKey(
-		ctx.GetStub(), indexTagBHash, []string{tagBlow},
+		ctx.GetStub(), indexTagDHash, []string{tagDisclosure},
 		[]string {""})
 	if err != nil {
 		return nil, err
 	}
 	defer resIterator.Close()
-	results := []Blow{}
+	results := []Disclosure{}
 	for resIterator.HasNext() {
 		response, err := resIterator.Next()
 		if err != nil {
@@ -647,19 +647,19 @@ func (s *SmartContract) GetBlows(
 				"Failed to split composite key: %s",
 				err.Error())
 		}
-		bHash := compositeKeyParts[1]
-		blowJSONAsBytes, err := getData(ctx.GetStub(), bHash)
+		dHash := compositeKeyParts[1]
+		disclosureJSONAsBytes, err := getData(ctx.GetStub(), dHash)
 		if err != nil {
 			return nil, err
 		}
-		blow := new(Blow)
-		err = json.Unmarshal(blowJSONAsBytes, blow)
+		disclosure := new(Disclosure)
+		err = json.Unmarshal(disclosureJSONAsBytes, disclosure)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"Failed to unmarshall JSON: %s",
 				err.Error())
 		}
-		results = append(results, *blow)
+		results = append(results, *disclosure)
 	}
 	if len(results) == 0 {
 		return nil, fmt.Errorf("No results found")
@@ -667,11 +667,11 @@ func (s *SmartContract) GetBlows(
 	return results, nil
 }
 
-func (s *SmartContract) GetTotalBlows(
+func (s *SmartContract) GetTotalDisclosures(
 	ctx contractapi.TransactionContextInterface) (int, error) {
 
 	resIterator, err := getDataByPartialCompKey(
-		ctx.GetStub(), indexTagBHash, []string{tagBlow},
+		ctx.GetStub(), indexTagDHash, []string{tagDisclosure},
 		[]string{""})
 	if err != nil {
 		return -1, err
@@ -691,11 +691,11 @@ func (s *SmartContract) GetTotalBlows(
 	return total, nil
 }
 
-func (s *SmartContract) GetBlowsHash(
+func (s *SmartContract) GetDisclosuresHash(
 	ctx contractapi.TransactionContextInterface) ([]string, error) {
 
 	resIterator, err := getDataByPartialCompKey(
-		ctx.GetStub(), indexTagBHash, []string{tagBlow},
+		ctx.GetStub(), indexTagDHash, []string{tagDisclosure},
 		[]string {""})
 	if err != nil {
 		return nil, err
@@ -714,8 +714,8 @@ func (s *SmartContract) GetBlowsHash(
 				"Failed to split composite key: %s",
 				err.Error())
 		}
-		blowHash := compositeKeyParts[1]
-		results = append(results, blowHash)
+		disclosureHash := compositeKeyParts[1]
+		results = append(results, disclosureHash)
 	}
 	if len(results) == 0 {
 		return nil, fmt.Errorf("No results found")
@@ -723,8 +723,8 @@ func (s *SmartContract) GetBlowsHash(
 	return results, nil
 }
 
-func (s *SmartContract) GetBlowsByDate(
-	ctx contractapi.TransactionContextInterface) ([]Blow, error) {
+func (s *SmartContract) GetDisclosuresByDate(
+	ctx contractapi.TransactionContextInterface) ([]Disclosure, error) {
 
 	_, params := ctx.GetStub().GetFunctionAndParameters()
 	if len(params) < 1 || len(params) > 3 {
@@ -733,13 +733,13 @@ func (s *SmartContract) GetBlowsByDate(
 				"Expecting: YYYY [MM [DD]]")
 	}
 	resIterator, err := getDataByPartialCompKey(
-		ctx.GetStub(), indexDateBHash, params,
+		ctx.GetStub(), indexDateDHash, params,
 		[]string {""})
 	if err != nil {
 		return nil, err
 	}
 	defer resIterator.Close()
-	results := []Blow{}
+	results := []Disclosure{}
 	for resIterator.HasNext() {
 		response, err := resIterator.Next()
 		if err != nil {
@@ -752,19 +752,19 @@ func (s *SmartContract) GetBlowsByDate(
 				"Failed to split composite key: %s",
 				err.Error())
 		}
-		blowHash := compositeKeyParts[3]
-		blowJSONAsBytes, err := getData(ctx.GetStub(), blowHash)
+		disclosureHash := compositeKeyParts[3]
+		disclosureJSONAsBytes, err := getData(ctx.GetStub(), disclosureHash)
 		if err != nil {
 			return nil, err
 		}
-		blow := new(Blow)
-		err = json.Unmarshal(blowJSONAsBytes, blow)
+		disclosure := new(Disclosure)
+		err = json.Unmarshal(disclosureJSONAsBytes, disclosure)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"Failed to unmarshall JSON: %s",
 				err.Error())
 		}
-		results = append(results, *blow)
+		results = append(results, *disclosure)
 	}
 	if len(results) == 0 {
 		return nil, fmt.Errorf("No results found")
@@ -772,7 +772,7 @@ func (s *SmartContract) GetBlowsByDate(
 	return results, nil
 }
 
-func (s *SmartContract) GetTotalBlowsByDate(
+func (s *SmartContract) GetTotalDisclosuresByDate(
 	ctx contractapi.TransactionContextInterface) (int, error) {
 
 		_, params := ctx.GetStub().GetFunctionAndParameters()
@@ -782,7 +782,7 @@ func (s *SmartContract) GetTotalBlowsByDate(
 				"Expecting: YYYY [MM [DD]]")
 	}
 	resIterator, err := getDataByPartialCompKey(
-		ctx.GetStub(), indexDateBHash, params,
+		ctx.GetStub(), indexDateDHash, params,
 		[]string {""})
 	if err != nil {
 		return -1, err
@@ -803,7 +803,7 @@ func (s *SmartContract) GetTotalBlowsByDate(
 	return total, nil
 }
 
-func (s *SmartContract) GetBlowsHashByDate(
+func (s *SmartContract) GetDisclosuresHashByDate(
 	ctx contractapi.TransactionContextInterface) ([]string, error) {
 
 			_, params := ctx.GetStub().GetFunctionAndParameters()
@@ -813,7 +813,7 @@ func (s *SmartContract) GetBlowsHashByDate(
 				"Expecting: YYYY [MM [DD]]")
 	}
 	resIterator, err := getDataByPartialCompKey(
-		ctx.GetStub(), indexDateBHash, params,
+		ctx.GetStub(), indexDateDHash, params,
 		[]string {""})
 	if err != nil {
 		return nil, err
@@ -832,8 +832,8 @@ func (s *SmartContract) GetBlowsHashByDate(
 				"Failed to split composite key: %s",
 				err.Error())
 		}
-		blowHash := compositeKeyParts[3]
-		results = append(results, blowHash)
+		disclosureHash := compositeKeyParts[3]
+		results = append(results, disclosureHash)
 	}
 	if len(results) == 0 {
 		return nil, fmt.Errorf(
@@ -846,9 +846,9 @@ func (s *SmartContract) Help(
 	ctx contractapi.TransactionContextInterface) []SmartContractHelp {
 
 	results := []SmartContractHelp {
-		{"Subscribe", "Subscribe to receive blows",
+		{"Subscribe", "Subscribe to receive disclosures",
 			"none"},
-		{"Unsubscribe", "Unsubscribe from blows",
+		{"Unsubscribe", "Unsubscribe from disclosures",
 			"none"},
 		{"GetSubscribers",
 			"Query all subcribers present in blockchain",
@@ -874,29 +874,29 @@ func (s *SmartContract) Help(
 		{"GetSubscribersIdByOrganization",
 			"Query all subscribers Id from a given Organization",
 			"OrgName"},
-		{"StoreBlow",
-			"Store blow in blockchain",
-			"Blow"},
-		{"GetBlowByHash",
-			"Query blow from a given Hash",
-			"BlowHash"},
-		{"GetBlows",
-			"Query all blows present in blockchain",
+		{"PublishDisclosure",
+			"Publish disclosure in blockchain",
+			"Disclosure"},
+		{"GetDisclosureByHash",
+			"Query disclosure from a given Hash",
+			"DisclosureHash"},
+		{"GetDisclosures",
+			"Query all disclosures present in blockchain",
 			"none"},
-		{"GetTotalBlows",
-			"Query number of blows present in blockchain",
+		{"GetTotalDisclosures",
+			"Query number of disclosures present in blockchain",
 			"none"},
-		{"GetBlowsHash",
-			"Query all blows hash present in blockchain",
+		{"GetDisclosuresHash",
+			"Query all disclosures hash present in blockchain",
 			"none"},
-		{"GetBlowsByDate",
-			"Query all blows from a given Date",
+		{"GetDisclosuresByDate",
+			"Query all disclosures from a given Date",
 			"Date(YYYY [MM [DD]])"},
-		{"GetTotalBlowsByDate",
-			"Query number of blows from a given Date",
+		{"GetTotalDisclosuresByDate",
+			"Query number of disclosures from a given Date",
 			"Date(YYYY [MM [DD]])"},
-		{"GetBlowsHashByDate",
-			"Query all blows hash from a given Date",
+		{"GetDisclosuresHashByDate",
+			"Query all disclosures hash from a given Date",
 			"Date(YYYY [MM [DD]])"},
 		{"Help",
 			"Show smart contract available functions",
