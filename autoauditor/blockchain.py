@@ -326,7 +326,7 @@ def store_report(info, outf, outbc, update_cache=False, loop=None):
                        err=ct.EHLFST)
             else:
                 ut.log('error',
-                       "Unknown error storing {_type} report {rhash}: {resp}",
+                       f"Unknown error storing {_type} report {rhash}: {resp}",
                        err=ct.EHLFST)
     ut.log('info', f"Blockchain output log: {outbc}")
     with open(outbc, 'w') as out:
