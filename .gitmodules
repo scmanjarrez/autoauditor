@@ -1,6 +1,0 @@
-[submodule "third_party/cvescannerv2/CVEScannerV2"]
-	path = third_party/cvescannerv2/CVEScannerV2
-	url = git@github.com:scmanjarrez/CVEScannerV2.git
-[submodule "third_party/libgroupsig/libgroupsig"]
-	path = third_party/libgroupsig/libgroupsig
-	url = git@github.com:IBM/libgroupsig.git
