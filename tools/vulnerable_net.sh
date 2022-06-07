@@ -30,7 +30,6 @@ _B="\033[94m"
 _Y="\033[93m"
 _N="\033[0m"
 
-OUT=/dev/null
 ROOT=$PWD/tools/vulnerable_net
 YAML=$ROOT/docker-compose.yaml
 CFG=$ROOT/examples/vpn.example.ovpn
@@ -195,8 +194,8 @@ create_venv ()
         exit
     fi
 
-    pip install -U pip --no-cache-dir > $OUT 2>&1
-    pip install -r requirements.txt --no-cache-dir > $OUT 2>&1
+    pip install -U pip --no-cache-dir
+    pip install -r requirements.txt --no-cache-dir
 
     log succ "Enable virtual environment with 'source $VENV_NAME/bin/activate' and run 'python3 -m autoauditor'"
 }
@@ -213,10 +212,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--no-color)
             disable_ansi_color
-            shift
-            ;;
-        -v|--verbose)
-            OUT=/dev/tty
             shift
             ;;
         -h|--help)
