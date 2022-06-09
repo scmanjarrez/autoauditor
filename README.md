@@ -39,8 +39,9 @@ Semiautomatic vulnerabilities auditor using docker containers.
 # Requirements
 - git
 - docker
-- docker-compose
+- docker-compose-plugin
 - python3-venv
+- go
 
 # Pre-execution (optional)
 ## Vulnerable network

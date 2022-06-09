@@ -35,7 +35,7 @@ YAML=$ROOT/docker-compose.yaml
 CFG=$ROOT/examples/vpn.example.ovpn
 
 WALLET_NAME=wallet-test
-VENV_NAME=.venv
+VENV_NAME=venv
 
 log ()
 {
@@ -56,7 +56,7 @@ log ()
 
 disable_ansi_color ()
 {
-    NO_COLOR=--no-ansi
+    NO_COLOR='--ansi never'
     _R=
     _G=
     _Y=
@@ -93,7 +93,7 @@ network_up ()
 
     log info "Starting docker containers"
 
-    docker-compose $NO_COLOR -f $YAML up -d
+    docker compose $NO_COLOR -f $YAML up -d
     local vpns=autoauditor_vpn_server
     local val=$(docker network connect bridge $vpns 2>&1)
     echo $val | grep "already exists" > /dev/null
@@ -116,7 +116,7 @@ network_up ()
 network_down ()
 {
     log info "Stopping docker containers"
-    docker-compose $NO_COLOR -f $YAML down -v
+    docker compose $NO_COLOR -f $YAML down -v
 
     log info "Removing vulnerable network files"
     rm -rf $VENV_NAME
@@ -127,49 +127,49 @@ pkg_info ()
 {
     local default_spaces=15
     local spaces=$(printf ' %.0s' $(seq 1 $(($default_spaces-${#1}))))
-    if [ $2 -eq 1 ]; then
-        echo -e "$1$spaces... ${_DR}missing$_N"
-    else
+    if [ $2 -eq 0 ]; then
         echo -e "$1$spaces... ${_DG}installed$_N"
+    else
+        echo -e "$1$spaces... ${_DR}missing$_N"
     fi
 }
 
 check_required_pkgs ()
 {
     log info "Checking packages"
-    local all_pk=1
+    local all_pk=0
 
     local pkg=git
     command -v $pkg > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
     pkg=docker
     command -v $pkg > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
-    pkg=docker-compose
-    command -v $pkg > /dev/null 2>&1
+    pkg=compose
+    docker $pkg > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
     pkg=python3-config
     command -v $pkg > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
     pkg=python3-venv
     python3 -c 'import ensurepip' > /dev/null 2>&1
     [[ $? -eq 0 ]] \
         && pkg_info $pkg 0  \
-            || { pkg_info $pkg 1; all_pk=0; }
+            || { pkg_info $pkg 1; all_pk=1; }
 
-    if [ $all_pk -eq 0 ]; then
+    if [ $all_pk -ne 0 ]; then
         log error "Mandatory package missing"
         exit 1
     fi
@@ -232,7 +232,7 @@ else
         network_up
     else
         up=($(docker ps -aq --filter label=autoauditor=vulnerable_net))
-        cnt=$(docker-compose -f $YAML ps --services | wc -l)
+        cnt=$(docker compose -f $YAML ps --services | wc -l)
         if [ ${#up[@]} -ne $cnt ]; then
             network_up
         fi

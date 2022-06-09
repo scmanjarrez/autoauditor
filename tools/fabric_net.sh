@@ -100,6 +100,7 @@ log ()
             ;;
         error)
             echo -e "$_R[!]$_N $2"
+            exit 1
             ;;
         warn)
             echo -e "$_Y[-]$_N $2"
@@ -108,7 +109,7 @@ log ()
 
 disable_ansi_color ()
 {
-    NO_COLOR=--no-ansi
+    NO_COLOR='--ansi never'
     _R=
     _G=
     _Y=
@@ -255,7 +256,7 @@ start_containers ()
         cp $CONFIG/ca-config-$org.yaml $NET/ca/$org/fabric-ca-server-config.yaml
     done
 
-    docker-compose $NO_COLOR -f $CA_YAML up -d
+    docker compose $NO_COLOR -f $CA_YAML up -d
 
     # Wait until tls certificates have been generated
     shopt -s nullglob
@@ -280,13 +281,13 @@ start_containers ()
     mkdir -p $NET/channel-artifacts
     mkdir -p $NET/system-genesis-block
 
-    docker-compose $NO_COLOR -f $YAML up -d
+    docker compose $NO_COLOR -f $YAML up -d
 }
 
 stop_containers ()
 {
     log info "Stopping CA containers"
-    docker-compose $NO_COLOR -f $CA_YAML -f $YAML down -v
+    docker compose $NO_COLOR -f $CA_YAML -f $YAML down -v
     docker run --rm -v $ROOT:/fabric_net busybox sh -c 'rm -rf /fabric_net/network'
 }
 
@@ -523,12 +524,14 @@ chaincode_package ()
 {
     set_variables $1
 
-    $BIN/peer lifecycle chaincode package $CC_TAR --path $CC_PATH \
-              --lang $CC_LANG --label ${CC}_$CC_VER
-
+    local errorf=/tmp/autoauditor.error
     local otype=error
-    if [ $? -eq 0 ]; then
+    $BIN/peer lifecycle chaincode package $CC_TAR --path $CC_PATH \
+              --lang $CC_LANG --label ${CC}_$CC_VER 2> $errorf
+    if [ ! -s $errorf ]; then
         otype=succ
+    else
+        cat $errorf
     fi
     log $otype "Command: peer lifecycle chaincode package, CC: $CC, TAR: $CC_TAR"
 }
@@ -891,7 +894,7 @@ else
         network_up
     else
         up=($(docker ps -aq --filter label=autoauditor=fabric_net))
-        cnt=$(docker-compose -f $CA_YAML -f $YAML ps --services | wc -l)
+        cnt=$(docker compose -f $CA_YAML -f $YAML ps --services | wc -l)
         if [ ${#up[@]} -ne $cnt ]; then
             network_up
         fi
