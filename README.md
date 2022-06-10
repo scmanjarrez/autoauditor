@@ -43,7 +43,7 @@ Semiautomatic vulnerabilities auditor using docker containers.
 - docker-compose-plugin
 - git
 - go
-- python3-config
+- python3-dev
 - python3-venv
 
 If groupsig is required:

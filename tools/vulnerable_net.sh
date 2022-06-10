@@ -85,7 +85,6 @@ check_privileges ()
 
 network_up ()
 {
-    check_required_pkgs
     check_privileges
 
     log info "Starting docker containers"
@@ -159,8 +158,8 @@ check_required_pkgs ()
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=1; }
 
-    pkg=python3-config
-    command -v $pkg > /dev/null 2>&1
+    pkg=python3-dev
+    dpkg -s $pkg > /dev/null 2>&1
     [ $? -eq 0 ] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=1; }
@@ -269,6 +268,7 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+check_required_pkgs
 
 if [ -n "$_down" ]; then
     network_down
