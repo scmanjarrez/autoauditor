@@ -1,15 +1,15 @@
 {
     "client": {
         "description": "Client configuration",
-        "id": "user1org1report",
+        "id": "user1org3whistleblower",
         "wallet": {
             "description": "File system wallet to store client credentials",
             "path": "tools/fabric_net/network/wallet"
         },
         "credentials": {
             "description": "Physical credentials: used when credentials can not be obtained from wallet",
-            "cert": "tools/fabric_net/network/org1/users/user1@org1.example.com/msp/signcerts/cert.pem",
-            "private_key": "tools/fabric_net/network/org1/users/user1@org1.example.com/msp/keystore/priv_sk"
+            "cert": "tools/fabric_net/network/org3/users/user1@org3.example.com/msp/signcerts/cert.pem",
+            "private_key": "tools/fabric_net/network/org3/users/user1@org3.example.com/msp/keystore/priv_sk"
         }
     },
     "network": {
@@ -17,13 +17,13 @@
         "name": "fabric_net",
         "channel": "channel1",
         "organization": {
-            "description": "Org1 information",
-            "name": "org1",
-            "mspid": "Org1MSP",
+            "description": "Org3 information",
+            "name": "org3",
+            "mspid": "Org3MSP",
             "peer": {
-                "grpc_request_endpoint": "peer0.org1.example.com:8000",
-                "server_hostname": "peer0.org1.example.com",
-                "tls_cacerts": "tools/fabric_net/network/org1/peers/peer0.org1.example.com/tls/ca.crt"
+                "grpc_request_endpoint": "peer0.org3.example.com:8000",
+                "server_hostname": "peer0.org3.example.com",
+                "tls_cacerts": "tools/fabric_net/network/org3/peers/peer0.org3.example.com/tls/ca.crt"
             }
         }
     }

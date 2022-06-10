@@ -50,10 +50,10 @@ DEF_DIR = 'output'
 DEF_OUT = f'{DEF_DIR}/msf.log'
 DEF_BLOCK = f'{DEF_DIR}/blockchain.log'
 DEF_TEMPLATE = 'tools/templates'
+DEF_EPEERS = 'org1,org2'
 
 # Templates
 RC_TEMPLATE = Path(f'{DEF_TEMPLATE}/rc.template').absolute()
-VPN_TEMPLATE = Path(f'{DEF_TEMPLATE}/ovpn.template').absolute()
 NET_TEMPLATE = Path(f'{DEF_TEMPLATE}/network.template').absolute()
 
 # Log Messages
@@ -74,14 +74,15 @@ VPNCSTAT = "VPN client container status:"
 VPNCR = "VPN client container status: running."
 VPNCSTART = "VPN client container status: not running, starting ..."
 VPNCDONE = "VPN client container status: not running, starting ... done"
-CNTSTOP = "Stopping containers..."
-CNTSTOPPED = "Stopping containers... done"
-CNTSTOPERR = "Stopping containers... error. Some containers may be running."
+CNTSTOP = "Stopping containers ..."
+CNTSTOPPED = "Stopping containers ... done"
+CNTSTOPERR = "Stopping containers ... error. Some containers may be running."
 ATNET = "Removing attacker_network ..."
 ATNETRM = "Removing attacker_network ... done"
 ATNETAEND = "Removing attacker_network ... error. Active endpoints."
-GENREP = "Generating report ..."
-GENREPDONE = "Generating report ... done"
+PRSREP = "Parsing report ..."
+PRSDREP = "Parsing report ... done"
+PRSREPERR = "Parsing report ... error. Wrong report format."
 MOD_TYPES = ['auxiliary', 'encoder', 'exploit', 'nop', 'payload', 'post']
 
 # Copyright

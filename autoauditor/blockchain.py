@@ -49,27 +49,22 @@ import re
 
 CVEDETAILS = "https://www.cvedetails.com/cve/"
 
-CC = 'autoauditor'
-CC_FUN = 'NewReport'
-CC_TRANS = 'report'
+CC = 'report'
+CC_FUN = 'StoreReport'
+CC_TRANS = 'report_st'
 
-_tmp_outf = None
-_tmp_outd = None
-_tmp_msfcont = None
-_tmp_shutdown = False
-
-modregex = re.compile(r'^\#{5}\s(?P<modname>[\w\d_\/]+)\s#{5}$')
+modregex = re.compile(r'^#{5}\s(?P<modname>[\w\d_/]+)\s#{5}$')
 modendregex = re.compile(r'^#{10,}$')
-rprtdateregex = re.compile(r'^#{14}\s(?P<date>[\d:\-\s\+\.]+)\s#{14}$')
-rhostregex = re.compile(r'^RHOSTS?\s+=>\s+(?P<ip>[\d\.]+)$')
+rprtdateregex = re.compile(r'^#{14}\s(?P<date>[\d:\-\s+.]+)\s#{14}$')
+rhostregex = re.compile(r'^RHOSTS?\s+=>\s+(?P<ip>[\d.]+)$')
 affected1 = re.compile(r'^\[\+\].*$')
 affected2 = re.compile(
     r'^((?=.*\bmeterpreter\b)|(?=.*\bsession\b))(?=.*\bopen(ed)?\b).*$',
     re.IGNORECASE)
 affected3 = re.compile(
-    (r'uid=\d+\([a-z_][a-z0-9_-]*\)\s+'
-     r'gid=\d+\([a-z_][a-z0-9_-]*\)\s+'
-     r'groups=\d+\([a-z_][a-z0-9_-]*\)(?:,\d+\([a-z_][a-z0-9_-]*\))*'),
+    (r'uid=\d+\([a-z_][a-z\d_-]*\)\s+'
+     r'gid=\d+\([a-z_][a-z\d_-]*\)\s+'
+     r'groups=\d+\([a-z_][a-z\d_-]*\)(?:,\d+\([a-z_][a-z\d_-]*\))*'),
     re.IGNORECASE)
 affected4 = re.compile(
     (r'stor(ed|ing)|sav(ed|ing)|succe(ed|ss)|extract(ed|ing)|writt?(en|ing)|'
@@ -197,7 +192,7 @@ def get_score(cve):
 
 def parse_report(msf_log):
     mod = {}
-    with open(msf_log, 'r') as f:
+    with open(msf_log) as f:
         lines = filter(None, (line.rstrip() for line in f))
         modname = None
         host = None
@@ -237,7 +232,7 @@ def generate_reports(outf, update_cache):
         date = info.pop('date')
         report['date'] = date
     except KeyError:
-        ut.log('error', 'Wrong report format.', err=ct.EREP)
+        ut.log('error', ct.PRSREPERR, err=ct.EREP)
     nvuln = 0
     for mod in info:
         if is_cached(db, mod) and not update_cache:
@@ -259,25 +254,24 @@ def generate_reports(outf, update_cache):
     return report
 
 
-def store_report(info, outf, outbc, update_cache=False, loop=None):
+def store_report(info, outf, outbc, endorsers, update_cache=False, loop=None):
     if loop is None:
         loop = _asyncio.get_event_loop()
     user, client, peer, channel = info
 
-    ut.log('info', ct.GENREP, end='\r')
+    ut.log('info', ct.PRSREP, end='\r')
     reports = generate_reports(outf, update_cache)
-    ut.log('succ', ct.GENREPDONE)
+    ut.log('succ', ct.PRSDREP)
 
     privdate = reports.pop('date')  # yyyy-mm-dd hh:mm:ss.ffffff+tt:zz
     pubdate = privdate[:7]  # yyyy-mm
     nvuln = reports.pop('nvuln')
     rid = user.org + privdate
-    rhash = hashlib.sha256(rid.encode('utf-8')).hexdigest()
+    rhash = hashlib.sha256(rid.encode()).hexdigest()
 
-    rep = {'id': rhash,
-           'org': user.org,
+    rep = {'rid': rhash,
            'date': privdate,
-           'nvuln': nvuln,
+           'nVuln': nvuln,
            'report': {},
            'private': True}
     uploaded = 0
@@ -299,7 +293,8 @@ def store_report(info, outf, outbc, update_cache=False, loop=None):
             resp = loop.run_until_complete(client.chaincode_invoke(
                 requestor=user,
                 channel_name=channel,
-                peers=[peer],
+                peers=[client.peers[peer] for peer in client.peers
+                       if any(end in peer for end in endorsers.split(','))],
                 fcn=CC_FUN,
                 args=None,
                 cc_name=CC,
@@ -348,13 +343,13 @@ def _get_network_data(config, *key_path):
                 config = config[k]
             except KeyError:
                 ut.log('error',
-                       "No key path {key_path} exists in network info",
+                       f"No key path {key_path} exists in network info",
                        err=ct.ECFGNET)
         return config
 
 
 def _read_network(config):
-    with open(config, 'r') as f:
+    with open(config) as f:
         try:
             network = json.load(f)
         except json.JSONDecodeError:

@@ -1,16 +1,17 @@
 <!-- # WORK IN PROGRESS - TODO: videos -->
 # Description
 Semiautomatic vulnerabilities auditor using docker containers.
-- Resources scripts examples: **tools/vulnerable\_net/examples/rc.example\*.json**.
-- Dockerfiles used in vulnerable network: **third_party/vulhub**.
-- Vulnerable network docker compose: **tools/vulnerable_net/docker-compose.yaml**.
-- Fabric network docker compose: **tools/fabric_net/docker-compose\*.yaml**.
+- Resources scripts examples: **tools/vulnerable_net/examples/rc.example\*.json**
+- Dockerfiles used in vulnerable network: **third_party/vulhub**
+- Vulnerable network docker compose: **tools/vulnerable_net/docker-compose.yaml**
+- Fabric network docker compose: **tools/fabric_net/docker-compose\*.yaml**
 
 **Contents:**
   - [Requirements](#requirements)
   - [Pre-execution (optional)](#pre-execution-optional)
     - [Vulnerable network](#vulnerable-network)
     - [Fabric network](#fabric-network)
+    - [Groupsig](#groupsig)
     - [Python virtual environment](#python-virtual-environment)
   - [Execution](#execution)
     - [Command line interface](#command-line-interface)
@@ -27,7 +28,8 @@ Semiautomatic vulnerabilities auditor using docker containers.
   - [Output](#output)
   - [Post-execution (optional)](#post-execution-optional)
     - [Vulnerable network](#vulnerable-network-1)
-    - [Hyperledger Fabric network](#hyperledger-fabric-network-1)
+    - [Fabric network](#fabric-network-1)
+    - [Groupsig](#groupsig-1)
     - [Python virtual environment](#python-virtual-environment-1)
   - [Errors and fixes](#errors-and-fixes)
     - [Invalid credentials](#invalid-credentials)
@@ -37,18 +39,24 @@ Semiautomatic vulnerabilities auditor using docker containers.
   - [License](#license)
 
 # Requirements
-- git
 - docker
 - docker-compose-plugin
-- python3-venv
+- git
 - go
+- python3-config
+- python3-venv
+
+If groupsig is required:
+- build-essential
+- cmake
+- libssl-dev
 
 # Pre-execution (optional)
 ## Vulnerable network
 We have prepared a containerized environment with vulnerable machines: vulnerable_net
 
 **Features**:
-- Isolated network: autoauditor\_vulnerable\_net
+- Isolated network: autoauditor_vulnerable_net
 - <details>
     <summary>Ten vulnerable containers + VPN server container</summary>
     <ul>
@@ -56,7 +64,7 @@ We have prepared a containerized environment with vulnerable machines: vulnerabl
         <li>autoauditor_coldfusion_10_2861</li>
         <li>autoauditor_http_14_6271</li>
         <li>autoauditor_struts2_16_3081</li>
-        <li>autoauditor_structs2_17_5638</li>
+        <li>autoauditor_struts2_17_5638</li>
         <li>autoauditor_weblogic_17_10271</li>
         <li>autoauditor_supervisor_17_11610</li>
         <li>autoauditor_goahead_17_17562</li>
@@ -65,22 +73,28 @@ We have prepared a containerized environment with vulnerable machines: vulnerabl
         <li>autoauditor_rails_19_5418</li>
     </ul>
   </details>
-- VPN server to allow external access: autoauditor\_vpn\_server
+- VPN server to allow external access: autoauditor_vpn_server
 
 **Run**:
 ```bash
 tools/vulnerable_net.sh
 ```
+> **Note:** If groupsig will be used, launch the above command with
+> parameter **--with-groupsig** in order to compile the dependencies
+```bash
+$ tools/vulnerable_net.sh --with-groupsig
+```
 
 <!-- > Test environment set up: https://youtu.be/XYmzdHH_G-o -->
 
 ## Fabric network
-We have prepared a containerized environment mimicking hyperledger fabric network: fabric\_net
+We have prepared a containerized environment mimicking hyperledger
+fabric network: fabric_net
 
 **Features**:
-- Isolated network: autoauditor\_fabric\_net
+- Isolated network: autoauditor_fabric_net
 - <details>
-    <summary>Nine containers + DNS container</summary>
+    <summary>Twelve containers + DNS container</summary>
     <ul>
         <li>autoauditor_dns</li>
         <li>autoauditor_ca_orderer</li>
@@ -91,17 +105,23 @@ We have prepared a containerized environment mimicking hyperledger fabric networ
         <li>autoauditor_ca_org2</li>
         <li>autoauditor_peer0_org2</li>
         <li>autoauditor_couchdb_org2</li>
+        <li>autoauditor_ca_org3</li>
+        <li>autoauditor_peer0_org3</li>
+        <li>autoauditor_couchdb_org3</li>
         <li>autoauditor_cli</li>
     </ul>
   </details>
-- Three organizations:
+- Four organizations:
   - Org1: Peer + CA
-    - Users: admin, user1
+    - Users: admin, user1, user2
   - Org2: Peer + CA
-    - Users: admin, user1
+    - Users: admin, user1, user2
+  - Org3: Peer + CA
+    - Users: admin, user1, user2
   - Orderer: Orderer + CA
     - Users: admin
-- Autoauditor smart contract installed in Org1
+- Report smart contract installed in Org1
+- Whistleblower smart contract installed in Org1 and Org3
 - One DNS resolver.
 
 **Run**:
@@ -109,8 +129,48 @@ We have prepared a containerized environment mimicking hyperledger fabric networ
 $ tools/fabric_net.sh
 ```
 
+## Groupsig
+In order to use groupsig add-on, it is mandatory to compile
+the C sources:
+```bash
+$ cd third_party/libgroupsig/libgroupsig
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+```
+
+And generate the crypto material for each component (must be run
+after fabric_net is up):
+```bash
+$ tools/groupsig.sh
+```
+
+Start the provider and verifier servers:
+```bash
+$ python tools/groupsig/provider/groupsig_provider.py --crt tools/groupsig/provider/provider.crt --key tools/groupsig/provider/provider.key --ca-dir tools/groupsig/provider/fabric_ca_certs
+```
+```bash
+$ python tools/groupsig/verifier/groupsig_verifier.py --crt tools/groupsig/verifier/verifier.crt --key tools/groupsig/verifier/verifier.key -b tools/groupsig/examples/network.example.json
+```
+Tools to register members in the group, publish disclosures and read disclosures
+can be found under `tools/groupsig/informer` and `tools/groupsig/recipient`.
+
+Register:
+```bash
+$ python tools/groupsig/informer/groupsig_register.py -u tools/groupsig/informer/fabric_credentials --crt user.crt --key user.key -d tools/groupsig/informer/credentials
+```
+Publish disclosure:
+```bash
+$ python tools/groupsig/informer/groupsig_inform.py -u tools/groupsig/informer/fabric_credentials --crt user.crt --key user.key -d tools/groupsig/informer/credentials
+```
+Read disclosures:
+```bash
+$ python tools/groupsig/recipient/groupsig_read.py -u tools/groupsig/recipient/fabric_credentials --crt user.crt --key user.key
+```
+
 ## Python virtual environment
-In order to enable the virtual environment generated in previous, run:
+In order to enable the virtual environment generated in previous steps, run:
 
 ```bash
 $ source .venv/bin/activate
@@ -314,12 +374,12 @@ $ python -m autoauditor --gui
 <!-- > Wizard (GUI): https://youtu.be/nIKc0-E-2bU<br> -->
 
 # Output
-- Autoauditor log: **output/msf.log**.
-- Autoauditor loot directory: **output**.
-- Autoauditor blockchain log: **output/blockchain.log**.
+- autoauditor log: **output/msf.log**.
+- autoauditor loot directory: **output**.
+- autoauditor blockchain log: **output/blockchain.log**.
 > Output files can be changed with: **-of**, **-od** and **-ob** arguments.
 
-> Stored reports idenfitifed by ID(sha256(orgName+reportDate)).
+> Stored reports identified by ID(sha256(orgName+reportDate)).
 
 # Post-execution (optional)
 ## Vulnerable network
@@ -328,10 +388,16 @@ Stop vulnerable network
 $ tools/vulnerable_net.sh --down
 ```
 
-## Hyperledger Fabric network
+## Fabric network
 Stop fabric network
 ```bash
 $ tools/fabric_net.sh --down
+```
+
+## Groupsig
+Remove crypto material
+```bash
+$ tools/groupsig.sh --clean
 ```
 
 ## Python virtual environment
@@ -357,8 +423,12 @@ $ deactivate
 ## DNS resolution failed
 > status = StatusCode.UNAVAILABLE<br>details = "DNS resolution failed"
 
-**Fix:** Check connection to peers. If using fabric\_net, check that
+**Fix:** Check connection to peers. If using fabric_net, check that
 **autoauditor_dns** container is running.
+
+## Failed to connect
+> status = StatusCode.UNAVAILABLE<br>details = "failed to connect to all addresses"
+**Fix:** Check **grpc_request_endpoint** in network configuration file.
 
 # Acknowledgements
 **This work has been supported by National R&D Project TEC2017-84197-C4-1-R and by

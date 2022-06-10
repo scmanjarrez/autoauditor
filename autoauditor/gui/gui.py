@@ -337,6 +337,7 @@ class Backend(QObject):
         if cfg is not None:
             bc.store_report(cfg, self.log,
                             self._property('tfBlog', 'text'),
+                            ct.DEF_EPEERS,
                             loop=self.async_loop)
 
     @Slot()
@@ -356,7 +357,7 @@ class Backend(QObject):
             self.button_wizard()
 
     def parse_rc(self):
-        with open(self._property('tfRc', 'text'), 'r') as f:
+        with open(self._property('tfRc', 'text')) as f:
             try:
                 rc = json.load(f)
             except json.decoder.JSONDecodeError:

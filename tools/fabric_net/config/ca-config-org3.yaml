@@ -1,5 +1,5 @@
 version: 1
-port: 9050
+port: 10050
 debug: false
 crlsizelimit: 512000
 tls:
@@ -10,7 +10,7 @@ tls:
     type: noclientcert
     certfiles:
 ca:
-  name: Org2CA
+  name: Org3CA
   keyfile:
   certfile:
   chainfile:
@@ -86,16 +86,16 @@ signing:
         - key agreement
       expiry: 8760h
 csr:
-  cn: ca.org2.example.com
+  cn: ca.org3.example.com
   names:
     - C: ES
       ST: "Comunidad de Madrid"
-      L: "Madrid"
-      O: org2.example.com
+      L: "Getafe"
+      O: org3.example.com
       OU:
   hosts:
     - "localhost"
-    - "*.org2.example.com"
+    - "*.org3.example.com"
   ca:
     expiry: 131400h
     pathlength: 1

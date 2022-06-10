@@ -123,6 +123,11 @@ def set_arguments():
                          metavar='bc_log_file', default=ct.DEF_BLOCK,
                          help=(f"Path to blockchain log file. "
                                f"Default: {ct.DEF_BLOCK}."))
+    bc_opt = parser.add_argument_group("blockchain options")
+    bc_opt.add_argument('-eP',
+                        metavar='endorser_peers', default=ct.DEF_EPEERS,
+                        help=(f"Endorser peers to store reports. "
+                              f"Default: {ct.DEF_EPEERS}."))
     misc_opt = parser.add_argument_group("misc options")
     misc_opt.add_argument('--background',
                           action='store_true',
@@ -142,7 +147,7 @@ def main():
         ut.disable_ansi_colors()
 
     if args.cmd != 'gui':
-        ut.copyright()
+        ut.copyright_notice()
         if args.cmd != 'stop':
             msf = start_containers(args)
             if msf is not None:
@@ -155,7 +160,7 @@ def main():
                 if args.cmd in ('cli', 'store') and args.b:
                     info = bc.load_config(args.b)
                     if info is not None:
-                        bc.store_report(info, args.of, args.ob)
+                        bc.store_report(info, args.of, args.ob, args.eP)
         if not args.background or args.cmd == 'stop':
             ut.shutdown()
     else:

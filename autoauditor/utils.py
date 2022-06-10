@@ -83,7 +83,7 @@ def log(ltype, msg, end='\n', err=None):
         sys.exit(err)
 
 
-def copyright():
+def copyright_notice():
     log('normal', ct.COPYRIGHT)
 
 

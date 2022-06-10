@@ -134,6 +134,51 @@ services:
     depends_on:
       - couchdb_org2
 
+  peer0_org3:
+    image: hyperledger/fabric-peer:2.4.0
+    container_name: autoauditor_peer0_org3
+    hostname: peer0.org3.example.com
+    command: peer node start
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    labels:
+      autoauditor: fabric_net
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=autoauditor_fabric_net
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.org3.example.com
+      - CORE_PEER_LOCALMSPID=Org3MSP
+      - CORE_PEER_ADDRESS=peer0.org3.example.com:10000
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:10000
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org3.example.com:10000
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org3.example.com:10000
+      - CORE_PEER_CHAINCODEADDRESS=peer0.org3.example.com:10010
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:10010
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.org3.example.com:10020
+      - CORE_METRICS_PROVIDER=prometheus
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.org3.example.com:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+        - /var/run/docker.sock:/host/var/run/docker.sock
+        - ./network/org3/peers/peer0.org3.example.com/msp:/etc/hyperledger/fabric/msp
+        - ./network/org3/peers/peer0.org3.example.com/tls:/etc/hyperledger/fabric/tls
+        - ./network/container/org3.example.com:/var/hyperledger/production
+    ports:
+      - "10000:10000"
+      - "10010:10010"
+      - "10020:10020"
+    networks:
+      - fabric_net
+    depends_on:
+      - couchdb_org3
+
   couchdb_org1:
     image: couchdb:3.1.1
     container_name: autoauditor_couchdb_org1
@@ -162,6 +207,20 @@ services:
     networks:
       - fabric_net
 
+  couchdb_org3:
+    image: couchdb:3.1.1
+    container_name: autoauditor_couchdb_org3
+    hostname: couchdb.org3.example.com
+    labels:
+      autoauditor: fabric_net
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - "10030:5984"
+    networks:
+      - fabric_net
+
   cli:
     image: hyperledger/fabric-tools:2.4.0
     container_name: autoauditor_cli
@@ -184,6 +243,7 @@ services:
     depends_on:
       - peer0_org1
       - peer0_org2
+      - peer0_org3
 
 networks:
   fabric_net:

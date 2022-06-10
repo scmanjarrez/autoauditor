@@ -7,14 +7,14 @@
 # Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
-# This file is part of AutoAuditor.
+# This file is part of autoauditor.
 
-# AutoAuditor is free software: you can redistribute it and/or modify
+# autoauditor is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-# AutoAuditor is distributed in the hope that it will be useful,
+# autoauditor is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -23,19 +23,16 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 _R="\033[91m"
-_DR="\033[31m"
 _G="\033[92m"
-_DG="\033[32m"
-_B="\033[94m"
 _Y="\033[93m"
+_B="\033[94m"
 _N="\033[0m"
 
 ROOT=$PWD/tools/vulnerable_net
 YAML=$ROOT/docker-compose.yaml
 CFG=$ROOT/examples/vpn.example.ovpn
-
-WALLET_NAME=wallet-test
-VENV_NAME=venv
+GSIG=$PWD/third_party/libgroupsig/libgroupsig
+VENV=venv
 
 log ()
 {
@@ -119,18 +116,17 @@ network_down ()
     docker compose $NO_COLOR -f $YAML down -v
 
     log info "Removing vulnerable network files"
-    rm -rf $VENV_NAME
-    rm -rf $WALLET_NAME
+    rm -rf $VENV build autoauditor.egg-info
 }
 
 pkg_info ()
 {
-    local default_spaces=15
+    local default_spaces=25
     local spaces=$(printf ' %.0s' $(seq 1 $(($default_spaces-${#1}))))
     if [ $2 -eq 0 ]; then
-        echo -e "$1$spaces... ${_DG}installed$_N"
+        echo -e "$1$spaces... ${_G}installed$_N"
     else
-        echo -e "$1$spaces... ${_DR}missing$_N"
+        echo -e "$1$spaces... ${_R}missing$_N"
     fi
 }
 
@@ -139,35 +135,61 @@ check_required_pkgs ()
     log info "Checking packages"
     local all_pk=0
 
-    local pkg=git
+    local pkg=docker
     command -v $pkg > /dev/null 2>&1
-    [[ $? -eq 0 ]] \
+    [ $? -eq 0 ] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=1; }
 
-    pkg=docker
-    command -v $pkg > /dev/null 2>&1
-    [[ $? -eq 0 ]] \
+    pkg='docker-compose-plugin'
+    docker compose > /dev/null 2>&1
+    [ $? -eq 0 ] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=1; }
 
-    pkg=compose
-    docker $pkg > /dev/null 2>&1
-    [[ $? -eq 0 ]] \
+    pkg=git
+    command -v $pkg > /dev/null 2>&1
+    [ $? -eq 0 ] \
+        && pkg_info $pkg 0  \
+            || { pkg_info $pkg 1; all_pk=1; }
+
+    pkg=go
+    command -v $pkg > /dev/null 2>&1
+    [ $? -eq 0 ] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=1; }
 
     pkg=python3-config
     command -v $pkg > /dev/null 2>&1
-    [[ $? -eq 0 ]] \
+    [ $? -eq 0 ] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=1; }
 
     pkg=python3-venv
     python3 -c 'import ensurepip' > /dev/null 2>&1
-    [[ $? -eq 0 ]] \
+    [ $? -eq 0 ] \
         && pkg_info $pkg 0  \
             || { pkg_info $pkg 1; all_pk=1; }
+
+    if [ -n "$_groupsig" ]; then
+        pkg=build-essential
+        dpkg -s $pkg > /dev/null 2>&1
+        [ $? -eq 0 ] \
+            && pkg_info $pkg 0  \
+                || { pkg_info $pkg 1; all_pk=1; }
+
+        pkg=cmake
+        dpkg -s $pkg > /dev/null 2>&1
+        [ $? -eq 0 ] \
+            && pkg_info $pkg 0  \
+                || { pkg_info $pkg 1; all_pk=1; }
+
+        pkg=libssl-dev
+        dpkg -s $pkg > /dev/null 2>&1
+        [ $? -eq 0 ] \
+            && pkg_info $pkg 0  \
+                || { pkg_info $pkg 1; all_pk=1; }
+    fi
 
     if [ $all_pk -ne 0 ]; then
         log error "Mandatory package missing"
@@ -180,27 +202,47 @@ create_venv ()
     log info "Generating virtual environment"
     local errorf=/tmp/autoauditor.venv.error
 
-    if [ ! -d $VENV_NAME ]; then
-        python3 -m venv $VENV_NAME > $errorf
+    if [ ! -d $VENV ]; then
+        python3 -m venv $VENV > $errorf
         if [ $? -ne 0 ]; then
             cat $errorf
             exit
         fi
     fi
 
-    source $VENV_NAME/bin/activate
+    source $VENV/bin/activate
     if [ $? -ne 0 ]; then
         log error "Virtual environment could not be created"
         exit
     fi
 
-    pip install -U pip --no-cache-dir
-    pip install -r requirements.txt --no-cache-dir
+    log info "Installing dependencies"
+    python -m pip install -U pip wheel --no-cache-dir
+    python -m pip install --no-cache-dir .
 
-    log succ "Enable virtual environment with 'source $VENV_NAME/bin/activate' and run 'python3 -m autoauditor'"
+    if [ -n "$_groupsig" ]; then
+        if [ -z "$(ls $GSIG)" ]; then
+            log error "libgroupsig not downloaded. Use 'git submodule update --init --recursive' to download it"
+        else
+            if [ ! -d "$GSIG/build" ]; then
+                mkdir -p $GSIG/build
+            fi
+            if [ ! -d "$GSIG/build/lib" ] \
+                   || [ -z "$(ls $GSIG/build/lib)" ] \
+                   || [ ! -d "$GSIG/build/external/lib" ] \
+                   || [ -z "$(ls $GSIG/build/external/lib)" ]; then
+                log info "Compiling libgroupsig"
+                cd $GSIG/build && cmake .. && make
+            fi
+            log info "Installing libgroupsig"
+            cd $GSIG && python -m pip install src/wrappers/python
+        fi
+    fi
+
+    log succ "Enable virtual environment with 'source $VENV/bin/activate' and run 'python3 -m autoauditor'"
 }
 
-while [[ $# -gt 0 ]]; do
+while [ $# -gt 0 ]; do
     case $1 in
         -d|--down)
             _down=SET
@@ -214,6 +256,10 @@ while [[ $# -gt 0 ]]; do
             disable_ansi_color
             shift
             ;;
+        --with-groupsig)
+            _groupsig=SET
+            shift
+            ;;
         -h|--help)
             usage
             ;;
@@ -224,7 +270,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-if [[ -n $_down ]]; then
+if [ -n "$_down" ]; then
     network_down
 else
     if [ -n "$_restart" ]; then
@@ -232,7 +278,7 @@ else
         network_up
     else
         up=($(docker ps -aq --filter label=autoauditor=vulnerable_net))
-        cnt=$(docker compose -f $YAML ps --services | wc -l)
+        cnt=$(docker compose -f $YAML config --services | wc -l)
         if [ ${#up[@]} -ne $cnt ]; then
             network_up
         fi
