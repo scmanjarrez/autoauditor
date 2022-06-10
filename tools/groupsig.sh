@@ -34,7 +34,7 @@ NET=$PWD/tools/fabric_net/network
 PRV=$ROOT/provider
 VRF=$ROOT/verifier
 INF=$ROOT/informer
-RDR=$ROOT/reader
+RCP=$ROOT/recipient
 FCA=fabric_ca_certs
 CRDS=credentials
 FCRDS=fabric_credentials
@@ -76,8 +76,8 @@ clean_crypto ()
     rm -rf $VRF/$FCRDS $VRF/$WALLET
     # clean informer
     rm -rf $INF/$FCRDS $INF/$CRDS
-    # clean reader
-    rm -rf $RDR/$FCRDS
+    # clean recipient
+    rm -rf $RCP/$FCRDS
 }
 
 generate_crypto ()
@@ -99,9 +99,9 @@ generate_crypto ()
     ln -s $NET/org2/users/user1@org2.example.com/msp/signcerts/cert.pem $INF/$FCRDS/user.crt
     ln -s $NET/org2/users/user1@org2.example.com/msp/keystore/priv_sk $INF/$FCRDS/user.key
     # generate reader crypto material
-    mkdir -p $RDR/$FCRDS
-    ln -s $NET/org1/users/user1@org1.example.com/msp/signcerts/cert.pem $RDR/$FCRDS/user.crt
-    ln -s $NET/org1/users/user1@org1.example.com/msp/keystore/priv_sk $RDR/$FCRDS/user.key
+    mkdir -p $RCP/$FCRDS
+    ln -s $NET/org1/users/user1@org1.example.com/msp/signcerts/cert.pem $RCP/$FCRDS/user.crt
+    ln -s $NET/org1/users/user1@org1.example.com/msp/keystore/priv_sk $RCP/$FCRDS/user.key
 }
 
 usage ()

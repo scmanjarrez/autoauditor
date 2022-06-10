@@ -4,7 +4,7 @@
         "id": "user1org3whistleblower",
         "wallet": {
             "description": "File system wallet to store client credentials",
-            "path": "tools/groupsig/verifier/wallet"
+            "path": "tools/fabric_net/network/wallet"
         },
         "credentials": {
             "description": "Physical credentials: used when credentials can not be obtained from wallet",

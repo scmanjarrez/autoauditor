@@ -221,7 +221,7 @@ create_venv ()
 
     if [ -n "$_groupsig" ]; then
         if [ -z "$(ls $GSIG)" ]; then
-            log error "libgroupsig not downloaded. Use 'git submodule update --init --recursive' to download it"
+            log warn "libgroupsig not downloaded. Use 'git submodule update --init --recursive' to download it"
         else
             if [ ! -d "$GSIG/build" ]; then
                 mkdir -p $GSIG/build

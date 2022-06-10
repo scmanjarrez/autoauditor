@@ -46,6 +46,8 @@ Semiautomatic vulnerabilities auditor using docker containers.
 - python3-dev
 - python3-venv
 
+> Tested on Ubuntu 18.04
+
 If groupsig is required:
 - build-essential
 - cmake
@@ -126,7 +128,7 @@ fabric network: fabric_net
 
 **Run**:
 ```bash
-$ tools/fabric_net.sh
+$ tools/fabric_net.sh --fill
 ```
 
 ## Groupsig
