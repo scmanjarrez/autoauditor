@@ -4,16 +4,8 @@ tmp/
 pdfs/
 output/
 *.db
-vendor/
-variables.sh
-network/
 third_party/fabric/
-wallet-test/
 DebugRectangle.qml
-credentials/
-fabric_credentials/
-fabric_ca_certs/
-schema.txt
 
 ## Default python ignore
 # Byte-compiled / optimized / DLL files

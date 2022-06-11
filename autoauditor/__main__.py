@@ -4,7 +4,7 @@
 
 # __main__ - Main program.
 
-# Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+# Copyright (C) 2020-2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 # Universidad Carlos III de Madrid.
 
 # This file is part of autoauditor.
