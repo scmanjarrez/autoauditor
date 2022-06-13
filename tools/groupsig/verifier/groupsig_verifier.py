@@ -196,7 +196,7 @@ class Verifier:
             res['msg'] = f"Error: {e.args[0][0].response.message}"
         else:
             if not resp:
-                res['msg'] = "Disclosure stored succesfully"
+                res['msg'] = "Disclosure stored successfully"
             elif 'already' in resp:
                 res['msg'] = "Error: Disclosure already in blockchain"
             else:

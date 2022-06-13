@@ -108,6 +108,7 @@ class User:
                     err=errno.EACCES)
             with open(f'{self.grp_dir}/memkey', 'w') as f:
                 f.write(memkey.memkey_export(self.usk))
+                log('succ', "Member key stored successfully")
 
     def retrieve_grpkey(self):
         resp = http_req('get', self.session, f'{self.url}/grpkey')
@@ -131,6 +132,7 @@ class User:
                 self.token = data['token']
                 if not data['msg'].startswith('Error'):
                     self.msg1 = data['msg']
+                    log('succ', "Step 1 completed successfully")
                 else:
                     log('error', data['msg'], err=1)
             else:
@@ -158,6 +160,7 @@ class User:
                                                  msgin=msgin2,
                                                  memkey=msg2['memkey'])
                         self.usk = msg4['memkey']
+                        log('succ', "Step 2 completed successfully")
                     else:
                         log('error', data['msg'], err=1)
                 else:
