@@ -35,6 +35,8 @@ Semiautomatic vulnerabilities auditor using docker containers.
     - [Invalid credentials](#invalid-credentials)
     - [File or directory not found](#file-or-directory-not-found)
     - [DNS resolution failed](#dns-resolution-failed)
+    - [Failed to connect](#failed-to-connect)
+    - [Multiple definitions (libgroupsig)](#multiple-definitions-libgroupsig)
   - [Acknowledgements](#acknowledgements)
   - [License](#license)
 
@@ -46,7 +48,7 @@ Semiautomatic vulnerabilities auditor using docker containers.
 - python3-dev
 - python3-venv
 
-> Tested on Ubuntu 18.04
+> Tested on Ubuntu +20.04 and Debian 11
 
 If groupsig is required:
 - build-essential
@@ -430,7 +432,35 @@ $ deactivate
 
 ## Failed to connect
 > status = StatusCode.UNAVAILABLE<br>details = "failed to connect to all addresses"
+
 **Fix:** Check **grpc_request_endpoint** in network configuration file.
+
+## Multiple definitions (libgroupsig)
+> /usr/bin/ld: ...libgroupsig-static.a(groupsig.c.o):(.bss+0x0): multiple definition of \`logger'; .../_groupsig.o:.../src/include/logger.h:118: first defined here<br>
+> /usr/bin/ld: ...libgroupsig-static.a(groupsig.c.o):(.bss+0x20): multiple definition of \`sysenv'; .../_groupsig.o:.../src/include/sysenv.h:59: first defined here
+
+**Fix:**
+- Add `add_link_options("LINKER:--allow-multiple-definition")`
+to `third_party/libgroupsig/libgroupsig/CMakeLists.txt`
+```cmake
+...
+# Global compiler flags
+set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+add_link_options("LINKER:--allow-multiple-definition")
+...
+```
+
+- Add `extra_link_args=["-Wl,--allow-multiple-definition"]`
+to `third_party/libgroupsig/libgroupsig/src/wrappers/python/pygroupsig/libgroupsig_build.py`
+```python
+                          ...
+                          c_mcl384_256_path,
+                          c_mcl_path,
+                      ], extra_link_args=['-Wl,--allow-multiple-definition']
+)
+...
+```
 
 # Acknowledgements
 **This work has been supported by National R&D Project TEC2017-84197-C4-1-R and by

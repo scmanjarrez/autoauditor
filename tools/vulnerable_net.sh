@@ -188,6 +188,12 @@ check_required_pkgs ()
         [ $? -eq 0 ] \
             && pkg_info $pkg 0  \
                 || { pkg_info $pkg 1; all_pk=1; }
+
+        pkg=perl
+        command -v $pkg > /dev/null 2>&1
+        [ $? -eq 0 ] \
+            && pkg_info $pkg 0  \
+                || { pkg_info $pkg 1; all_pk=1; }
     fi
 
     if [ $all_pk -ne 0 ]; then
@@ -231,6 +237,8 @@ create_venv ()
                    || [ ! -d "$GSIG/build/external/lib" ] \
                    || [ -z "$(ls $GSIG/build/external/lib)" ]; then
                 log info "Compiling libgroupsig"
+                perl -0777 -i -pe 's/(set \(CMAKE_CXX_FLAGS .*?\))/\1\nadd_link_options("LINKER:--allow-multiple-definition")/' $GSIG/CMakeLists.txt
+                perl -0777 -i -pe 's/\],\n\)/], extra_link_args=["-Wl,--allow-multiple-definition"]\n)/' $GSIG/src/wrappers/python/pygroupsig/libgroupsig_build.py
                 cd $GSIG/build && cmake .. && make
             fi
             log info "Installing libgroupsig"
