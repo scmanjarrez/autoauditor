@@ -135,6 +135,8 @@ def set_arguments():
     misc_opt.add_argument('--no-color',
                           action='store_true',
                           help="Disable ANSI color output.")
+    misc_opt.add_argument('--cvescanner',
+                          help="Path to CVEScannerV2 report (JSON).")
     return parser, parser.parse_args()
 
 
@@ -155,7 +157,8 @@ def main():
                 if args.cmd == 'cli':
                     ms.launch_metasploit(msfclient, args.r, args.of)
                 elif args.cmd == 'wizard':
-                    wz.generate_resources_file(msfclient, args.r)
+                    wz.generate_resources_file(msfclient, args.r,
+                                               args.cvescanner)
 
                 if args.cmd in ('cli', 'store') and args.b:
                     info = bc.load_config(args.b)

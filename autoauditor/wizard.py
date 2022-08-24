@@ -38,7 +38,8 @@ YES = ['y', 'yes']
 QUEST = {
     'mod': "[*] Modify [y/N]: ",
     'pay': "[*] Add payload [y/N]: ",
-    'end': "[*] Finish [y/N]: "
+    'end': "[*] Finish [y/N]: ",
+    'trc': "[!] Resources script file not empty. Truncate [y/N]: "
 }
 
 
@@ -91,6 +92,14 @@ def mnames(client, mtype):
 
 
 class Module:
+    _sym = {
+        'good': '- ',
+        'req': (f'{ut.LOG["colors"]["warn"]}* '
+                f'{ut.LOG["colors"]["reset"]}'),
+        'mreq': (f'{ut.LOG["colors"]["error"]}! '
+                 f'{ut.LOG["colors"]["reset"]}')
+    }
+
     def __init__(self, client, mtype, mname):
         self.mod = client.modules.use(mtype, mname)
         self.client = client
@@ -142,20 +151,19 @@ class Module:
 
     def print_options(self):
         ut.log('succ',
-               "Current options (missing+required: red, required: yellow)")
+               "Current options (required: yellow, required & missing: red)")
         opts = self.options()
         opts_req = self.required()
         opts_mreq = self.missing()
         for opt in sorted(opts):
-            sym = '- '
+            sym = self._sym['good']
             if opt == 'ACTION':
-                sym = f'{ut.COLORS["Y"]}* {ut.COLORS["N"]}'
-                print(f"    {sym}{opt} (enum): {self.mod.action}")
+                print(f"    {self._sym['req']}{opt} (enum): {self.mod.action}")
             else:
                 if opt in opts_req:
-                    sym = f'{ut.COLORS["Y"]}* {ut.COLORS["N"]}'
+                    sym = self._sym['req']
                     if opt in opts_mreq:
-                        sym = f'{ut.COLORS["R"]}! {ut.COLORS["N"]}'
+                        sym = self._sym['mreq']
                 val = self.mod[opt] if self.mod[opt] is not None else ''
                 print(f"    {sym}{opt} ({self.opt_info(opt)['type']}): {val}")
 
@@ -216,8 +224,6 @@ def set_options(module):
             print()
             if eof:  # avoid infinite loop if consecutive Ctrl+D
                 break
-            ut.log('info',
-                   "Final options (missing+required: red, required:yellow)")
             module.print_options()
             eof = True
         modify = check_modify(module)
@@ -225,11 +231,16 @@ def set_options(module):
     return mod_options
 
 
-def generate_resources_file(client, rc_out):
+def generate_resources_file(client, rc_out, cvescanner=None):
     more_mod = True
-    modules = {}
+    modules = parse_rc(client, rc_out)
+    if cvescanner is not None:
+        exploits = parse_cvescanner(cvescanner)
+        for mtype, mname in exploits:
+            ut.initialize(modules, mtype, mname)
     completer.set_client(client)
-    ut.log('info', "Input can be completed with TAB.")
+    ut.log('info', "Generate the resources file with EOF (Ctrl+D)")
+    ut.log('info', "Input can be autocompleted with TAB.")
     while more_mod:
         try:
             mod = None
@@ -255,10 +266,7 @@ def generate_resources_file(client, rc_out):
                             'error',
                             f"Invalid module name: {mname}.")
                     else:
-                        if mtype not in modules:
-                            modules[mtype] = {}
-                        if mname not in modules[mtype]:
-                            modules[mtype][mname] = []
+                        ut.initialize(modules, mtype, mname)
             mod_opts = set_options(mod)
             if mtype == 'exploit' and ask('pay'):
                 payload = None
@@ -284,3 +292,81 @@ def generate_resources_file(client, rc_out):
         json.dump(modules, f, indent=2)
         ut.log('succ',
                f"Resource script correctly generated in {rc_out}")
+
+
+def parse_rc(client, rc_out):
+    with open(rc_out) as f:
+        try:
+            rc = json.load(f)
+        except json.decoder.JSONDecodeError:
+            ut.log('error',
+                   "Resources script file cannot be parsed", err=ct.ECFGRC)
+    modules = {}
+    if rc:
+        truncate = ask('trc')
+        if truncate:
+            return modules
+    for mtype in rc:
+        for mname in rc[mtype]:
+            ut.initialize(modules, mtype, mname)
+            tmp_mopts = {}
+            for mod in rc[mtype][mname]:
+                tmp_mod = Module(client, mtype, mname)
+                for opt, val in mod.items():
+                    if opt == 'PAYLOAD':
+                        tmp_pay = Module(client,
+                                         'payload', mod['PAYLOAD']['NAME'])
+                        tmp_mopts['PAYLOAD'] = {
+                            'NAME': mod['PAYLOAD']['NAME'],
+                            'OPTIONS': {}
+                        }
+                        for popt, pval in mod['PAYLOAD']['OPTIONS'].items():
+                            popt_info = tmp_pay.opt_info(popt)
+                            pcorr, pcval = ut.correct_type(pval, popt_info)
+                            if not pcorr:
+                                ut.log('warn',
+                                       f"Payload option error: {popt}. "
+                                       f"Value error: {pval}. "
+                                       f"{pcval}. Skipping...")
+                                continue
+                            tmp_mopts['PAYLOAD']['OPTIONS'][popt] = pval
+                    else:
+                        opt_info = tmp_mod.opt_info(opt)
+                        try:
+                            corr, cval = ut.correct_type(val, opt_info)
+                        except KeyError:
+                            ut.log('warn',
+                                   f"Option error: {opt}. "
+                                   f"Value error: {val}. "
+                                   f"Skipping...")
+                            continue
+                        else:
+                            if not corr:
+                                ut.log('warn',
+                                       f"Option error: {opt}. "
+                                       f"Value error: {val}. "
+                                       f"{cval}. Skipping...")
+                                continue
+                            tmp_mopts[opt] = val
+            if tmp_mopts:
+                modules[mtype][mname].append(tmp_mopts)
+    return modules
+
+
+def parse_cvescanner(cvescanner):
+    with open(cvescanner) as f:
+        try:
+            scan = json.load(f)
+        except json.decoder.JSONDecodeError:
+            ut.log('warn',
+                   "CVEScannerV2 report cannot be parsed. Skipping...")
+            return
+    exploits = set()
+    for host, hinfo in scan.items():
+        for port, pinfo in hinfo['ports'].items():
+            for cve, cinfo in pinfo['vulnerabilities']['cves'].items():
+                if 'metasploit' in cinfo:
+                    for exploit in cinfo['metasploit']:
+                        exp = exploit['name'].split('/')
+                        exploits.add((exp[0], '/'.join(exp[1:])))
+    return exploits

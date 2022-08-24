@@ -31,30 +31,26 @@ import pwd
 import sys
 import os
 
-COLORS = {
-    'R': '\033[91m',
-    'Y': '\033[93m',
-    'B': '\033[94m',
-    'G': '\033[92m',
-    'N': '\033[0m',
-    'E': ''
-}
-
 LOG = {
-    'normal': '',
-    'succ': '[+] ', 'info': '[*] ',
-    'warn': '[-] ', 'error': '[!] '
+    'colors': {
+        'reset': '\033[0m',
+        'error': '\033[91m', 'succ': '\033[92m',
+        'warn': '\033[93m', 'info': '\033[94m'
+        # error: red, succ: green, warn: yellow, info: blue
+    },
+    'text': {
+        'normal': '',
+        'succ': '[+] ', 'info': '[*] ',
+        'warn': '[-] ', 'error': '[!] '
+    }
 }
 
 WINDOW = None
 
 
 def disable_ansi_colors():
-    COLORS['R'] = COLORS['E']
-    COLORS['Y'] = COLORS['E']
-    COLORS['B'] = COLORS['E']
-    COLORS['G'] = COLORS['E']
-    COLORS['N'] = COLORS['E']
+    for c in LOG['colors']:
+        LOG['colors'][c] = ''
 
 
 def set_logger(window):
@@ -65,19 +61,15 @@ def set_logger(window):
 
 
 def log(ltype, msg, end='\n', err=None):
-    color = LOG[ltype]
-    if ltype == 'succ':
-        color = f'{COLORS["G"]}{color}{COLORS["N"]}'
-    elif ltype == 'info':
-        color = f'{COLORS["B"]}{color}{COLORS["N"]}'
-    elif ltype == 'warn':
-        color = f'{COLORS["Y"]}{color}{COLORS["N"]}'
-    elif ltype == 'error':
-        color = f'{COLORS["R"]}{color}{COLORS["N"]}'
+    prefix = LOG['text'][ltype]
+    if ltype != 'normal':
+        prefix = (f"{LOG['colors'][ltype]}"
+                  f"{prefix}"
+                  f"{LOG['colors']['reset']}")
     if WINDOW is not None:
-        WINDOW.emit(f"{color}{msg}")
+        WINDOW.emit(f"{prefix}{msg}")
     else:
-        print(f"{color}{msg}", end=end, flush=True)
+        print(f"{prefix}{msg}", end=end, flush=True)
 
     if WINDOW is None and err is not None:
         sys.exit(err)
@@ -97,6 +89,13 @@ def check_privileges():
             f"User '{user}' must belong to 'docker' group "
             f"to communicate with docker API.",
             err=ct.EDPERM)
+
+
+def initialize(modules, mod_type, mod_name):
+    if mod_type not in modules:
+        modules[mod_type] = {}
+    if mod_name not in modules[mod_type]:
+        modules[mod_type][mod_name] = []
 
 
 def correct_type(value, info):

@@ -29,9 +29,9 @@ EDDOWN = 202  # Downloading from dockerhub
 EDNONET = 203  # Network missing
 EDPERM = 204  # Operation not permitted, are you in docker group?
 # Format
-ECFGRC = 205  # Bad resources script format
-ECFGNET = 206  # Bad network configuration file (format)
-EREP = 207  # Bad report (format)
+ECFGRC = 205  # Bad resources script
+ECFGNET = 206  # Bad network configuration file
+EREP = 207  # Bad report
 # Fabric
 EHLFST = 212  # Can not store report
 
@@ -87,7 +87,7 @@ MOD_TYPES = ['auxiliary', 'encoder', 'exploit', 'nop', 'payload', 'post']
 
 # Copyright
 COPYRIGHT = """
-autoauditor  Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+autoauditor v3.1 Copyright (C) 2020-2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 Universidad Carlos III de Madrid.
 This program comes with ABSOLUTELY NO WARRANTY; for details check below.
 This is free software, and you are welcome to redistribute it

@@ -406,10 +406,14 @@ def load_config(config, loop=None):
 
 def opentimestamp_format():
     class OpenTimeStampFormatter(logging.Formatter):
-        err_fmt = f"{ut.COLORS['R']}[!]{ut.COLORS['N']} %(msg)s"
-        warn_fmt = f"{ut.COLORS['Y']}[-]{ut.COLORS['N']} %(msg)s"
-        dbg_fmt = f"{ut.COLORS['B']}[*]{ut.COLORS['N']} %(msg)s"
-        info_fmt = f"{ut.COLORS['G']}[+]{ut.COLORS['N']} %(msg)s"
+        err_fmt = (f"{ut.LOG['colors']['error']}[!]"
+                   f"{ut.LOG['colors']['reset']} %(msg)s")
+        warn_fmt = (f"{ut.LOG['colors']['warn']}[-]"
+                    f"{ut.LOG['colors']['reset']} %(msg)s")
+        dbg_fmt = (f"{ut.LOG['colors']['info']}[*]"
+                   f"{ut.LOG['colors']['reset']} %(msg)s")
+        info_fmt = (f"{ut.LOG['colors']['succ']}[+]"
+                    f"{ut.LOG['colors']['reset']} %(msg)s")
 
         def __init__(self):
             super().__init__(fmt="[*] %(msg)s", datefmt=None, style='%')

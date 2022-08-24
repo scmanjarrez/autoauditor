@@ -8,8 +8,8 @@ import QtQuick 6.2
 ApplicationWindow {
     id: mainWindow
     title: "autoauditor"
-    minimumWidth: 700
-    minimumHeight: 520
+    minimumWidth: 720
+    minimumHeight: 560
     visible: true
     Material.theme: cTheme.checked ? Material.Light : Material.Dark
 
@@ -484,6 +484,47 @@ ApplicationWindow {
                         }
                     }
                     RowLayout {
+                        id: rowCVE
+                        Label {
+                            id: lCVE
+                            Layout.fillWidth: true
+                            text: "CVEScanner report"
+                            font: fLabel
+                            MouseArea {
+                                id: mouseCVE
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onEntered: {
+                                    tooltipTimer.map = mapToItem(mainWindow.contentItem, lCVE.x, lCVE.y);
+                                    tooltipTimer.text = "CVEScannerV2 report (JSON)";
+                                    tooltipTimer.start()
+                                }
+                                onExited: {
+                                    tooltipTimer.stop();
+                                    tooltip.hide()
+                                }
+                            }
+                        }
+                        TextField {
+                            id: tfCVE
+                            objectName: 'tfCVE'
+                            Layout.preferredWidth: sTextField
+                            placeholderText: "Resources script path..."
+                            font: fInput
+                            selectByMouse: true
+                        }
+                        ToolButton {
+                            id: bCVE
+                            icon.source: 'qrc:/file'
+                            onClicked: {
+                                fileBrowser.nameFilters = ["JSON files (*.json)"];
+                                fileBrowser.target = tfCVE;
+                                fileBrowser.fileMode = Labs.FileDialog.OpenFile;
+                                fileBrowser.open()
+                            }
+                        }
+                    }
+                    RowLayout {
                         id: rowErc
                         Label {
                             id: lErc
@@ -509,6 +550,7 @@ ApplicationWindow {
                         Switch {
                             id: sErc
                             objectName: 'sErc'
+                            checked: true
                         }
                     }
                     Item {
@@ -832,7 +874,7 @@ ApplicationWindow {
                 Label {
                     id: lAutoauditor
                     Layout.fillWidth: true
-                    text: "autoauditor\nv3.0"
+                    text: "autoauditor\nv3.1"
                     font: fLabel
                     horizontalAlignment: Text.AlignHCenter
                     topPadding: sSPad
@@ -888,7 +930,7 @@ ApplicationWindow {
                 Label {
                     id: lLicense
                     Layout.fillWidth: true
-                    text: "autoauditor Copyright (C) 2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es\nUniversidad Carlos III de Madrid\nThis program comes with ABSOLUTELY NO WARRANTY; for details check below. This is free software, and you are welcome to redistribute it under certain conditions; check below for details."
+                    text: "autoauditor Copyright (C) 2020-2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es\nUniversidad Carlos III de Madrid\nThis program comes with ABSOLUTELY NO WARRANTY; for details check below. This is free software, and you are welcome to redistribute it under certain conditions; check below for details."
                     font: fInput
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap

@@ -346,6 +346,8 @@ class Backend(QObject):
         if self.containers_start(pbar) and self.backend_ready(pbar):
             if self._property('sErc', 'checked') and not self._modules:
                 self.parse_rc()
+            if self._property('tfCVE', 'text'):
+                self.parse_cvescanner()
             self.taskCompleted.emit(pbar)
             self.root.openWizard.emit()
 
@@ -361,7 +363,8 @@ class Backend(QObject):
             try:
                 rc = json.load(f)
             except json.decoder.JSONDecodeError:
-                self.root.errorSignal.emit(["Error parsing RC"], 'pbWizard')
+                self.root.errorSignal.emit(
+                    ["Error parsing resources script file"], 'pbWizard')
         for mtype in rc:
             for mname in rc[mtype]:
                 for mod in rc[mtype][mname]:
@@ -390,6 +393,35 @@ class Backend(QObject):
                                 errors.append(res[1])
                     if errors:
                         self.root.showError.emit(errors)
+
+    def parse_cvescanner(self):
+        with open(self._property('tfCVE', 'text')) as f:
+            try:
+                scan = json.load(f)
+            except json.decoder.JSONDecodeError:
+                self.root.errorSignal.emit(
+                    ["Error parsing CVEScannerV2 report"], 'pbWizard')
+        exploits = set()
+        try:
+            for host, hinfo in scan.items():
+                for port, pinfo in hinfo['ports'].items():
+                    for cve, cinfo in pinfo['vulnerabilities']['cves'].items():
+                        if 'metasploit' in cinfo:
+                            for exploit in cinfo['metasploit']:
+                                exp = exploit['name'].split('/')
+                                exploits.add((exp[0], '/'.join(exp[1:])))
+        except KeyError:
+            self.root.errorSignal.emit(
+                ["Error parsing CVEScannerV2 report"], 'pbWizard')
+        for mtype, mname in exploits:
+            tmp = Module(self.msfcl, mtype, mname)
+            tmp.wid = self.cwid
+            self._modules[self.cwid] = {'tmp': False, 'mod': tmp}
+            self.root.addModule.emit(tmp)
+            self.cwid += 1
+            errors = []
+            if errors:
+                self.root.showError.emit(errors)
 
     @Slot()
     def button_stop(self):

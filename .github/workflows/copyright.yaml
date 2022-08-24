@@ -23,7 +23,7 @@ jobs:
       - name: Merge pull request
         run: |
           export year=$(date +"%Y")
-          perl -i -pe 's/(?<=\([cC]\)\s)(?<from>\d+)(-\d+)?/$+{from}-$ENV{"year"}/' README.md setup.py autoauditor/*.py autoauditor/gui/gui.py
+          perl -i -pe 's/(?<=\([cC]\)\s)(?<from>\d+)(-\d+)?/$+{from}-$ENV{"year"}/' README.md setup.py autoauditor/*.py autoauditor/gui/gui.py autoauditor/gui/main.qml
           git add --update
           git commit -m "Copyright year update"
           git remote set-url origin --push https://updater:${{ secrets.TOKEN }}@github.com/scmanjarrez/autoauditor.git
