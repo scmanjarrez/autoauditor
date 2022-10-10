@@ -55,6 +55,16 @@ If groupsig is required:
 - cmake
 - libssl-dev
 
+> Patched libraries can be found in **third\_party**, required for specific modules:
+> - Hyperledger Fabric: [fabric_sdk_py](third_party/fabric_sdk/fabric_sdk_py-0.9.0-py3-none-any.whl)
+> - Wizard: [pymetasploit3](third_party/pymetasploit3/pymetasploit3-1.0-py3-none-any.whl)
+> - libgroupsig: must be compiled according to instructions in [libgroupsig](https://github.com/IBM/libgroupsig)
+
+> Setup scripts can be found in **tools**.
+
+> **Note**: If you installed autoauditor via pip, please check the homepage to
+> download **third_party** and **tools** folders.
+
 # Pre-execution (optional)
 ## Vulnerable network
 We have prepared a containerized environment with vulnerable machines: vulnerable_net

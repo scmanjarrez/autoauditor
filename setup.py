@@ -50,13 +50,13 @@ setup(
     license='GPLv3+',
     license_files=['LICENSE'],
     classifiers=[
-        ('License :: OI Approved :: '
+        ('License :: OSI Approved :: '
          'GNU General Public License v3 or later (GPLv3+)'),
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7'
+        'Programming Language :: Python :: 3.8'
     ],
     packages=['autoauditor', 'autoauditor.gui'],
-    python_requires='>= 3.7',
+    python_requires='>= 3.8',
     install_requires=[
         'aiogrpc==1.8',
         'appdirs==1.4.4',
@@ -70,10 +70,6 @@ setup(
         'cryptography==37.0.2',
         'decorator==5.1.1',
         'docker==5.0.3',
-        # Compiled from fork, check third_party/fabric_sdk/README.md
-        (f'fabric-sdk-py @ '
-         f'file://localhost/{os.getcwd()}/'
-         f'third_party/fabric_sdk/fabric_sdk_py-0.9.0-py3-none-any.whl'),
         'Flask==2.1.2',
         'gitdb==4.0.9',
         'GitPython==3.1.27',
@@ -94,10 +90,6 @@ setup(
         'py==1.11.0',
         'pycparser==2.21',
         'pycryptodomex==3.14.1',
-        # Compiled from fork, check third_party/pymetasploit3/README.md
-        (f'pymetasploit3 @ '
-         f'file://localhost/{os.getcwd()}/'
-         f'third_party/pymetasploit3/pymetasploit3-1.0-py3-none-any.whl'),
         'pyOpenSSL==22.0.0',
         'pysha3==1.0.2',
         'PySide6==6.3.0',

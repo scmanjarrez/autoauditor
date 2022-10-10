@@ -31,7 +31,6 @@ protobuf==3.20.1
 py==1.11.0
 pycparser==2.21
 pycryptodomex==3.14.1
-third_party/libgroupsig/pygroupsig-1.1.0-cp38-cp38-linux_x86_64.whl
 third_party/pymetasploit3/pymetasploit3-1.0-py3-none-any.whl
 pyOpenSSL==22.0.0
 pysha3==1.0.2
