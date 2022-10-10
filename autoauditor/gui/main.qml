@@ -874,7 +874,7 @@ ApplicationWindow {
                 Label {
                     id: lAutoauditor
                     Layout.fillWidth: true
-                    text: "autoauditor\nv3.1"
+                    text: "autoauditor\nv3.1.1"
                     font: fLabel
                     horizontalAlignment: Text.AlignHCenter
                     topPadding: sSPad

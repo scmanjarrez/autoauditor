@@ -22,11 +22,24 @@
 # You should have received a copy of the GNU General Public License
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
+from autoauditor import utils as ut
+
+import importlib
+
+if importlib.util.find_spec('hfc') is None:
+    ut.log('error', "fabric_sdk_py missing. "
+           "Install the wheel under third_party/fabric_sdk")
+    exit()
+
+if importlib.util.find_spec('pymetasploit3') is None:
+    ut.log('error', "pymetasploit3 missing. "
+           "Install the wheel under third_party/pymetasploit3")
+    exit()
+
 from autoauditor import blockchain as bc
 from autoauditor import metasploit as ms
 from autoauditor import constants as ct
 from autoauditor import wizard as wz
-from autoauditor import utils as ut
 from autoauditor.gui import gui
 from autoauditor import vpn
 

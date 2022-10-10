@@ -32,7 +32,7 @@ readme = (_parent / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='autoauditor',
-    version='3.1',
+    version='3.1.1',
     description='Semi-automatic scanner and vulnerability exploiter',
     author='Sergio Chica',
     author_email='sergio.chica@uc3m.es',
