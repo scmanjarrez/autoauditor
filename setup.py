@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from setuptools import setup
 from pathlib import Path
@@ -32,7 +32,7 @@ readme = (_parent / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='autoauditor',
-    version='3.1.1',
+    version='3.1.2',
     description='Semi-automatic scanner and vulnerability exploiter',
     author='Sergio Chica',
     author_email='sergio.chica@uc3m.es',

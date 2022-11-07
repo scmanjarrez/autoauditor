@@ -18,7 +18,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from pathlib import Path
 
@@ -87,7 +87,7 @@ MOD_TYPES = ['auxiliary', 'encoder', 'exploit', 'nop', 'payload', 'post']
 
 # Copyright
 COPYRIGHT = """
-autoauditor v3.1.1 Copyright (C) 2020-2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
+autoauditor v3.1.2 Copyright (C) 2020-2022 Sergio Chica Manjarrez @ pervasive.it.uc3m.es.
 Universidad Carlos III de Madrid.
 This program comes with ABSOLUTELY NO WARRANTY; for details check below.
 This is free software, and you are welcome to redistribute it
