@@ -262,11 +262,9 @@ func (s *SmartContract) GetSubscribers(
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("hi")
 	defer resIterator.Close()
 	results := []Subscription{}
 	for resIterator.HasNext() {
-		fmt.Println("hu")
 		response, err := resIterator.Next()
 		if err != nil {
 			return nil, err
@@ -279,12 +277,10 @@ func (s *SmartContract) GetSubscribers(
 				err.Error())
 		}
 		sid := compositeKeyParts[1]
-		fmt.Println(sid)
 		subJSONAsBytes, err := getData(ctx.GetStub(), sid)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("h3")
 		subscription := new(Subscription)
 		err = json.Unmarshal(subJSONAsBytes, subscription)
 		if err != nil {
@@ -292,11 +288,8 @@ func (s *SmartContract) GetSubscribers(
 				"Failed to unmarshall JSON: %s",
 				err.Error())
 		}
-		fmt.Println("ho")
 		results = append(results, *subscription)
 	}
-	fmt.Println("what")
-	fmt.Println(len(results))
 	if len(results) == 0 {
 		return nil, fmt.Errorf(
 			"No results found")
