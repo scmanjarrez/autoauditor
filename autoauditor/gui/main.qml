@@ -2,7 +2,7 @@
 
 /* main - Graphical User Interface QML. */
 
-/* Copyright (C) 2022-2023 Sergio Chica Manjarrez @ pervasive.it.uc3m.es. */
+/* Copyright (C) 2022-2024 Sergio Chica Manjarrez @ pervasive.it.uc3m.es. */
 /* Universidad Carlos III de Madrid. */
 
 /* This file is part of autoauditor. */
@@ -952,7 +952,7 @@ ApplicationWindow {
                 Label {
                     id: lLicense
                     Layout.fillWidth: true
-                    text: "autoauditor Copyright (C) 2020-2023 Sergio Chica Manjarrez @ pervasive.it.uc3m.es\nUniversidad Carlos III de Madrid\nThis program comes with ABSOLUTELY NO WARRANTY; for details check below. This is free software, and you are welcome to redistribute it under certain conditions; check below for details."
+                    text: "autoauditor Copyright (C) 2020-2024 Sergio Chica Manjarrez @ pervasive.it.uc3m.es\nUniversidad Carlos III de Madrid\nThis program comes with ABSOLUTELY NO WARRANTY; for details check below. This is free software, and you are welcome to redistribute it under certain conditions; check below for details."
                     font: fInput
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
